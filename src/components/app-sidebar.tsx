@@ -2,22 +2,18 @@
 
 import * as React from "react"
 import {
-  BarChart3,
   BookOpen,
-  Building2,
   Command,
-  GitCompare,
-  KeySquare,
+  Home,
+  Inbox,
   LifeBuoy,
-  LineChart,
   MessageSquareText,
-  FileText,
   Search,
-  Send,
-  Settings2,
-  TrendingUp,
+  Building2,
+  KeySquare,
   Bot,
-  User,
+  FileText,
+  Sparkles
 } from "lucide-react"
 
 import { NavMain } from "@/components/nav-main"
@@ -32,53 +28,64 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
+import { TbAt, TbBuildings, TbGridScan, TbLayoutGridAdd, TbListSearch, TbMessage, TbSparkles, TbSquareLetterA, TbTrendingUp } from "react-icons/tb";
+
 
 const data = {
   navMain: [
     {
       title: "Dashboard",
       url: "/dashboard",
-      icon: BarChart3,
+      icon: TbLayoutGridAdd,
+      group: "main"
     },
     {
-      title: "Brands",
-      url: "/dashboard/brands",
-      icon: Building2,
+      title: "Search",
+      url: "/dashboard/search",
+      icon: TbListSearch,
+      group: "main"
     },
     {
-      title: "AI Query",
-      url: "/dashboard/ai-query",
-      icon: Bot,
+      title: "Inbox",
+      url: "/dashboard/inbox",
+      icon: TbMessage,
+      group: "main"
     },
     {
-      title: "AI Rankings",
-      url: "/dashboard/ai-rankings",
-      icon: TrendingUp,
+      title: "Industry",
+      url: "/dashboard/industry",
+      icon: TbBuildings,
+      group: "metrics"
     },
     {
       title: "Keywords",
       url: "/dashboard/keywords",
-      icon: KeySquare,
+      icon: TbSquareLetterA,
+      group: "metrics"
+    },
+    {
+      title: "Model",
+      url: "/dashboard/model",
+      icon: TbSparkles,
+      group: "metrics"
+    },
+    {
+      title: "Citation",
+      url: "/dashboard/citation",
+      icon: TbGridScan,
+      group: "metrics"
     },
     {
       title: "Social Analysis",
       url: "/dashboard/social",
-      icon: MessageSquareText,
+      icon: TbAt,
+      group: "metrics"
     },
     {
-      title: "Competitors",
-      url: "/dashboard/competitors",
-      icon: GitCompare,
-    },
-    {
-      title: "Reports",
-      url: "/dashboard/reports",
-      icon: FileText,
-    },
-    {
-      title: "Settings",
-      url: "/dashboard/settings",
-      icon: Settings2,
+      title: "Improve",
+      url: "/dashboard/improve",
+      icon: TbTrendingUp,
+      group: "metrics"
     },
   ],
   navSecondary: [
@@ -97,7 +104,7 @@ const data = {
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
-    <Sidebar variant="inset" collapsible="icon" {...props}>
+    <Sidebar variant="inset"  collapsible="icon" {...props}>
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>

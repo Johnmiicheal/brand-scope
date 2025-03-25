@@ -49,17 +49,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, currentSession) => {
-        setSession(currentSession)
-        setUser(currentSession?.user || null)
+      (event) => {
+      //   setSession(currentSession)
+      //   setUser(currentSession?.user || null)
         
-        if (event === 'SIGNED_IN' && currentSession) {
-          toast({
-            title: "Signed in successfully",
-            duration: 3000,
-          })
-          router.push('/dashboard')
-        }
+      //   // Only redirect to dashboard on initial sign in, not on page changes
+      //   if (event === 'SIGNED_IN' && currentSession && !session) {
+      //     toast({
+      //       title: "Signed in successfully",
+      //       duration: 3000,
+      //     })
+      //     router.push('/dashboard')
+      //   }
         
         if (event === 'SIGNED_OUT') {
           toast({
@@ -112,7 +113,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           redirectTo: `${window.location.origin}/auth/callback`,
         },
       })
-      
+
       if (error) {
         throw error
       }
@@ -145,7 +146,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       toast({
         title: "Account created",
         description: "Check your email to confirm your account",
-        duration: 3000,
+        duration: 5000,
       })
     } catch (error: any) {
       toast({
@@ -161,7 +162,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Sign out function
   const signOut = async () => {
     try {
-      await supabase.auth.signOut()
+      const { error } = await supabase.auth.signOut()
+      if(!error){
+        setUser(null)
+        setSession(null)
+        router.push('/login')
+      }
     } catch (error: any) {
       toast({
         title: "Sign out failed",
