@@ -42,6 +42,7 @@ export async function explorerAnalysis(
     rankings.push({
       id: uuidv4(),
       entity_id: brand_id,
+      entity_name: "",
       entity_type: 'brand',
       user_id,
       llm_name: 'DeepSeek R-1',
@@ -78,6 +79,7 @@ export async function explorerAnalysis(
       rankings.push({
         id: uuidv4(),
         entity_id: competitor_id,
+        entity_name: competitor,
         entity_type: 'competitor',
         user_id,
         llm_name: 'DeepSeek R-1',

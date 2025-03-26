@@ -64,7 +64,8 @@ export async function deepFocusAnalysis(
     for (const brand of object.brands) {
       rankings.push({
         id: uuidv4(),
-        entity_id: brand.name,
+        entity_id: uuidv4(),
+        entity_name: brand.name,
         entity_type: 'brand',
         user_id,
         llm_name: name,

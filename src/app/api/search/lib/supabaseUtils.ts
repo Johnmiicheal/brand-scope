@@ -11,7 +11,7 @@ export async function saveToSupabase(results: SearchResults, user_id: string): P
   // First, create brand records for each brand in the rankings
   const brandPromises = results.ai_rankings.map(async (ranking) => {
     // The entity_id contains the brand name from the AI response
-    const brandName = ranking.entity_id;
+    const brandName = ranking.entity_name;
     
     // Create brand record with the user_id from the ranking
     const { data: brand, error: brandError } = await supabase
@@ -38,6 +38,7 @@ export async function saveToSupabase(results: SearchResults, user_id: string): P
   const aiRankingsToSave = results.ai_rankings.map((ranking, index) => ({
     id: ranking.id,
     entity_id: brandIds[index].toString(), // Use the brand ID as entity_id
+    entity_name: ranking.entity_name,
     entity_type: ranking.entity_type || 'brand' as const, // Default to 'brand' type
     user_id: ranking.user_id.toString(),
     llm_name: ranking.llm_name || 'groq-llama-3.3-70b-versatile', // Default LLM name
@@ -62,11 +63,25 @@ export async function saveToSupabase(results: SearchResults, user_id: string): P
     throw new Error(`AI Rankings save failed: ${rankingsError.message}`);
   }
 
+  const socialInsightsToSave = results.social_insights?.map((insights, index) => ({
+    id: insights.id,
+    entity_id: brandIds[index].toString(),
+    entity_name: insights.entity_name,
+    entity_type: insights.entity_type || 'brand', // Default to 'brand' type
+    user_id: insights.user_id.toString(),
+    search_id: results.mode_id.toString(),
+    platform: insights.platform || 'X', // Default platform
+    keyword: insights.keyword || '', // Default to empty string if not provided
+    mention_count: insights.mention_count || 0, // Default to 0 if not provided
+    sentiment: insights.sentiment || 'neutral', // Default to 'neutral' if not provided
+    data_fetched_at: new Date().toISOString(),
+  }))
+
   // Save social insights if available
   if (results.social_insights && results.social_insights.length > 0) {
     const { error: socialError } = await supabase
       .from('social_insights')
-      .insert(results.social_insights);
+      .insert(socialInsightsToSave);
     
     if (socialError) throw new Error(`Social Insights save failed: ${socialError.message}`);
   }

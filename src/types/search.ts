@@ -18,6 +18,7 @@ export type SupportedModel = typeof supportedModels[number];
 export const aiRankingSchema = z.object({
   id: z.string().uuid(),
   entity_id: z.string(),
+  entity_name: z.string(),
   entity_type: z.enum(['brand', 'competitor']),
   user_id: z.string().uuid(),
   llm_name: z.string(),
@@ -34,7 +35,8 @@ export type AIRanking = z.infer<typeof aiRankingSchema>;
 
 export const socialInsightSchema = z.object({
   id: z.string().uuid(),
-  entity_id: z.string(),
+  entity_id: z.string().uuid(),
+  entity_name: z.string(),
   entity_type: z.enum(['brand', 'competitor']),
   user_id: z.string().uuid(),
   search_id: z.string().uuid(),
