@@ -4,16 +4,7 @@ import * as React from "react"
 import {
   BookOpen,
   Command,
-  Home,
-  Inbox,
   LifeBuoy,
-  MessageSquareText,
-  Search,
-  Building2,
-  KeySquare,
-  Bot,
-  FileText,
-  Sparkles
 } from "lucide-react"
 
 import { NavMain } from "@/components/nav-main"
@@ -28,7 +19,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { TbAt, TbBuildings, TbGridScan, TbLayoutGridAdd, TbListSearch, TbMessage, TbSparkles, TbSquareLetterA, TbTrendingUp } from "react-icons/tb";
+import { TbAt, TbBookmarks, TbBuildings, TbGridScan, TbLayoutGridAdd, TbListSearch, TbMessage, TbSparkles, TbSquareLetterA, TbTrendingUp } from "react-icons/tb";
 
 
 const data = {
@@ -43,6 +34,12 @@ const data = {
       title: "Search",
       url: "/dashboard/search",
       icon: TbListSearch,
+      group: "main"
+    },
+    {
+      title: "Library",
+      url: "/dashboard/library",
+      icon: TbBookmarks,
       group: "main"
     },
     {
