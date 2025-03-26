@@ -45,7 +45,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    getInitialSession()
+    if(!user){
+      getInitialSession()
+    }
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -107,15 +109,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Sign in with Google
   const signInWithGoogle = async () => {
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: `${window.location.origin}/auth/callback`,
         },
-      })
+      });
 
       if (error) {
-        throw error
+        throw error;
+      }
+
+      // After successful OAuth sign in, check if user exists in users table
+      if (data.user) {
+        const { data: existingUser, error: userError } = await supabase
+          .from('users')
+          .select('id')
+          .eq('id', data.user.id)
+          .single();
+
+        if (userError && userError.code !== 'PGRST116') { // PGRST116 is "not found"
+          console.error('Error checking user:', userError);
+          throw new Error('Failed to verify user');
+        }
+
+        // If user doesn't exist, create them
+        if (!existingUser) {
+          const { error: createError } = await supabase
+            .from('users')
+            .insert({
+              id: data.user.id,
+              email: data.user.email,
+              full_name: data.user.user_metadata?.full_name || null,
+              created_at: new Date().toISOString()
+            });
+
+          if (createError) {
+            console.error('Error creating user record:', createError);
+            throw new Error('Failed to create user record');
+          }
+        }
       }
     } catch (error: any) {
       toast({
@@ -123,39 +156,56 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         description: error?.message || "Failed to sign in with Google",
         variant: "destructive",
         duration: 3000,
-      })
-      throw error
+      });
+      throw error;
     }
   }
 
   // Sign up function
   const signUp = async (email: string, password: string, metadata?: any) => {
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: metadata,
         },
-      })
+      });
       
-      if (error) {
-        throw error
+      if (authError) {
+        throw authError;
+      }
+
+      // Create user record in the users table
+      if (authData.user) {
+        const { error: userError } = await supabase
+          .from('users')
+          .insert({
+            id: authData.user.id,
+            email: authData.user.email,
+            full_name: metadata?.full_name || null,
+            created_at: new Date().toISOString()
+          });
+
+        if (userError) {
+          console.error('Error creating user record:', userError);
+          throw new Error('Failed to create user record');
+        }
       }
       
       toast({
         title: "Account created",
         description: "Check your email to confirm your account",
         duration: 5000,
-      })
+      });
     } catch (error: any) {
       toast({
         title: "Sign up failed",
         description: error?.message || "Failed to create account",
         variant: "destructive",
         duration: 3000,
-      })
-      throw error
+      });
+      throw error;
     }
   }
 

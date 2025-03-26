@@ -24,7 +24,9 @@ export const useSupabase = () => {
       setLoading(false);
     };
 
-    initializeAuth();
+    if(!user){
+      initializeAuth();
+    }
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(

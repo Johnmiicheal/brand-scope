@@ -5,18 +5,18 @@ import { useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import {
-  ImageIcon,
-  FileUp,
-  Figma,
-  MonitorIcon,
-  CircleUserRound,
-  ArrowUpIcon,
   Paperclip,
   PlusIcon,
   ChevronDown,
   Telescope,
   Check,
+  ArrowRightIcon,
+  ClockIcon,
+  CalendarIcon,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { toast } from "@/components/ui/use-toast";
+import { AnalysisMode } from "@/types/search";
 
 import {
   DropdownMenu,
@@ -25,6 +25,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "./button";
+import { motion } from "framer-motion";
+import useSupabase from "@/hooks/useSupabase";
 
 interface UseAutoResizeTextareaProps {
   minHeight: number;
@@ -79,10 +81,12 @@ function useAutoResizeTextarea({
   return { textareaRef, adjustHeight };
 }
 
-
 export function AIChatInterface() {
+  const router = useRouter();
   const [value, setValue] = useState("");
-  const [mode, setMode] = useState<"DeepFocus" | "Voyager" | "Explorer">("DeepFocus"); // DeepFocus: uses one engine, no tool calls (monitor how ai talks about you), just analysis, Voyager: uses multiple models, includes social analysis, checks your website
+  const { user } = useSupabase();
+  const [mode, setMode] = useState<AnalysisMode>("DeepFocus");
+  const [loading, setLoading] = useState(false);
   const { textareaRef, adjustHeight } = useAutoResizeTextarea({
     minHeight: 60,
     maxHeight: 200,
@@ -92,9 +96,104 @@ export function AIChatInterface() {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       if (value.trim()) {
-        setValue("");
-        adjustHeight(true);
+        handleSubmit();
       }
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!value.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a brand name",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!user?.id) {
+      toast({
+        title: "Error",
+        description: "Please sign in to continue",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      console.log("Sending request with data:", {
+        mode,
+        user_id: user.id,
+        query: value.trim(),
+        competitors: mode === "Explorer" ? ["Competitor A", "Competitor B"] : undefined,
+      });
+
+      const response = await fetch("/api/search", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          mode,
+          user_id: user.id,
+          query: value.trim(),
+          competitors: mode === "Explorer" ? ["Competitor A", "Competitor B"] : undefined,
+        }),
+      });
+
+      if (!response.ok) {
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          const error = await response.json();
+          console.error("API Error:", error);
+          throw new Error(error.error || "Failed to start analysis");
+        } else {
+          const text = await response.text();
+          console.error("Non-JSON Error Response:", text);
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+      }
+
+      // Handle streaming response
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error("No response body");
+      }
+
+      let result = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        result += new TextDecoder().decode(value);
+      }
+
+      console.log("Streaming Response:", result);
+
+      // Parse the final result
+      const { mode_id } = JSON.parse(result);
+      
+      toast({
+        title: "Analysis started",
+        description: `Your ${mode} analysis is processing. You'll be redirected to results when complete.`,
+      });
+
+      // Redirect to analysis results page
+      router.push(`/dashboard/search/analysis?mode_id=${mode_id}`);
+
+      // Clear input and reset height
+      setValue("");
+      adjustHeight(true);
+    } catch (error) {
+      console.error("Error submitting analysis:", error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "An unknown error occurred",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -108,9 +207,9 @@ export function AIChatInterface() {
       caption: "Extended brand analysis and reasoning with social sentiment",
     },
     {
-        key: "Explorer",
-        caption: "Compare your brands with competitors in your industry",
-      },
+      key: "Explorer",
+      caption: "Compare your brands with competitors in your industry",
+    },
   ];
 
   return (
@@ -130,7 +229,7 @@ export function AIChatInterface() {
                 adjustHeight();
               }}
               onKeyDown={handleKeyDown}
-              placeholder="Ask v0 a question..."
+              placeholder="Enter your brand name..."
               className={cn(
                 "w-full px-4 py-3",
                 "resize-none",
@@ -152,35 +251,46 @@ export function AIChatInterface() {
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                className="group p-2 hover:bg-neutral-800 rounded-lg transition-colors flex items-center gap-1"
+                className="group p-3 hover:bg-neutral-800 cursor-pointer rounded-full border border-accent transition-all duration-400 ease flex items-center "
               >
-                <Paperclip className="w-4 h-4 text-white" />
-                <span className="text-xs text-zinc-400 hidden group-hover:inline transition-opacity">
-                  Attach
+                <Paperclip className="w-4 h-4 text-white/60" />
+                <span className="text-xs opacity-0 max-w-0 group-hover:max-w-[200px] group-hover:ml-2 group-hover:opacity-100 transition-all duration-300 ease-in-out overflow-hidden whitespace-nowrap">
+                  Attach Brand
                 </span>
               </button>
               <DropdownMenu>
                 <div className="inline-flex -space-x-px divide-x divide-primary-foreground/30 rounded-full shadow-sm shadow-black/5 rtl:space-x-reverse">
                   <Button
                     variant="outline"
-                    className="rounded-none shadow-none first:rounded-s-full last:rounded-e-full focus-visible:z-10"
+                    className="rounded-none shadow-none first:rounded-s-full last:rounded-e-full focus-visible:z-10 text-[12px] overflow-hidden"
                   >
                     <Telescope
-                      className="opacity-60"
-                      size={14}
-                      strokeWidth={2}
+                      className="opacity-60 w-4 h-4"
                       aria-hidden="true"
                     />
-                    {mode}
+                    <motion.div
+                      key={mode}
+                      initial={{ x: 10, opacity: 0 }}
+                      animate={{ x: 0, opacity: 1 }}
+                      exit={{ x: 10, opacity: 0 }}
+                      transition={{
+                        duration: 0.3,
+                        ease: [0.4, 0, 0.2, 1],
+                        opacity: { duration: 0.15 },
+                      }}
+                    >
+                      {mode}
+                    </motion.div>
                   </Button>
-                  <DropdownMenuTrigger>
+                  <DropdownMenuTrigger className="focus-visible:ring-0 focus-visible:ring-offset-0 focus:outline-none">
                     <Button
                       variant="outline"
-                      className="rounded-none shadow-none focus-visible:z-10 last:rounded-e-full"
+                      className="rounded-none shadow-none focus-visible:z-10 focus-visible:ring-0 focus-visible:ring-offset-0 focus:outline-none focus-visible:outline-none last:rounded-e-full"
                       size="icon"
                       aria-label="Options"
                     >
                       <ChevronDown
+                        className="w-4 h-4"
                         size={16}
                         strokeWidth={2}
                         aria-hidden="true"
@@ -190,14 +300,19 @@ export function AIChatInterface() {
                 </div>
                 <DropdownMenuContent className="p-2">
                   {modes.map((item) => (
-                    <DropdownMenuItem key={item.key} className="cursor-pointer" onClick={() => setMode(item.key as "DeepFocus" | "Voyager" | "Explorer")}>
+                    <DropdownMenuItem
+                      key={item.key}
+                      className="cursor-pointer"
+                      onClick={() => setMode(item.key as AnalysisMode)}
+                    >
                       <div className="flex gap-2 items-center">
                         {item.key === mode && <Check className="w-4 h-4" />}
                         <div>
                           <h4 className="text-[14px]">{item.key}</h4>
-                        <p className="text-white/70 text-[10px]">{item.caption}</p>
-
-                      </div>
+                          <p className="text-white/70 text-[10px]">
+                            {item.caption}
+                          </p>
+                        </div>
                       </div>
                     </DropdownMenuItem>
                   ))}
@@ -214,12 +329,14 @@ export function AIChatInterface() {
               </button>
               <button
                 type="button"
+                onClick={handleSubmit}
+                disabled={loading || !value.trim()}
                 className={cn(
-                  "px-1.5 py-1.5 rounded-lg text-sm transition-colors border border-zinc-700 hover:border-zinc-600 hover:bg-zinc-800 flex items-center justify-between gap-1",
+                  "p-2 active:scale-95 rounded-full text-sm -rotate-45 cursor-pointer hover:rotate-0 transition-all ease-in-out duration-300 border border-zinc-700 hover:border-zinc-600 hover:bg-accent flex items-center justify-between gap-1",
                   value.trim() ? "bg-white text-black" : "text-zinc-400"
                 )}
               >
-                <ArrowUpIcon
+                <ArrowRightIcon
                   className={cn(
                     "w-4 h-4",
                     value.trim() ? "text-black" : "text-zinc-400"
@@ -230,27 +347,24 @@ export function AIChatInterface() {
             </div>
           </div>
         </div>
+        <div className="flex w-[90%] mx-0 p-3 bg-red-300"></div>
 
         <div className="flex items-center justify-center gap-3 mt-4">
           <ActionButton
-            icon={<ImageIcon className="w-4 h-4" />}
-            label="Clone a Screenshot"
+            icon={<ClockIcon className="w-4 h-4 text-sky-400" />}
+            label={new Date().toLocaleTimeString(undefined, {
+              hour: "numeric",
+              minute: "2-digit",
+              hour12: true,
+            })}
           />
           <ActionButton
-            icon={<Figma className="w-4 h-4" />}
-            label="Import from Figma"
-          />
-          <ActionButton
-            icon={<FileUp className="w-4 h-4" />}
-            label="Upload a Project"
-          />
-          <ActionButton
-            icon={<MonitorIcon className="w-4 h-4" />}
-            label="Landing Page"
-          />
-          <ActionButton
-            icon={<CircleUserRound className="w-4 h-4" />}
-            label="Sign Up Form"
+            icon={<CalendarIcon className="w-4 h-4 text-orange-400" />}
+            label={new Date().toLocaleDateString(undefined, {
+              weekday: "short",
+              month: "short",
+              day: "numeric",
+            })}
           />
         </div>
       </div>
@@ -267,7 +381,7 @@ function ActionButton({ icon, label }: ActionButtonProps) {
   return (
     <button
       type="button"
-      className="flex items-center gap-2 px-4 py-2 bg-neutral-900 hover:bg-neutral-800 rounded-full border border-neutral-800 text-neutral-400 hover:text-white transition-colors"
+      className="flex group items-center gap-2 px-4 py-2 bg-neutral-900 hover:bg-neutral-800 rounded-full border border-neutral-800 text-neutral-400 hover:text-white transition-colors"
     >
       {icon}
       <span className="text-xs">{label}</span>
