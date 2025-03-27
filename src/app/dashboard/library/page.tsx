@@ -65,7 +65,7 @@ export default function LibraryPage() {
       
       fetchSearches();
     }
-  }, [user, isLoading, router]);
+  }, [router]);
   
   // Group by query to get unique searches
   const uniqueSearches = searches.length ? 

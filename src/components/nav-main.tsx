@@ -1,6 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"
 
-import { type LucideIcon } from "lucide-react"
 import { usePathname } from "next/navigation"
 
 import {

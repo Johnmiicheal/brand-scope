@@ -6,7 +6,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import {
   Paperclip,
-  PlusIcon,
   ChevronDown,
   Telescope,
   Check,
@@ -26,7 +25,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "./button";
 import { motion } from "framer-motion";
-import useSupabase from "@/hooks/useSupabase";
+import { useAuth } from "@/hooks/useAuth";
+import { LoadingState } from "../loading-state";
+import { MetalLogo } from "../metal-logo";
 
 interface UseAutoResizeTextareaProps {
   minHeight: number;
@@ -84,9 +85,10 @@ function useAutoResizeTextarea({
 export function AIChatInterface() {
   const router = useRouter();
   const [value, setValue] = useState("");
-  const { user } = useSupabase();
+  const { user } = useAuth();
   const [mode, setMode] = useState<AnalysisMode>("DeepFocus");
   const [loading, setLoading] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(true)
   const { textareaRef, adjustHeight } = useAutoResizeTextarea({
     minHeight: 60,
     maxHeight: 200,
@@ -102,10 +104,11 @@ export function AIChatInterface() {
   };
 
   const handleSubmit = async () => {
+
     if (!value.trim()) {
       toast({
         title: "Error",
-        description: "Please enter a brand name",
+        description: "Please enter a query or keyword to search and analyse",
         variant: "destructive",
       });
       return;
@@ -122,6 +125,7 @@ export function AIChatInterface() {
 
     try {
       setLoading(true);
+      setIsAnalyzing(true)
 
       console.log("Sending request with data:", {
         mode,
@@ -144,6 +148,7 @@ export function AIChatInterface() {
       });
 
       if (!response.ok) {
+      setIsAnalyzing(false)
         const contentType = response.headers.get("content-type");
         if (contentType && contentType.includes("application/json")) {
           const error = await response.json();
@@ -169,7 +174,6 @@ export function AIChatInterface() {
         result += new TextDecoder().decode(value);
       }
 
-      console.log("Streaming Response:", result);
 
       // Parse the final result
       const { mode_id } = JSON.parse(result);
@@ -179,14 +183,20 @@ export function AIChatInterface() {
         description: `Your ${mode} analysis is processing. You'll be redirected to results when complete.`,
       });
 
-      // Redirect to analysis results page
-      router.push(`/dashboard/search/analysis?mode_id=${mode_id}`);
+      setIsAnalyzing(false)
+      setTimeout(() => {
+          // Redirect to analysis results page
+          router.push(`/dashboard/search/analysis?mode_id=${mode_id}`);
+      }, 400)
+
 
       // Clear input and reset height
       setValue("");
       adjustHeight(true);
     } catch (error) {
       console.error("Error submitting analysis:", error);
+      setIsAnalyzing(false)
+
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "An unknown error occurred",
@@ -194,6 +204,8 @@ export function AIChatInterface() {
       });
     } finally {
       setLoading(false);
+      setIsAnalyzing(false)
+
     }
   };
 
@@ -212,6 +224,21 @@ export function AIChatInterface() {
     },
   ];
 
+  if (isAnalyzing) {
+    return (
+      <div className="flex flex-col items-center justify-center p-4">
+        <div className="w-full ">
+          <MetalLogo />
+          <h1 className="text-2xl font-bold mb-3 text-center">Analyzing Your Search Query</h1>
+          <p className="text-muted-foreground mb-10 text-center">
+            We&apos;re gathering data and insights about {value || "your query"}. This may take a few moments.
+          </p>
+          <LoadingState />
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-col items-center w-full max-w-4xl mx-auto p-4 space-y-8">
       <h1 className="text-4xl font-regular text-black dark:text-white">
@@ -229,7 +256,7 @@ export function AIChatInterface() {
                 adjustHeight();
               }}
               onKeyDown={handleKeyDown}
-              placeholder="Enter your brand name..."
+              placeholder="Ask me anything..."
               className={cn(
                 "w-full px-4 py-3",
                 "resize-none",
@@ -259,7 +286,7 @@ export function AIChatInterface() {
                 </span>
               </button>
               <DropdownMenu>
-                <div className="inline-flex -space-x-px divide-x divide-primary-foreground/30 rounded-full shadow-sm shadow-black/5 rtl:space-x-reverse">
+                <div className="inline-flex bg-blue-500/20 text-white/70 -space-x-px divide-x divide-primary-foreground/30 rounded-full rtl:space-x-reverse">
                   <Button
                     variant="outline"
                     className="rounded-none shadow-none first:rounded-s-full last:rounded-e-full focus-visible:z-10 text-[12px] overflow-hidden"
@@ -322,13 +349,6 @@ export function AIChatInterface() {
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                className="px-2 py-1 rounded-lg text-sm text-zinc-400 transition-colors border border-dashed border-zinc-700 hover:border-zinc-600 hover:bg-zinc-800 flex items-center justify-between gap-1"
-              >
-                <PlusIcon className="w-4 h-4" />
-                Project
-              </button>
-              <button
-                type="button"
                 onClick={handleSubmit}
                 disabled={loading || !value.trim()}
                 className={cn(
@@ -347,7 +367,24 @@ export function AIChatInterface() {
             </div>
           </div>
         </div>
-        <div className="flex w-[90%] mx-0 p-3 bg-red-300"></div>
+        <motion.div
+          initial={{ height: 0, opacity: 0 }}
+          animate={{
+            height: mode === "Explorer" ? "60px" : 0,
+            opacity: mode === "Explorer" ? 1 : 0,
+          }}
+          exit={{ height: 0, opacity: 0 }}
+          transition={{ duration: 0.3, delay: 0.4 }}
+          className="flex w-full justify-center overflow-hidden"
+        >
+          <div className="flex w-[90%] gap-3 mx-0 p-5 items-center rounded-b-xl border-l border-r border-b  border-accent">
+            <div className="flex gap-2 items-center text-sm font-bold w-1/4">
+              <Telescope className="w-4 h-4" />
+              {mode}
+            </div>
+            <span className="text-xs w-full">Compare your brands with competitors in your industry - <span className="hover:underline cursor-pointer">Requires Brand Attachment</span></span>
+          </div>
+        </motion.div>
 
         <div className="flex items-center justify-center gap-3 mt-4">
           <ActionButton
