@@ -1,5 +1,4 @@
-import { groq } from '@ai-sdk/groq';
-import { streamText } from 'ai';
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { z } from 'zod';
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
@@ -7,7 +6,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { deepFocusAnalysis } from './lib/deepFocusAnalysis';
 import { voyagerAnalysis } from './lib/voyagerAnalysis';
 import { explorerAnalysis } from './lib/explorerAnalysis';
-import { getSearchResultsBySearchId, getSearchResultsByModeId, getUserSearchResults, saveToSupabase } from './lib/supabaseUtils';
+import { getSearchResultsByModeId, getUserSearchResults, saveToSupabase } from './lib/supabaseUtils';
 
 // Supabase client
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
