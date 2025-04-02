@@ -27,7 +27,6 @@ import { Button } from "./button";
 import { motion } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 import { LoadingState } from "../loading-state";
-import { MetalLogo } from "../metal-logo";
 
 interface UseAutoResizeTextareaProps {
   minHeight: number;
@@ -88,11 +87,21 @@ export function AIChatInterface() {
   const { user } = useAuth();
   const [mode, setMode] = useState<AnalysisMode>("DeepFocus");
   const [loading, setLoading] = useState(false);
-  const [isAnalyzing, setIsAnalyzing] = useState(true)
+  const [isAnalyzing, setIsAnalyzing] = useState(false)
   const { textareaRef, adjustHeight } = useAutoResizeTextarea({
     minHeight: 60,
     maxHeight: 200,
   });
+  const [currentTime, setCurrentTime] = useState(new Date());
+  
+  // Update time every second
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    
+    return () => clearInterval(timer);
+  }, []);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -228,7 +237,6 @@ export function AIChatInterface() {
     return (
       <div className="flex flex-col items-center justify-center p-4">
         <div className="w-full ">
-          <MetalLogo />
           <h1 className="text-2xl font-bold mb-3 text-center">Analyzing Your Search Query</h1>
           <p className="text-muted-foreground mb-10 text-center">
             We&apos;re gathering data and insights about {value || "your query"}. This may take a few moments.
@@ -389,7 +397,7 @@ export function AIChatInterface() {
         <div className="flex items-center justify-center gap-3 mt-4">
           <ActionButton
             icon={<ClockIcon className="w-4 h-4 text-sky-400" />}
-            label={new Date().toLocaleTimeString(undefined, {
+            label={currentTime.toLocaleTimeString(undefined, {
               hour: "numeric",
               minute: "2-digit",
               hour12: true,
@@ -397,10 +405,11 @@ export function AIChatInterface() {
           />
           <ActionButton
             icon={<CalendarIcon className="w-4 h-4 text-orange-400" />}
-            label={new Date().toLocaleDateString(undefined, {
+            label={currentTime.toLocaleDateString(undefined, {
               weekday: "short",
               month: "short",
               day: "numeric",
+              year: "numeric",
             })}
           />
         </div>
