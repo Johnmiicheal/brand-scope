@@ -328,10 +328,10 @@ function DashboardContent() {
         <div className="flex items-center justify-center min-h-[400px]">
         <div className="w-full max-w-3xl">
           <h1 className="text-2xl font-bold mb-6 text-center">
-            Analyzing Your Brand
+            Creating Brand Analysis
           </h1>
           <p className="text-muted-foreground mb-8 text-center">
-            Analyzing {brand.name}...
+            Analyzing...
           </p>
           <LoadingState />
         </div>
