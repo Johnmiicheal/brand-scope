@@ -73,8 +73,6 @@ export function BrandDataProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
 
-  console.log("User from Context: ", user)
-
 
   const fetchBrandData = async (userId: string) => {
 

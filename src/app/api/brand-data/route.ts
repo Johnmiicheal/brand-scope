@@ -22,7 +22,7 @@ export async function POST(req: Request) {
     const brandId = brand?.id!
     
     if (brandError || !brand) {
-      return NextResponse.json({ error: `Brand with id ${userId} not found` }, { status: 404 });
+      return NextResponse.json({ error: `Brand with id ${brandId} not found` }, { status: 404 });
     }
     if (!brandId) {
       return NextResponse.json({ error: `Brand ID is required, provided ${brandId}` }, { status: 400 });
