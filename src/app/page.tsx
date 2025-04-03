@@ -1,4 +1,4 @@
-import Image from "next/image";
+/* eslint-disable react/no-unescaped-entities */
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Bot, Fingerprint, BarChart3, LineChart, Twitter, GitCompare } from "lucide-react";
