@@ -30,6 +30,7 @@ import {
 } from "recharts";
 import { supabase } from "@/lib/supabase";
 import { TbScanPosition, TbTextScan2 } from "react-icons/tb";
+import { useAuth } from "@/hooks/useAuth";
 
 // Type for brand data
 interface Brand {
@@ -41,7 +42,7 @@ export default function AnalysisPage() {
   const searchParams = useSearchParams();
   const searchId = searchParams.get("search_id");
   const modeId = searchParams.get("mode_id");
-
+  const { session } = useAuth();
   const [results, setResults] = useState<SearchResults | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -52,7 +53,7 @@ export default function AnalysisPage() {
     const fetchResults = async () => {
       try {
         setLoading(true);
-        let url = "/api/search";
+        let url ='/api/search';
 
         if (searchId) {
           url += `?search_id=${searchId}`;
@@ -62,7 +63,12 @@ export default function AnalysisPage() {
           throw new Error("No search_id or mode_id provided");
         }
 
-        const response = await fetch(url);
+        const response = await fetch(url, {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session}`,
+          },
+        });
 
         if (!response.ok) {
           throw new Error("Failed to fetch results");
@@ -148,7 +154,7 @@ export default function AnalysisPage() {
 
   // Filter rankings by selected model
   const filteredRankings =
-    results?.ai_rankings.filter(
+    results?.ai_rankings?.filter(
       (r) => !selectedModel || r.llm_name === selectedModel
     ) || [];
 
@@ -201,7 +207,17 @@ export default function AnalysisPage() {
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-2xl font-medium">Analysis Results</h1>
-              <span className={`px-2 py-1 text-xs rounded-full ${results.mode === "Voyager" ? "bg-orange-500/20 text-orange-400" : results.mode === "DeepFocus" ? "bg-blue-500/20 text-blue-400" : results.mode === "Explorer" ? "bg-green-500/20 text-green-400" : ""}`}>
+              <span
+                className={`px-2 py-1 text-xs rounded-full ${
+                  results.mode === "Voyager"
+                    ? "bg-orange-500/20 text-orange-400"
+                    : results.mode === "DeepFocus"
+                    ? "bg-blue-500/20 text-blue-400"
+                    : results.mode === "Explorer"
+                    ? "bg-green-500/20 text-green-400"
+                    : ""
+                }`}
+              >
                 {results.mode}
               </span>
             </div>
@@ -246,7 +262,7 @@ export default function AnalysisPage() {
                   value="social"
                   className="data-[state=active]:bg-zinc-700 cursor-pointer"
                 >
-                <TbScanPosition className="w-4 h-4" />
+                  <TbScanPosition className="w-4 h-4" />
                   Social Insights
                 </TabsTrigger>
               )}

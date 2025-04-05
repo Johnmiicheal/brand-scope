@@ -71,7 +71,7 @@ export function BrandDataProvider({ children }: { children: React.ReactNode }) {
   const [keywords, setKeywords] = useState<Keyword[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { user } = useAuth();
+  const { user, session } = useAuth();
 
 
   const fetchBrandData = async (userId: string) => {
@@ -84,10 +84,11 @@ export function BrandDataProvider({ children }: { children: React.ReactNode }) {
         throw new Error('User ID is required');
       }
 
-      const response = await fetch('/api/brand-data', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BRAND_DATA}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          Authorization: `Bearer ${session}`
         },
         body: JSON.stringify({ userId }),
       });

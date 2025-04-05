@@ -216,7 +216,7 @@ function DashboardContent() {
     try {
       setIsAnalyzing(true);
       // Call the analysis API
-      const response = await fetch("/api/analyze-brand", {
+      const response = await fetch(process.env.NEXT_PUBLIC_ANALYZE_BRAND as string, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -247,7 +247,7 @@ function DashboardContent() {
 
     setIsAnalyzing(true);
     try {
-      const response = await fetch("/api/analyze-brand", {
+      const response = await fetch(process.env.NEXT_PUBLIC_ANALYZE_BRAND as string, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ brandId: brand.id }),

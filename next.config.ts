@@ -11,7 +11,7 @@ const nextConfig: NextConfig = {
     bodyParser: {
       sizeLimit: '10mb'
     },
-    maxDuration: 600
+    maxDuration: 60
   }
 };
 

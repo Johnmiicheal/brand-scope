@@ -84,7 +84,7 @@ function useAutoResizeTextarea({
 export function AIChatInterface() {
   const router = useRouter();
   const [value, setValue] = useState("");
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const [mode, setMode] = useState<AnalysisMode>("DeepFocus");
   const [loading, setLoading] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false)
@@ -143,10 +143,12 @@ export function AIChatInterface() {
         competitors: mode === "Explorer" ? ["Competitor A", "Competitor B"] : undefined,
       });
 
-      const response = await fetch("/api/search", {
+      const response = await fetch(process.env.NEXT_PUBLIC_SEARCH as string, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${session}`
+
         },
         body: JSON.stringify({
           mode,

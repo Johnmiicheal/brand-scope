@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase';
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState("");
   const [isLoading, setIsLoading] = useState(true);
 
 
@@ -17,6 +18,7 @@ export function useAuth() {
         
         if (session) {
           setUser(session.user);
+          setSession(session.access_token)
         } else {
           setUser(null);
         }
@@ -49,5 +51,5 @@ export function useAuth() {
     };
   }, [user]);
 
-  return { user, isLoading };
+  return { user, session, isLoading };
 } 
