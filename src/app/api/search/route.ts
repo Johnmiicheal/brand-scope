@@ -22,8 +22,8 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 const analysisModes = ['DeepFocus', 'Voyager', 'Explorer'] as const;
 type AnalysisMode = typeof analysisModes[number];
 
-// Max duration for streaming
-export const maxDuration = 60;
+// // Max duration for streaming
+// export const maxDuration = 60;
 
 // Request validation schema
 const searchRequestSchema = z.object({
