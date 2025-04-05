@@ -483,6 +483,7 @@ export async function voyagerAnalysis(
 ): Promise<SearchResults> {
   const models = [
     { model: groq('llama3-8b-8192'), name: 'Llama 3.3 8B' },
+    { model: groq('meta-llama/llama-4-scout-17b-16e-instruct'), name: 'Llama 4'},
     { model: groq('mistral-saba-24b'), name: 'Mistral Saba 24B' },
     { model: groq('gemma2-9b-it'), name: 'Gemma 2 9B' },
     { model: groq('deepseek-r1-distill-llama-70b'), name: 'DeepSeek R-1' },
