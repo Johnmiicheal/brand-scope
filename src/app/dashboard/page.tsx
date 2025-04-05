@@ -62,6 +62,7 @@ function DashboardContent() {
   const router = useRouter();
   const { brand, metrics, competitors, keywords, isLoading, error, refetch } =
     useBrandData();
+  const [sessionKey, setSessionKey] = useState("")
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   useEffect(() => {
@@ -72,6 +73,7 @@ function DashboardContent() {
       if (!session) {
         router.push("/login");
       }
+      setSessionKey(session?.access_token)
     };
     checkAuth();
   }, [router]);
@@ -220,6 +222,8 @@ function DashboardContent() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${sessionKey}`,
+
         },
         body: JSON.stringify({
           brandId,
@@ -249,7 +253,8 @@ function DashboardContent() {
     try {
       const response = await fetch(process.env.NEXT_PUBLIC_ANALYZE_BRAND as string, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+            Authorization: `Bearer ${sessionKey}`,
+            headers: { "Content-Type": "application/json",  },
         body: JSON.stringify({ brandId: brand.id }),
       });
 
