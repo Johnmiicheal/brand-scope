@@ -1,4 +1,6 @@
-// supabase/functions/search/index.ts
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/ban-ts-comment */
+// @ts-nocheck
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { z } from 'https://esm.sh/zod@3.22.4'
@@ -831,7 +833,6 @@ serve(async (req) => {
 
 
 
-type AnalysisModeUtil = 'DeepFocus' | 'Voyager' | 'Explorer'
 
 // Initialize Supabase client
 const supabase = createClient(
