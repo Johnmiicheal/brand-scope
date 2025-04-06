@@ -240,6 +240,7 @@ function DashboardContent() {
       const data = await response.json();
       console.log("Brand analysis completed:", data);
       setIsAnalyzing(false);
+      router.refresh()
     } catch (error) {
       console.error("Error analyzing brand:", error);
       setIsAnalyzing(false);

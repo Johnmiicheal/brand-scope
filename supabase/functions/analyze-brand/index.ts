@@ -5,7 +5,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { z } from 'https://esm.sh/zod@3.22.4'
 import { v4 as uuidv4 } from 'https://esm.sh/uuid@11.0.0'
-import { groq } from 'https://esm.sh/@ai-sdk/groq@latest'
+import { createGroq } from 'https://esm.sh/@ai-sdk/groq@latest'
 import { generateObject } from 'https://esm.sh/ai@latest'
 import Exa from 'https://esm.sh/exa-js@latest'
 
@@ -52,6 +52,11 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+const groq = createGroq({
+  apiKey: Deno.env.get('GROQ_API_KEY'),
+  baseUrl: 'https://api.groq.com/openai/v1'
+})
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -87,7 +92,7 @@ serve(async (req) => {
     }
 
     // Initialize LLM
-    const model = groq(Deno.env.get('GROQ_API_KEY') ?? '')
+    const model = groq('meta-llama/llama-4-scout-17b-16e-instruct')
     
     // Initialize Exa for web search
     const exa = new Exa(Deno.env.get('EXA_API_KEY') ?? '')
