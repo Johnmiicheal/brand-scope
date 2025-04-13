@@ -2,20 +2,20 @@
 "use client";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Spotlight } from "@/components/fancy-web/spotlight";
 import BlurText from "@/components/fancy-web/blur-text";
 import * as FramerMotion from "framer-motion";
 import { GlowEffect } from "@/components/fancy-web/glow-effect";
 import { ArrowRight } from "lucide-react";
 import Image from "next/image";
+import { IconMarquee } from "@/components/marquee";
+import { BentoFeatures } from "@/components/fancy-web/bento-features";
 
 const { motion } = FramerMotion;
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-background overflow-hidden">
+    <div className="min-h-screen bg-background overflow-hidden px-4">
       <div className="max-w-[1920px] flex flex-col relative h-full items-center mx-auto">
-        <Spotlight />
         <header className="bg-background container mx-auto py-6 flex justify-between items-center">
           <div className="flex items-center gap-2">
             <span className="text-xl font-bold">Brand Scope</span>
@@ -85,6 +85,18 @@ export default function Home() {
                 }}
               />
             </div>
+            
+          </section>
+          
+          {/* AI Models Marquee Section */}
+          <section className="py-12 mt-8">
+            <IconMarquee />
+            <div className="text-center mb-6">
+              <p className="text-neutral-400 max-w-2xl mx-auto">*We analyze your brand across <span className="font-regular italic font-['Instrument_Serif']">all major AI platforms </span>to ensure comprehensive insights.*</p>
+            </div>
+          </section>
+          <section>
+            <BentoFeatures />
           </section>
         </main>
 
