@@ -1,119 +1,95 @@
 /* eslint-disable react/no-unescaped-entities */
+"use client";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Bot, Fingerprint, BarChart3, LineChart, Twitter, GitCompare } from "lucide-react";
+import { Spotlight } from "@/components/fancy-web/spotlight";
+import BlurText from "@/components/fancy-web/blur-text";
+import * as FramerMotion from "framer-motion";
+import { GlowEffect } from "@/components/fancy-web/glow-effect";
+import { ArrowRight } from "lucide-react";
+import Image from "next/image";
+
+const { motion } = FramerMotion;
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted">
-      <header className="container mx-auto py-6 flex justify-between items-center">
-        <div className="flex items-center gap-2">
-          <Fingerprint className="h-8 w-8 text-primary" />
-          <span className="text-xl font-bold">Brand Scope</span>
-        </div>
-        <div className="flex gap-4">
-          <Link href="/login" className="text-sm font-medium hover:underline">Log in</Link>
-          <Link href="/signup">
-            <Button variant="outline" size="sm">Sign up</Button>
-          </Link>
-        </div>
-      </header>
-
-      <main className="container mx-auto pt-16 pb-24">
-        <div className="grid md:grid-cols-2 gap-12 items-center">
-          <div className="flex flex-col gap-6">
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight">
-              Optimize your brand for <span className="text-primary">AI search results</span>
-            </h1>
-            <p className="text-lg text-muted-foreground">
-              Brand Scope helps you monitor and improve your brand's visibility in AI search results across DeepSeek, Llama, xAI and more.
-            </p>
-            <div className="flex gap-4 mt-4">
-              <Link href="/signup">
-                <Button size="lg">Get Started</Button>
-              </Link>
-              <Button variant="outline" size="lg">Learn More</Button>
-            </div>
-          </div>
-          <div className="relative h-[400px] bg-muted rounded-xl overflow-hidden border border-border flex items-center justify-center">
-            <Bot className="h-32 w-32 text-primary/20" />
-          </div>
-        </div>
-
-        <div className="mt-24">
-          <h2 className="text-2xl md:text-3xl font-bold text-center mb-12">Powerful AI-Driven Brand Analytics</h2>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-            <div className="bg-card border border-border p-6 rounded-xl">
-              <div className="bg-primary/10 p-3 rounded-lg w-fit mb-4">
-                <BarChart3 className="h-6 w-6 text-primary" />
-              </div>
-              <h3 className="text-xl font-bold mb-2">AI Ranking Analysis</h3>
-              <p className="text-muted-foreground">Track how your brand performs in AI search results and get actionable insights.</p>
-            </div>
-            
-            <div className="bg-card border border-border p-6 rounded-xl">
-              <div className="bg-primary/10 p-3 rounded-lg w-fit mb-4">
-                <LineChart className="h-6 w-6 text-primary" />
-              </div>
-              <h3 className="text-xl font-bold mb-2">Keyword Opportunities</h3>
-              <p className="text-muted-foreground">Discover high-impact keywords that can boost your brand's visibility in AI results.</p>
-            </div>
-            
-            <div className="bg-card border border-border p-6 rounded-xl">
-              <div className="bg-primary/10 p-3 rounded-lg w-fit mb-4">
-                <Twitter className="h-6 w-6 text-primary" />
-              </div>
-              <h3 className="text-xl font-bold mb-2">Social Media Analysis</h3>
-              <p className="text-muted-foreground">Monitor brand mentions on X (Twitter) and analyze sentiment across conversations.</p>
-            </div>
-            
-            <div className="bg-card border border-border p-6 rounded-xl">
-              <div className="bg-primary/10 p-3 rounded-lg w-fit mb-4">
-                <GitCompare className="h-6 w-6 text-primary" />
-              </div>
-              <h3 className="text-xl font-bold mb-2">Competitor Benchmarking</h3>
-              <p className="text-muted-foreground">See how your brand stacks up against competitors in AI search results.</p>
-            </div>
-            
-            <div className="bg-card border border-border p-6 rounded-xl">
-              <div className="bg-primary/10 p-3 rounded-lg w-fit mb-4">
-                <Bot className="h-6 w-6 text-primary" />
-              </div>
-              <h3 className="text-xl font-bold mb-2">AI-Powered Recommendations</h3>
-              <p className="text-muted-foreground">Get tailored suggestions to improve your brand's AI visibility and impact.</p>
-            </div>
-            
-            <div className="bg-card border border-border p-6 rounded-xl flex items-center justify-center">
-              <Link href="/signup">
-                <Button variant="outline" className="gap-2">
-                  <span>Try it Now</span>
-                  <span className="text-xs opacity-70">Free tier available</span>
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </main>
-      
-      <footer className="border-t border-border py-8">
-        <div className="container mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+    <div className="min-h-screen bg-background overflow-hidden">
+      <div className="max-w-[1920px] flex flex-col relative h-full items-center mx-auto">
+        <Spotlight />
+        <header className="bg-background container mx-auto py-6 flex justify-between items-center">
           <div className="flex items-center gap-2">
-            <Fingerprint className="h-5 w-5 text-primary" />
-            <span className="font-medium">Brand Scope</span>
+            <span className="text-xl font-bold">Brand Scope</span>
           </div>
-          
-          <div className="text-sm text-muted-foreground">
-            © 2023 Brand Scope. All rights reserved.
+          <div className="flex gap-4 items-center">
+            <Link href="/login" className="text-sm font-medium hover:underline">
+              Log in
+            </Link>
+            <Link href="/signup">
+              <Button variant="outline" size="sm">
+                Sign up
+              </Button>
+            </Link>
           </div>
-          
-          <div className="flex gap-6 text-sm">
-            <Link href="#" className="hover:text-primary">Privacy</Link>
-            <Link href="#" className="hover:text-primary">Terms</Link>
-            <Link href="#" className="hover:text-primary">Contact</Link>
-          </div>
-        </div>
-      </footer>
+        </header>
+
+        <main className="bg-background container mx-auto pt-16 pb-24">
+          <section>
+            <div className=" p-4 max-w-5xl space-y-6 text-center  mx-auto relative z-10  w-full pt-20 md:pt-0">
+              <BlurText
+                text="Get insights on how your brand performs in AI Search."
+                delay={150}
+                animateBy="words"
+                direction="top"
+                className="text-4xl md:text-7xl font-bold text-center"
+              />
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 2.5, duration: 0.8 }}
+                className="font-normal text-base text-neutral-300 max-w-2xl text-center mx-auto"
+              >
+                Using the latest and top AI models, we'll work with you on how
+                to{" "}
+                <strong>
+                  expand your brand's reach and unlock millions of customers{" "}
+                </strong>
+                who are using AI to discover new products and brands
+              </motion.p>
+              <div className="relative w-fit mx-auto mt-8 cursor-pointer">
+                <GlowEffect
+                  colors={["#0D47A1", "#1976D2", "#42A5F5", "#90CAF9"]}
+                  mode={"rotate"}
+                  blur="soft"
+                  duration={6}
+                  scale={0.8}
+                  className={"w-57 -ml-3"}
+                />
+                <button className="relative inline-flex items-center gap-2 rounded-md bg-zinc-950 px-4 py-3 text-base font-medium text-zinc-50 outline outline-1 outline-[#fff2f21f]">
+                  Analyse your Brand <ArrowRight className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+            <div className="relative w-full max-w-[1920px] mx-auto -mt-20">
+              <Image
+                src="/bs-hero-dash.png"
+                width={2400}
+                height={1350}
+                alt="Brand Scope Dashboard"
+                className="w-full relative"
+              />
+              <div
+                className="absolute bottom-0 left-0 w-full h-42 pointer-events-none z-20"
+                style={{
+                  background:
+                    "linear-gradient(to bottom, transparent, #0a0a0a)", // match background
+                }}
+              />
+            </div>
+          </section>
+        </main>
+
+        <footer className="border-t border-border py-8"></footer>
+      </div>
     </div>
   );
 }

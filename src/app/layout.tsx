@@ -35,7 +35,7 @@ export const metadata: Metadata = {
     images: "/bs-seo.png",
   },
   icons: {
-    icon: "/icons/bs-icon-fill.png",
+    icon: "/icons/favicon.png",
   },
 };
 
@@ -52,8 +52,8 @@ export default function RootLayout({
         <meta name="description" content="Optimize your brand's visibility in AI search results. Get insights from LLMs like DeepSeek, Llama, and xAI, and improve your ranking with data-driven recommendations." />
         <meta name="keywords" content="AI, Brand Insights, SEO, Analytics, Brand Scope, Brand" />
         <meta name="author" content="Johnmicheal Elijah" />
-        <link rel="icon" href="/icons/bs-icon-fill.png" />
-        <link rel="apple-touch-icon" href="/icons/bs-icon-fill.png" />
+        <link rel="icon" href="/icons/favicon.png" />
+        <link rel="apple-touch-icon" href="/icons/favicon.png" />
         <link rel="manifest" href="/manifest.json" />
         <meta property="og:title" content="Brand Scope - AI-Powered Brand Insights & SEO Analytics" />
         <meta property="og:description" content="Optimize your brand's visibility in AI search results." />
