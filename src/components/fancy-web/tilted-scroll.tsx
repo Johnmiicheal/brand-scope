@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils"
 
-interface TiltedScrollItem {
+export interface TiltedScrollItem {
   id: string;
   companyName: string;
   category: string;

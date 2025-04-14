@@ -5,10 +5,11 @@ import { Button } from "@/components/ui/button";
 import BlurText from "@/components/fancy-web/blur-text";
 import * as FramerMotion from "framer-motion";
 import { GlowEffect } from "@/components/fancy-web/glow-effect";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Sparkles, TrendingUp } from "lucide-react";
 import Image from "next/image";
 import { IconMarquee } from "@/components/marquee";
 import { BentoFeatures } from "@/components/fancy-web/bento-features";
+import { VerticalCutReveal } from "@/components/fancy-web/vertical-cut-reveal";
 
 const { motion } = FramerMotion;
 
@@ -64,7 +65,7 @@ export default function Home() {
                   scale={0.8}
                   className={"w-57 -ml-3"}
                 />
-                <button className="relative inline-flex items-center gap-2 rounded-md bg-zinc-950 px-4 py-3 text-base font-medium text-zinc-50 outline outline-1 outline-[#fff2f21f]">
+                <button className="relative cursor-pointer inline-flex items-center gap-2 rounded-md bg-zinc-950 px-4 py-3 text-base font-medium text-zinc-50 outline outline-1 outline-[#fff2f21f]">
                   Analyse your Brand <ArrowRight className="h-5 w-5" />
                 </button>
               </div>
@@ -85,18 +86,105 @@ export default function Home() {
                 }}
               />
             </div>
-            
           </section>
-          
+
           {/* AI Models Marquee Section */}
           <section className="py-12 mt-8">
             <IconMarquee />
             <div className="text-center mb-6">
-              <p className="text-neutral-400 max-w-2xl mx-auto">*We analyze your brand across <span className="font-regular italic font-['Instrument_Serif']">all major AI platforms </span>to ensure comprehensive insights.*</p>
+              <p className="text-neutral-400 max-w-2xl mx-auto">
+                *We analyze your brand across{" "}
+                <span className="font-regular italic font-['Instrument_Serif']">
+                  all major AI platforms{" "}
+                </span>
+                to ensure comprehensive insights.*
+              </p>
             </div>
           </section>
-          <section>
+          <section className="relative">
             <BentoFeatures />
+            <div className="w-full mx-auto h-full xs:text-2xl text-2xl sm:text-4xl md:text-5xl lg:text-5xl xl:text-5xl flex flex-col items-center justify-center text-white/70 tracking-wide uppercase">
+              <VerticalCutReveal
+                splitBy="characters"
+                staggerDuration={0.025}
+                staggerFrom="first"
+                transition={{
+                  type: "spring",
+                  stiffness: 200,
+                  damping: 21,
+                }}
+              >
+                {`TAKE THE FIRST STEP TO`}
+              </VerticalCutReveal>
+              <div className="flex items-center justify-center gap-2">
+                <motion.span
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{
+                      type: "spring",
+                      stiffness: 200,
+                      damping: 21,
+                      delay: 1.2,
+                    }}
+                  >
+                    <TrendingUp className="w-10 h-10"/>
+                  </motion.span>
+                <VerticalCutReveal
+                  splitBy="characters"
+                  staggerDuration={0.025}
+                  staggerFrom="last"
+                  reverse={true}
+                  transition={{
+                    type: "spring",
+                    stiffness: 200,
+                    damping: 21,
+                    delay: 0.5,
+                  }}
+                >
+                  {`ELEVATING YOUR`}
+                </VerticalCutReveal>
+              </div>
+              <div className="flex items-center justify-center">
+                <VerticalCutReveal
+                  splitBy="characters"
+                  staggerDuration={0.025}
+                  staggerFrom="center"
+                  transition={{
+                    type: "spring",
+                    stiffness: 200,
+                    damping: 21,
+                    delay: 1.1,
+                  }}
+                >
+                  {`BRAND'S PERFORMANCE `}
+                </VerticalCutReveal>
+                <motion.span
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{
+                    type: "spring",
+                    stiffness: 200,
+                    damping: 21,
+                    delay: 2.0,
+                  }}
+                >
+                  <Sparkles className="w-10 h-10"/>
+                </motion.span>
+              </div>
+              <div className="relative w-fit mx-auto mt-8 cursor-pointer">
+                <GlowEffect
+                  colors={["#0D47A1", "#1976D2", "#42A5F5", "#90CAF9"]}
+                  mode={"rotate"}
+                  blur="soft"
+                  duration={3}
+                  scale={0.7}
+                  className="mt-1.5 -ml-8 w-61"
+                />
+                <button className="relative cursor-pointer inline-flex items-center gap-2 rounded-md bg-zinc-950 px-4 py-3 text-base font-medium text-zinc-50 outline outline-1 outline-[#fff2f21f]">
+                  Start Analysis <ArrowRight className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
           </section>
         </main>
 

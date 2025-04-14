@@ -1,11 +1,11 @@
-import React from "react";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import React, { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 import createGlobe from "cobe";
-import { useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { useSpring } from "react-spring";
-import { TiltedScroll } from "./tilted-scroll";
+import { TiltedScroll, TiltedScrollItem } from "./tilted-scroll";
 
 export function BentoFeatures() {
   const features = [
@@ -43,7 +43,7 @@ export function BentoFeatures() {
     },
   ];
   return (
-    <div className="relative z-20 py-10 lg:py-40 max-w-7xl mx-auto">
+    <div className="relative z-20 md:pt-40 pb-15 max-w-7xl mx-auto">
       <div className="px-8">
         <h4 className="text-3xl lg:text-5xl lg:leading-tight max-w-5xl mx-auto text-center tracking-tight font-medium text-black dark:text-white">
           Powerful Features to Grow Your Brand
@@ -108,34 +108,14 @@ const FeatureDescription = ({ children }: { children?: React.ReactNode }) => {
 
 export const SkeletonOne = () => {
   return (
-    <div className="relative flex py-8 px-2 gap-10 h-full">
-      <div className="absolute -left-15 -top-20 -z-1">
-        <Image
-          src="/sharpee.svg"
-          width={1400}
-          height={1200}
-          alt="warp"
-          className="blur-xl filter opacity-50"
-          draggable={false}
-        />
-      </div>
-      <div className="absolute -right-15 -top-20 -z-1">
-        <Image
-          src="/sharpee.svg"
-          width={1400}
-          height={1200}
-          alt="warp"
-          className="blur-xl filter opacity-50 rotate-180"
-          draggable={false}
-        />
-      </div>
-      <div className="w-full p-5 mx-auto bg-white dark:bg-neutral-900 shadow-2xl group h-full"></div>
+    <div className="relative flex py-8 px-2 h-full">
+        <Image src="/bs-hero-dash.png" alt="dashboard" width={1080} height={2000} className="h-[450px]"  />
     </div>
   );
 };
 
 export const SkeletonThree = () => {
-  const fakeCompanys = [
+  const fakeCompanys: TiltedScrollItem[] = [
     {
       id: "1",
       companyName: "Tesla Inc.",
@@ -195,27 +175,7 @@ export const SkeletonThree = () => {
   ];
   return (
     <div className="w-full relative flex mx-auto bg-transparent items-center justify-center h-full">
-      <div className="absolute -left-15 -bottom-32 -z-1">
-        <Image
-          src="/edge.svg"
-          width={400}
-          height={500}
-          alt="warp"
-          className="blur-xl filter opacity-50 -rotate-90"
-          draggable={false}
-        />
-      </div>
-      <div className="absolute -right-15 -bottom-32 -z-1">
-        <Image
-          src="/edge.svg"
-          width={400}
-          height={500}
-          alt="warp"
-          className="blur-xl filter opacity-50 -rotate-180"
-          draggable={false}
-        />
-      </div>
-      <div className="space-y-8 ">
+      <div className="space-y-8 opacity-70">
         <TiltedScroll items={fakeCompanys} className="mt-8" />
       </div>
     </div>
@@ -264,16 +224,6 @@ export const SkeletonTwo = () => {
 export const SkeletonFour = () => {
   return (
     <div className="h-80 flex flex-col items-center relative bg-transparent mt-10">
-      <div className="absolute -left-40 -right-35 -bottom-100 -z-1">
-        <Image
-          src="/globe.svg"
-          width={1400}
-          height={1200}
-          alt="warp"
-          className="blur-xl filter opacity-50"
-          draggable={false}
-        />
-      </div>
       <Globe className="absolute -right-30 -bottom-90 md:-bottom-90 " />
     </div>
   );
@@ -291,10 +241,13 @@ export const Globe = ({ className }: { className?: string }) => {
       precision: 0.001,
     },
   }));
+  const [globeError, setGlobeError] = useState(false);
 
   useEffect(() => {
     let phi = 0;
     let width = 0;
+    let globe: any = null;
+
     const onResize = () =>
       canvasRef.current && (width = canvasRef.current.offsetWidth);
     window.addEventListener("resize", onResize);
@@ -304,27 +257,27 @@ export const Globe = ({ className }: { className?: string }) => {
 
     // Major cities/countries coordinates
     const majorLocations = [
-      { location: [37.7595, -122.4367], size: 0.03 }, // San Francisco
-      { location: [40.7128, -74.006], size: 0.05 }, // New York
-      { location: [51.5074, -0.1278], size: 0.04 }, // London
-      { location: [35.6762, 139.6503], size: 0.05 }, // Tokyo
-      { location: [28.6139, 77.209], size: 0.04 }, // New Delhi
-      { location: [-33.8688, 151.2093], size: 0.03 }, // Sydney
-      { location: [-23.5505, -46.6333], size: 0.04 }, // São Paulo
-      { location: [55.7558, 37.6173], size: 0.04 }, // Moscow
-      { location: [30.0444, 31.2357], size: 0.03 }, // Cairo
-      { location: [6.5244, 3.3792], size: 0.04 }, // Lagos
-      { location: [9.0765, 7.3986], size: 0.03 }, // Abuja
-      { location: [5.6037, -0.187], size: 0.03 }, // Accra
-      { location: [48.8566, 2.3522], size: 0.05 }, // Paris
-      { location: [52.52, 13.405], size: 0.04 }, // Berlin
-      { location: [41.9028, 12.4964], size: 0.04 }, // Rome
-      { location: [40.4168, -3.7038], size: 0.04 }, // Madrid
-      { location: [59.3293, 18.0686], size: 0.03 }, // Stockholm
-      { location: [-34.6037, -58.3816], size: 0.04 }, // Buenos Aires
-      { location: [-33.4489, -70.6693], size: 0.03 }, // Santiago
-      { location: [-0.1807, -78.4678], size: 0.03 }, // Quito
-      { location: [4.711, -74.0721], size: 0.04 }, // Bogotá
+      { location: [37.7595, -122.4367] as [number, number], size: 0.03 }, // San Francisco
+      { location: [40.7128, -74.006] as [number, number], size: 0.05 }, // New York
+      { location: [51.5074, -0.1278] as [number, number], size: 0.04 }, // London
+      { location: [35.6762, 139.6503] as [number, number], size: 0.05 }, // Tokyo
+      { location: [28.6139, 77.209] as [number, number], size: 0.04 }, // New Delhi
+      { location: [-33.8688, 151.2093] as [number, number], size: 0.03 }, // Sydney
+      { location: [-23.5505, -46.6333] as [number, number], size: 0.04 }, // São Paulo
+      { location: [55.7558, 37.6173] as [number, number], size: 0.04 }, // Moscow
+      { location: [30.0444, 31.2357] as [number, number], size: 0.03 }, // Cairo
+      { location: [6.5244, 3.3792] as [number, number], size: 0.04 }, // Lagos
+      { location: [9.0765, 7.3986] as [number, number], size: 0.03 }, // Abuja
+      { location: [5.6037, -0.187] as [number, number], size: 0.03 }, // Accra
+      { location: [48.8566, 2.3522] as [number, number], size: 0.05 }, // Paris
+      { location: [52.52, 13.405] as [number, number], size: 0.04 }, // Berlin
+      { location: [41.9028, 12.4964] as [number, number], size: 0.04 }, // Rome
+      { location: [40.4168, -3.7038] as [number, number], size: 0.04 }, // Madrid
+      { location: [59.3293, 18.0686] as [number, number], size: 0.03 }, // Stockholm
+      { location: [-34.6037, -58.3816] as [number, number], size: 0.04 }, // Buenos Aires
+      { location: [-33.4489, -70.6693] as [number, number], size: 0.03 }, // Santiago
+      { location: [-0.1807, -78.4678] as [number, number], size: 0.03 }, // Quito
+      { location: [4.711, -74.0721] as [number, number], size: 0.04 }, // Bogotá
     ];
 
     // Animation state for markers
@@ -334,45 +287,56 @@ export const Globe = ({ className }: { className?: string }) => {
     // Create initial active markers
     let activeMarkers = majorLocations.slice(0, markerCount);
 
-    const globe = createGlobe(canvasRef.current, {
-      devicePixelRatio: 2,
-      width: 600 * 2,
-      height: 600 * 2,
-      phi: 0,
-      theta: 0,
-      dark: 1,
-      diffuse: 1.2,
-      mapSamples: 16000,
-      mapBrightness: 6,
-      baseColor: [0.1, 0.2, 0.3], // More blue-ish base color
-      markerColor: [0.3, 0.8, 1], // Bright blue markers
-      glowColor: [0.2, 0.5, 1], // Blue glow
-      markers: activeMarkers,
-      onRender: (state) => {
-        // This prevents rotation while dragging
-        if (!pointerInteracting.current) {
-          // Called on every animation frame.
-          // `state` will be an empty object, return updated params.
-          phi += 0.005;
+    try {
+      globe = createGlobe(canvasRef.current, {
+        devicePixelRatio: 2,
+        width: 600 * 2,
+        height: 600 * 2,
+        phi: 0,
+        theta: 0,
+        dark: 1,
+        diffuse: 1.2,
+        mapSamples: 16000,
+        mapBrightness: 6,
+        baseColor: [0.1, 0.2, 0.3], // More blue-ish base color
+        markerColor: [0.3, 0.8, 1], // Bright blue markers
+        glowColor: [0.2, 0.5, 1], // Blue glow
+        markers: activeMarkers,
+        onRender: (state) => {
+          // This prevents rotation while dragging
+          if (!pointerInteracting.current) {
+            // Called on every animation frame.
+            // `state` will be an empty object, return updated params.
+            phi += 0.005;
 
-          // Every ~5 seconds, update one marker
-          if (Math.random() < 0.005) {
-            markerIndex = (markerIndex + 1) % majorLocations.length;
-            activeMarkers = [
-              ...activeMarkers.slice(1),
-              majorLocations[markerIndex],
-            ];
-            state.markers = activeMarkers;
+            // Every ~5 seconds, update one marker
+            if (Math.random() < 0.005) {
+              markerIndex = (markerIndex + 1) % majorLocations.length;
+              activeMarkers = [
+                ...activeMarkers.slice(1),
+                majorLocations[markerIndex],
+              ];
+              state.markers = activeMarkers;
+            }
           }
-        }
-        state.phi = phi + r.get();
-        state.width = width * 2;
-        state.height = width * 2;
-      },
-    });
+          state.phi = phi + r.get();
+          state.width = width * 2;
+          state.height = width * 2;
+        },
+      });
+    } catch (error) {
+      console.error("Failed to create globe:", error);
+      setGlobeError(true);
+    }
 
     return () => {
-      globe.destroy();
+      if (globe) {
+        try {
+          globe.destroy();
+        } catch (error) {
+          console.error("Failed to destroy globe:", error);
+        }
+      }
       window.removeEventListener("resize", onResize);
     };
   }, []);
@@ -401,6 +365,17 @@ export const Globe = ({ className }: { className?: string }) => {
       });
     }
   };
+
+  if (globeError) {
+    return (
+      <div className={`${className} relative w-[600px] h-[600px] flex items-center justify-center`}>
+        <div className="text-center p-8 rounded-xl bg-black/20 backdrop-blur-sm">
+          <p className="text-base text-white/80 mb-2">3D Globe visualization unavailable</p>
+          <p className="text-sm text-white/60">Please enable GPU acceleration in your browser</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <canvas
