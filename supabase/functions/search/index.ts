@@ -482,12 +482,11 @@ export async function voyagerAnalysis(
   search_id: string = uuidv4()
 ): Promise<SearchResults> {
   const models = [
-    { model: groq('llama3-8b-8192'), name: 'Llama 3.3 8B' },
-    { model: groq('meta-llama/llama-4-scout-17b-16e-instruct'), name: 'Llama 4'},
+    { model: groq('meta-llama/llama-4-maverick-17b-128e-instruct'), name: 'Llama 4'},
     { model: groq('mistral-saba-24b'), name: 'Mistral Saba 24B' },
     { model: groq('gemma2-9b-it'), name: 'Gemma 2 9B' },
     { model: groq('deepseek-r1-distill-llama-70b'), name: 'DeepSeek R-1' },
-    { model: groq('qwen-2.5-32b'), name: 'Qwen 2.5 32B' }
+    { model: groq('qwen-qwq-32b'), name: 'Qwen QwQ 32B' }
   ]
   
   const rankings: AIRanking[] = []

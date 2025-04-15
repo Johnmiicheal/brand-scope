@@ -54,9 +54,9 @@ export async function POST(req: Request) {
     // Run mode-specific analysis
     let results;
     try {
-      if (mode === 'DeepFocus') {
+  if (mode === 'DeepFocus') {
         results = await deepFocusAnalysis(user_id, query, mode_id, search_id);
-      } else if (mode === 'Voyager') {
+  } else if (mode === 'Voyager') {
         results = await voyagerAnalysis(user_id, query, mode_id, search_id);
       } else if (mode === 'Explorer') {
         if (!competitors || competitors.length === 0) {
