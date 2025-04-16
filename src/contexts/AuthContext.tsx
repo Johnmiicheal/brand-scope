@@ -66,7 +66,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                   id: session.user.id,
                   email: session.user.email,
                   full_name: session.user.user_metadata?.full_name || null,
-                  created_at: new Date().toISOString()
+                  created_at: new Date().toISOString(),
+                  plan_type: "free"
                 });
   
               if (createError) {

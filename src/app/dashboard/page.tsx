@@ -238,9 +238,11 @@ function DashboardContent() {
       }
 
       const data = await response.json();
+      if(data){
+        window.location.reload()
+      }
       console.log("Brand analysis completed:", data);
       setIsAnalyzing(false);
-      router.refresh()
     } catch (error) {
       console.error("Error analyzing brand:", error);
       setIsAnalyzing(false);
