@@ -188,9 +188,13 @@ export default function PixelCard({
     const pixelsRef = useRef<Pixel[]>([]);
     const animationRef = useRef<any>(null);
     const timePreviousRef = useRef(performance.now());
-    const reducedMotion = useRef(
-        window.matchMedia("(prefers-reduced-motion: reduce)").matches
-    ).current;
+    const reducedMotion = useRef(false);
+    
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            reducedMotion.current = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        }
+    }, []);
 
     const variantCfg: VariantConfig = VARIANTS[variant] || VARIANTS.default;
     const finalGap = gap ?? variantCfg.gap;

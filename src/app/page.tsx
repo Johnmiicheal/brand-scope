@@ -10,10 +10,10 @@ import {
   Check,
   Search,
   Target,
-  TrendingUp,
-  Users,
   Sparkles,
   Globe,
+  ScanFace,
+  UserSearch,
 } from "lucide-react";
 import Image from "next/image";
 import { IconMarquee } from "@/components/marquee";
@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/accordion";
 import SpotlightCard from "@/components/fancy-web/spotlight-card";
 import PixelCard from "@/components/fancy-web/pixel-card";
+import { SparklesCore } from "@/components/fancy-web/sparkles";
 
 const { motion } = FramerMotion;
 
@@ -122,8 +123,11 @@ export default function Home() {
           <section className="relative">
             <BentoFeatures />
             <div className="border-x border-dashed w-7xl h-12 mx-auto -mt-15"></div>
-            <PixelCard variant="blue" className="max-w-7xl mx-auto w-full h-[450px] flex flex-col items-center justify-center">
-              <div className="absolute w-full py-8 mx-auto xs:text-2xl text-2xl sm:text-4xl md:text-5xl lg:text-5xl xl:text-5xl flex flex-col items-center justify-center text-white tracking-wide uppercase" >
+            <PixelCard
+              variant="blue"
+              className="max-w-7xl mx-auto w-full h-[450px] flex flex-col items-center justify-center"
+            >
+              <div className="absolute w-full py-8 mx-auto xs:text-2xl text-2xl sm:text-4xl md:text-5xl lg:text-5xl xl:text-5xl flex flex-col items-center justify-center text-white tracking-wide uppercase">
                 <VerticalCutReveal
                   splitBy="characters"
                   staggerDuration={0.025}
@@ -181,16 +185,20 @@ export default function Home() {
           </section>
 
           {/* Why Choose Us Section */}
-          <section className="py-20">
-            <div className="px-8">
+          <section className="py-20 flex flex-col items-center mx-auto">
+            <div className="px-8 py-10">
               <h4 className="text-3xl lg:text-5xl lg:leading-tight max-w-5xl mx-auto text-center tracking-tight font-medium text-black dark:text-white">
                 Analyze. Monitor. Stay Ahead
               </h4>
 
               <p className="text-sm lg:text-base max-w-5xl my-4 mx-auto text-neutral-500 text-center font-normal dark:text-neutral-300">
-              BrandScope doesn't just analyze, it illuminates. Discover untapped opportunities in brand perception, competitive positioning, and market trends before your competitors do. Make strategic decisions with clarity, not uncertainty.
+                BrandScope doesn't just analyze, it illuminates. Discover
+                untapped opportunities in brand perception, competitive
+                positioning, and market trends before your competitors do. Make
+                strategic decisions with clarity, not uncertainty.
               </p>
             </div>
+
             <div className="grid grid-cols-1 md:grid-cols-3 max-w-7xl mx-auto">
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -244,182 +252,280 @@ export default function Home() {
                 </SpotlightCard>
               </motion.div>
             </div>
-          </section>
-
-          {/* How It Helps Section */}
-          <section className="py-20 bg-zinc-950 max-w-4xl mx-auto border ">
-            <h2 className="text-3xl md:text-4xl font-bold text-center mb-12">
-              How Brand Scope Helps You Thrive
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10 max-w-6xl mx-auto px-4">
-              <div className="flex items-start gap-4">
-                <div className="bg-blue-500/10 p-3 rounded-full">
-                  <Search className="h-6 w-6 text-blue-400" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold mb-1">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+              viewport={{ once: true }}
+              className="border-x border-dashed mx-auto justify-center flex w-7xl"
+            >
+              <Image
+                src="/mask-ship-new.png"
+                width={800}
+                height={1080}
+                alt="brand scope"
+                className="opacity-70"
+              />
+            </motion.div>
+            <div className="grid grid-cols-1 md:grid-cols-3 max-w-7xl mx-auto">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.1 }}
+                viewport={{ once: true }}
+              >
+                <SpotlightCard>
+                  <Search className="h-10 w-10 mb-4 text-blue-400" />
+                  <h3 className="text-xl font-semibold mb-2">
                     Optimize for AI Search
                   </h3>
                   <p className="text-neutral-400 text-sm">
                     Ensure your brand appears prominently when users search via
                     AI assistants and chatbots.
                   </p>
-                </div>
-              </div>
-              <div className="flex items-start gap-4">
-                <div className="bg-blue-500/10 p-3 rounded-full">
-                  <TrendingUp className="h-6 w-6 text-blue-400" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold mb-1">
+                </SpotlightCard>
+              </motion.div>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+                viewport={{ once: true }}
+              >
+                <SpotlightCard className="border-x-0">
+                  <ScanFace className="h-10 w-10 mb-4 text-blue-400" />
+                  <h3 className="text-xl font-semibold mb-2">
                     Track Brand Perception
                   </h3>
                   <p className="text-neutral-400 text-sm">
                     Monitor sentiment and understand how different AI models
                     portray your brand image.
                   </p>
-                </div>
-              </div>
-              <div className="flex items-start gap-4">
-                <div className="bg-blue-500/10 p-3 rounded-full">
-                  <Users className="h-6 w-6 text-blue-400" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold mb-1">
-                    Analyze Competitors
-                  </h3>
-                  <p className="text-neutral-400 text-sm">
-                    Gain insights into competitor strategies and identify
-                    opportunities in the AI landscape.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* Pricing Section */}
-          <section className="py-20">
-            <h2 className="text-3xl md:text-4xl font-bold text-center mb-12">
-              Simple, Transparent Pricing
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-              {/* Pricing Card 1: Starter */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.1 }}
-                viewport={{ once: true }}
-                className="bg-zinc-900/50 p-8 border  flex flex-col"
-              >
-                <h3 className="text-xl font-semibold mb-2">Starter</h3>
-                <p className="text-neutral-400 text-sm mb-4">
-                  Ideal for individuals & small teams.
-                </p>
-                <p className="text-4xl font-bold mb-6">
-                  $49
-                  <span className="text-lg font-normal text-neutral-400">
-                    /mo
-                  </span>
-                </p>
-                <ul className="space-y-2 text-sm text-neutral-300 mb-8 flex-grow">
-                  <li className="flex items-center">
-                    <Check className="h-4 w-4 mr-2 text-green-500" /> Basic
-                    Brand Analysis
-                  </li>
-                  <li className="flex items-center">
-                    <Check className="h-4 w-4 mr-2 text-green-500" /> 1 AI
-                    Platform
-                  </li>
-                  <li className="flex items-center">
-                    <Check className="h-4 w-4 mr-2 text-green-500" /> Limited
-                    Competitor Tracking
-                  </li>
-                </ul>
-                <Button variant="outline" className="w-full mt-auto">
-                  Get Started
-                </Button>
+                </SpotlightCard>
               </motion.div>
-
-              {/* Pricing Card 2: Pro (Highlight) */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.2 }}
-                viewport={{ once: true }}
-                className="bg-zinc-900/80 p-8 border border-blue-500 relative flex flex-col ring-2 ring-blue-500/50"
-              >
-                <span className="absolute top-0 right-4 -mt-3 bg-blue-500 text-white text-xs font-semibold px-3 py-1 rounded-full">
-                  Most Popular
-                </span>
-                <h3 className="text-xl font-semibold mb-2">Pro</h3>
-                <p className="text-neutral-400 text-sm mb-4">
-                  Perfect for growing businesses.
-                </p>
-                <p className="text-4xl font-bold mb-6">
-                  $149
-                  <span className="text-lg font-normal text-neutral-400">
-                    /mo
-                  </span>
-                </p>
-                <ul className="space-y-2 text-sm text-neutral-300 mb-8 flex-grow">
-                  <li className="flex items-center">
-                    <Check className="h-4 w-4 mr-2 text-green-500" />{" "}
-                    Comprehensive Analysis
-                  </li>
-                  <li className="flex items-center">
-                    <Check className="h-4 w-4 mr-2 text-green-500" /> 5 AI
-                    Platforms
-                  </li>
-                  <li className="flex items-center">
-                    <Check className="h-4 w-4 mr-2 text-green-500" /> Full
-                    Competitor Tracking
-                  </li>
-                  <li className="flex items-center">
-                    <Check className="h-4 w-4 mr-2 text-green-500" /> Sentiment
-                    Analysis
-                  </li>
-                </ul>
-                <Button className="w-full mt-auto bg-blue-600 hover:bg-blue-700 text-white">
-                  Choose Pro
-                </Button>
-              </motion.div>
-
-              {/* Pricing Card 3: Enterprise */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.3 }}
                 viewport={{ once: true }}
-                className="bg-zinc-900/50 p-8 border  flex flex-col"
               >
-                <h3 className="text-xl font-semibold mb-2">Enterprise</h3>
-                <p className="text-neutral-400 text-sm mb-4">
-                  Tailored for large organizations.
-                </p>
-                <p className="text-4xl font-bold mb-6">Custom</p>
-                <ul className="space-y-2 text-sm text-neutral-300 mb-8 flex-grow">
-                  <li className="flex items-center">
-                    <Check className="h-4 w-4 mr-2 text-green-500" /> All Pro
-                    Features
-                  </li>
-                  <li className="flex items-center">
-                    <Check className="h-4 w-4 mr-2 text-green-500" /> All AI
-                    Platforms
-                  </li>
-                  <li className="flex items-center">
-                    <Check className="h-4 w-4 mr-2 text-green-500" /> API Access
-                    & Integrations
-                  </li>
-                  <li className="flex items-center">
-                    <Check className="h-4 w-4 mr-2 text-green-500" /> Dedicated
-                    Support
-                  </li>
-                </ul>
-                <Button variant="outline" className="w-full mt-auto">
-                  Contact Sales
+                <SpotlightCard>
+                  <UserSearch className="h-10 w-10 mb-4 text-blue-400" />
+                  <h3 className="text-xl font-semibold mb-2">
+                    Analyze Competitors
+                  </h3>
+                  <p className="text-neutral-400 text-sm">
+                    Gain insights into competitor strategies and identify
+                    opportunities in the AI landscape
+                  </p>
+                </SpotlightCard>
+              </motion.div>
+            </div>
+          </section>
+
+          {/* Sleek Pricing Section */}
+          <section className="py-20">
+            <h2 className="text-3xl md:text-4xl font-bold text-center mb-4">
+              Pricing Plans
+            </h2>
+            <p className="text-neutral-400 text-center max-w-xl mx-auto mb-12">
+              Choose the plan that scales with your brand's AI visibility needs.
+            </p>
+
+            {/* Main Pricing Grid (Free, Plus, Pro) */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-px max-w-6xl mx-auto border border-muted">
+              {/* Free Plan */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.1 }}
+                viewport={{ once: true }}
+                className="bg-zinc-950 p-6 flex flex-col justify-between"
+              >
+                <div>
+                  <h3 className="text-xl font-semibold mb-1">Free</h3>
+                  <p className="text-neutral-400 text-sm mb-6">
+                    Get started with essential AI analysis.
+                  </p>
+                  <p className="text-3xl font-bold mb-6">
+                    $0
+                    <span className="text-base font-normal text-neutral-500">
+                      /mo
+                    </span>
+                  </p>
+                  <ul className="space-y-3 text-sm text-neutral-300 mb-8">
+                    <li className="flex items-center gap-3">
+                      <Check className="h-4 w-4 text-green-500 flex-shrink-0" />{" "}
+                      DeepFocus Analysis
+                    </li>
+                    <li className="flex items-center gap-3">
+                      <Check className="h-4 w-4 text-green-500 flex-shrink-0" />{" "}
+                      1 Voyager Searches /mo
+                    </li>
+                    <li className="flex items-center gap-3">
+                      <Check className="h-4 w-4 text-green-500 flex-shrink-0" />{" "}
+                      1 Explorer Search /mo
+                    </li>
+                    <li className="flex items-center gap-3">
+                      <Check className="h-4 w-4 text-green-500 flex-shrink-0" />{" "}
+                      2 Monitoring Actions
+                    </li>
+                    <li className="flex items-center gap-3">
+                      <Check className="h-4 w-4 text-green-500 flex-shrink-0" />{" "}
+                      Answer Engine Access
+                    </li>
+                  </ul>
+                </div>
+                <Button variant="outline" className="w-full mt-6">
+                  Start for Free
+                </Button>
+              </motion.div>
+
+              {/* Plus Plan (Highlight) */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+                viewport={{ once: true }}
+                className="bg-gradient-to-br from-zinc-900 to-blue-900/30 p-6 relative flex flex-col justify-between ring-2 ring-blue-600/40"
+              >
+                <span className="absolute top-4 right-4 bg-blue-600 text-white text-xs font-semibold px-3 py-1">
+                  Popular
+                </span>
+                <div>
+                  <h3 className="text-xl font-semibold mb-1">Plus</h3>
+                  <p className="text-neutral-300 text-sm mb-6">
+                    Scale your insights and monitoring.
+                  </p>
+                  <p className="text-3xl font-bold mb-6">
+                    $100
+                    <span className="text-base font-normal text-neutral-400">
+                      /mo
+                    </span>
+                  </p>
+                  <ul className="space-y-3 text-sm text-neutral-200 mb-8">
+                    <li className="flex items-center gap-3">
+                      <Check className="h-4 w-4 text-green-400 flex-shrink-0" />{" "}
+                      Increased DeepFocus Usage
+                    </li>
+                    <li className="flex items-center gap-3">
+                      <Check className="h-4 w-4 text-green-400 flex-shrink-0" />{" "}
+                      6 Voyager Searches /mo
+                    </li>
+                    <li className="flex items-center gap-3">
+                      <Check className="h-4 w-4 text-green-400 flex-shrink-0" />{" "}
+                      3 Explorer Searches /mo
+                    </li>
+                    <li className="flex items-center gap-3">
+                      <Check className="h-4 w-4 text-green-400 flex-shrink-0" />{" "}
+                      5 Monitoring Actions
+                    </li>
+                    <li className="flex items-center gap-3">
+                      <Check className="h-4 w-4 text-green-400 flex-shrink-0" />{" "}
+                      Answer Engine Access
+                    </li>
+                  </ul>
+                </div>
+                <Button className="w-full mt-6 bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/30">
+                  Choose Plus
+                </Button>
+              </motion.div>
+
+              {/* Pro Plan */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.3 }}
+                viewport={{ once: true }}
+                className="bg-zinc-950 p-6 flex flex-col justify-between"
+              >
+                <div>
+                  <h3 className="text-xl font-semibold mb-1">Pro</h3>
+                  <p className="text-neutral-400 text-sm mb-6">
+                    For comprehensive AI brand management.
+                  </p>
+                  <p className="text-3xl font-bold mb-6">
+                    $300
+                    <span className="text-base font-normal text-neutral-500">
+                      /mo
+                    </span>
+                  </p>
+                  <ul className="space-y-3 text-sm text-neutral-300 mb-8">
+                    <li className="flex items-center gap-3">
+                      <Check className="h-4 w-4 text-green-500 flex-shrink-0" />{" "}
+                      High Volume Usage
+                    </li>
+                    <li className="flex items-center gap-3">
+                      <Check className="h-4 w-4 text-green-500 flex-shrink-0" />{" "}
+                      Extensive Voyager/Explorer
+                    </li>
+                    <li className="flex items-center gap-3">
+                      <Check className="h-4 w-4 text-green-500 flex-shrink-0" />{" "}
+                      Increased Monitoring
+                    </li>
+                    <li className="flex items-center gap-3">
+                      <Check className="h-4 w-4 text-green-500 flex-shrink-0" />{" "}
+                      Priority Support
+                    </li>
+                    <li className="flex items-center gap-3">
+                      <Check className="h-4 w-4 text-green-500 flex-shrink-0" />{" "}
+                      Advanced Features
+                    </li>
+                  </ul>
+                </div>
+                <Button variant="outline" className="w-full mt-6">
+                  Choose Pro
                 </Button>
               </motion.div>
             </div>
+
+            {/* Enterprise Plan Section */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.4 }} // Slightly later delay
+              viewport={{ once: true }}
+              className="max-w-6xl mx-auto mt-6 bg-zinc-950 p-8 border flex flex-col md:flex-row items-center justify-between"
+            >
+              <div className="md:w-2/3 mb-6 md:mb-0">
+                <h3 className="text-xl font-semibold mb-2">Enterprise</h3>
+                <p className="text-neutral-400 text-sm mb-4">
+                  Tailored solutions for large organizations with comprehensive
+                  AI brand analysis needs across multiple markets and products.
+                </p>
+                <ul className="space-y-2 text-sm text-neutral-300 columns-2">
+                  <li className="flex items-center gap-2">
+                    <Check className="h-4 w-4 text-blue-400 flex-shrink-0" />{" "}
+                    Unlimited DeepFocus Analysis
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="h-4 w-4 text-blue-400 flex-shrink-0" />{" "}
+                    Multi-Brand Monitoring
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="h-4 w-4 text-blue-400 flex-shrink-0" />{" "}
+                    Competitor Intelligence Suite
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="h-4 w-4 text-blue-400 flex-shrink-0" /> AI
+                    Search Optimization Tools
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="h-4 w-4 text-blue-400 flex-shrink-0" />{" "}
+                    Custom Reporting Dashboard
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="h-4 w-4 text-blue-400 flex-shrink-0" />{" "}
+                    Brand Sentiment Alerts
+                  </li>
+                </ul>
+              </div>
+              <div className="md:w-1/3 text-center md:text-right">
+                <p className="text-3xl font-bold mb-4">Custom</p>
+                <Button variant="outline" className="w-full md:w-auto">
+                  Contact Sales
+                </Button>
+              </div>
+            </motion.div>
           </section>
 
           {/* FAQ Section */}
@@ -477,102 +583,49 @@ export default function Home() {
 
           {/* Final CTA Section */}
           <section className="py-20 text-center relative overflow-hidden">
-            <div className="absolute inset-0 z-0">
-              {/* Optional: Add a subtle background pattern or effect */}
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-900/10 via-transparent to-purple-900/10 blur-3xl"></div>
-            </div>
-            <div className="relative z-10 max-w-3xl mx-auto">
-              <h2 className="text-3xl md:text-5xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-500">
-                Ready to See Your Brand Through AI's Eyes?
-              </h2>
-              <p className="text-neutral-300 text-lg mb-8">
-                Sign up today and start optimizing your brand for the future of
-                search.
-              </p>
-              <div className="relative w-fit mx-auto cursor-pointer">
-                <GlowEffect
-                  colors={["#6366F1", "#8B5CF6", "#EC4899"]}
-                  mode={"rotate"}
-                  blur="medium"
-                  duration={4}
-                  scale={0.9}
-                  className={"w-57 -ml-3"}
+            <div className=" w-full bg-background flex flex-col items-center justify-center overflow-hidden rounded-md">
+              <h1 className="md:text-7xl text-3xl lg:text-9xl font-bold text-center text-white relative z-20">
+                Brand Scope
+              </h1>
+              <div className="w-[40rem] h-40 relative">
+                {/* Gradients */}
+                <div className="absolute inset-x-20 top-0 bg-gradient-to-r from-transparent via-indigo-500 to-transparent h-[2px] w-3/4 blur-sm" />
+                <div className="absolute inset-x-20 top-0 bg-gradient-to-r from-transparent via-indigo-500 to-transparent h-px w-3/4" />
+                <div className="absolute inset-x-60 top-0 bg-gradient-to-r from-transparent via-sky-500 to-transparent h-[5px] w-1/4 blur-sm" />
+                <div className="absolute inset-x-60 top-0 bg-gradient-to-r from-transparent via-sky-500 to-transparent h-px w-1/4" />
+
+                {/* Core component */}
+                <SparklesCore
+                  background="transparent"
+                  minSize={0.4}
+                  maxSize={1}
+                  particleDensity={1200}
+                  className="w-full h-full"
+                  particleColor="#FFFFFF"
                 />
-                <button className="relative cursor-pointer inline-flex items-center gap-2 rounded-md bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-3 text-base font-semibold text-white shadow-lg hover:shadow-xl transition-shadow">
-                  Start Your Free Analysis <ArrowRight className="h-5 w-5" />
-                </button>
+
+                {/* Radial Gradient to prevent sharp edges */}
+                <div className="absolute inset-0 w-full h-full bg-background [mask-image:radial-gradient(350px_200px_at_top,transparent_20%,white)]"></div>
               </div>
             </div>
           </section>
         </main>
 
-        {/* Footer Section */}
-        <footer className="border-t  py-12 w-full container mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            <div>
-              <span className="text-xl font-bold mb-4 block">Brand Scope</span>
-              <p className="text-sm text-neutral-400">
-                Understand and optimize your brand's presence in the age of AI.
-              </p>
+        {/* Sleek Minimalistic Footer */}
+        <footer className="w-full border-t  py-6">
+          <div className="container mx-auto flex flex-col md:flex-row justify-between items-center text-sm text-neutral-500">
+            <span>
+              &copy; {new Date().getFullYear()} Brand Scope. All rights
+              reserved.
+            </span>
+            <div className="flex space-x-4 mt-4 md:mt-0">
+              <Link href="#" className="hover:text-white transition-colors">
+                Privacy Policy
+              </Link>
+              <Link href="#" className="hover:text-white transition-colors">
+                Terms of Service
+              </Link>
             </div>
-            <div>
-              <h4 className="font-semibold mb-4">Product</h4>
-              <ul className="space-y-2 text-sm">
-                <li>
-                  <Link href="#" className="text-neutral-400 hover:text-white">
-                    Features
-                  </Link>
-                </li>
-                <li>
-                  <Link href="#" className="text-neutral-400 hover:text-white">
-                    Pricing
-                  </Link>
-                </li>
-                <li>
-                  <Link href="#" className="text-neutral-400 hover:text-white">
-                    How it Works
-                  </Link>
-                </li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-4">Company</h4>
-              <ul className="space-y-2 text-sm">
-                <li>
-                  <Link href="#" className="text-neutral-400 hover:text-white">
-                    About Us
-                  </Link>
-                </li>
-                <li>
-                  <Link href="#" className="text-neutral-400 hover:text-white">
-                    Contact
-                  </Link>
-                </li>
-                <li>
-                  <Link href="#" className="text-neutral-400 hover:text-white">
-                    Careers
-                  </Link>
-                </li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-4">Legal</h4>
-              <ul className="space-y-2 text-sm">
-                <li>
-                  <Link href="#" className="text-neutral-400 hover:text-white">
-                    Privacy Policy
-                  </Link>
-                </li>
-                <li>
-                  <Link href="#" className="text-neutral-400 hover:text-white">
-                    Terms of Service
-                  </Link>
-                </li>
-              </ul>
-            </div>
-          </div>
-          <div className="mt-12 pt-8 border-t  text-center text-sm text-neutral-500">
-            &copy; {new Date().getFullYear()} Brand Scope. All rights reserved.
           </div>
         </footer>
       </div>

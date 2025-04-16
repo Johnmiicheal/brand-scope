@@ -103,7 +103,7 @@ serve(async (req) => {
     Analyze the brand "${brand.name}" in the "${brand.industry}" industry with website "${brand.website}".
     
     Consider the following factors:
-    1. Brand visibility and awareness
+    1. Brand visibility and awareness (provide a value between 0 and 1 - floating points preferred, where 0 is completely unknown and 1 is universally recognized)
     2. Consumer sentiment
     3. Market positioning
     4. Unique selling propositions
