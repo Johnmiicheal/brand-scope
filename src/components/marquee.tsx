@@ -12,7 +12,8 @@ import {
   DeepSeek,
   Qwen,
   Groq,
-  Vercel
+  Vercel,
+  Exa
 } from "@lobehub/icons";
 
 // Simple CSS-based marquee without complex animations
@@ -29,7 +30,9 @@ export const IconMarquee: React.FC = () => {
     { name: "DeepSeek", Icon: DeepSeek.Combine },
     { name: "Qwen", Icon: Qwen.Combine },
     { name: "Groq", Icon: Groq.Combine },
-    { name: "Vercel", Icon: Vercel.Combine }
+    { name: "Vercel", Icon: Vercel.Combine },
+    { name: "Exa", Icon: Exa.Combine }
+
   ];
 
   return (
