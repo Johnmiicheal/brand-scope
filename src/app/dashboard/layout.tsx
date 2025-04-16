@@ -1,12 +1,13 @@
 "use client"
 
-import { ReactNode } from 'react'
+import { ReactNode, useEffect } from 'react'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import { AppSidebar } from '@/components/app-sidebar'
 import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbLink, BreadcrumbSeparator, BreadcrumbPage } from '@/components/ui/breadcrumb'
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar'
 import { Separator } from '@radix-ui/react-separator'
 import { usePathname } from 'next/navigation'
+import { supabase } from '@/lib/supabase'
 
 function BreadcrumbNav() {
   const pathname = usePathname()
@@ -39,6 +40,57 @@ function BreadcrumbNav() {
 }
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
+  useEffect(() => {
+    const checkAndCreateUser = async () => {
+      try {
+        // Check if user exists
+        const { data } = await supabase.auth.getSession();
+        
+        if (!data.session?.user) return;
+        
+        const { data: existingUser, error: userError } = await supabase
+          .from('users')
+          .select('id')
+          .eq('id', data.session.user.id)
+          .single();
+        if(existingUser){
+          console.log("User exists already: ", existingUser)
+        }
+
+        // Handle potential errors (excluding 'not found')
+        if (userError && userError.code !== 'PGRST116') {
+          console.error('Error checking user existence:', userError);
+          // Maybe show a toast notification
+          return;
+        }
+
+        // If user doesn't exist, create them
+        if (!existingUser) {
+          const { error: createError } = await supabase
+            .from('users')
+            .insert({
+              id: data.session.user.id,
+              email: data.session.user.email,
+              full_name: data.session.user.user_metadata?.full_name || null,
+              created_at: new Date().toISOString(),
+              plan_type: "free"
+            });
+
+          if (createError) {
+            console.error('Error creating user record:', createError);
+            // Maybe show a toast notification
+          } else {
+            console.log('New user record created successfully.');
+          }
+        }
+      } catch (checkCreateError) {
+        console.error('Error during post-signin user check/create:', checkCreateError);
+        // Maybe show a toast notification
+      }
+    };
+
+    checkAndCreateUser();
+  }, []);
   return (
     <ProtectedRoute>
       <SidebarProvider>
