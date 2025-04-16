@@ -49,8 +49,8 @@ const data = {
       group: "main"
     },
     {
-      title: "Industry",
-      url: "/dashboard/industry",
+      title: "Research",
+      url: "/dashboard/research",
       icon: TbBuildings,
       group: "metrics"
     },

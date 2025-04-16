@@ -18,14 +18,7 @@ export const metadata: Metadata = {
     title: "Brand Scope - AI-Powered Brand Insights & SEO Analytics",
     description: "Optimize your brand's visibility in AI search results.",
     url: "https://brandscope.vercel.app", // Replace with your website URL
-    images: [
-      {
-        url: "/bs-seo.png",
-        width: 1920,
-        height: 1080,
-        alt: "Brand Scope SEO Image",
-      },
-    ],
+    images: ["/bs-seo.png"],
     siteName: "Brand Scope",
   },
   twitter: {

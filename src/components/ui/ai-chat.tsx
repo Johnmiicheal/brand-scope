@@ -223,16 +223,16 @@ export function AIChatInterface() {
   const modes = [
     {
       key: "DeepFocus",
-      caption: "Advanced brand analysis and reasoning",
+      caption: "Advanced brand analysis with detailed reasoning and market insights",
     },
     {
       key: "Voyager",
-      caption: "Extended brand analysis and reasoning with social sentiment",
+      caption: "Comprehensive analysis with social sentiment tracking & market perception insights",
     },
-    {
-      key: "Explorer",
-      caption: "Compare your brands with competitors in your industry",
-    },
+    // {
+    //   key: "Explorer",
+    //   caption: "Compare your brands with competitors in your industry",
+    // },
   ];
 
   if (isAnalyzing) {
@@ -378,21 +378,24 @@ export function AIChatInterface() {
           </div>
         </div>
         <motion.div
+          key={mode} // Add key to trigger animation on mode change
           initial={{ height: 0, opacity: 0 }}
           animate={{
-            height: mode === "Explorer" ? "60px" : 0,
-            opacity: mode === "Explorer" ? 1 : 0,
+            height: ["0px", "60px", "60px", "0px"],
+            opacity: [0, 1, 1, 0],
+            transition: { 
+              duration: 3.3, 
+              times: [0, 0.1, 0.9, 1],
+            }
           }}
-          exit={{ height: 0, opacity: 0 }}
-          transition={{ duration: 0.3, delay: 0.4 }}
           className="flex w-full justify-center overflow-hidden"
         >
-          <div className="flex w-[90%] gap-3 mx-0 p-5 items-center rounded-b-xl border-l border-r border-b  border-accent">
+          <div className="flex w-[90%] gap-3 mx-0 p-5 items-center rounded-b-xl border-l border-r border-b border-accent">
             <div className="flex gap-2 items-center text-sm font-bold w-1/4">
               <Telescope className="w-4 h-4" />
               {mode}
             </div>
-            <span className="text-xs w-full">Compare your brands with competitors in your industry - <span className="hover:underline cursor-pointer">Requires Brand Attachment</span></span>
+            <span className="text-xs w-full">{modes.find(item => item.key === mode)?.caption}</span>
           </div>
         </motion.div>
 

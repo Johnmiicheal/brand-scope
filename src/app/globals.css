@@ -81,6 +81,15 @@
       --brand-primary: 215 100% 50%;
       --brand-secondary: 260 100% 60%;
       --brand-accent: 170 100% 45%;
+
+        /* COLORS */
+  --brand-default: #254bf1;
+  --brand-fainter: #e7ebfd;
+  --brand-faint: #c6cfff;
+  --brand-subtle: #a1aff7;
+  --brand-muted: #4d87e7;
+  --brand-dark: #0d2189;
+  --brand-darker: #000a40;
   
       /* Status colors */
       --status-positive: 142 76% 36%;
@@ -178,5 +187,41 @@
   100% {
     transform: rotateX(20deg) rotateZ(-20deg) skewX(20deg) translateY(-100%);
   }
+}
+
+.fade-up {
+  animation: fade-up 0.5s ease-out forwards;
+}
+
+@keyframes fade-up {
+  0% {
+    opacity: 0;
+    transform: translateY(20px)
+  }
+  100%{
+    opacity: 1;
+    transform: translateY(0)
+  }
+}
+
+.no-scroll-bar::-webkit-scrollbar {
+  height: 0;
+}
+
+.no-scroll-bar::-webkit-scrollbar-thumb {
+  background: #005D5D;
+  border-radius: 12px;
+}
+
+.no-scroll-bar::-webkit-scrollbar-thumb:hover {
+  background: #005D5D;
+}
+
+.no-scroll-bar::-webkit-scrollbar-track {
+  background: #005D5D70;
+}
+
+.no-scroll-bar:hover::-webkit-scrollbar {
+  height: 0;
 }
 
