@@ -42,45 +42,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(data.session?.user || null)
 
         // *** Handle user creation AFTER sign-in ***
-        // if (event === 'SIGNED_IN' && data.session?.user) {
-        //   try {
-        //     // Check if user exists
-        //     const { data: existingUser, error: userError } = await supabase
-        //       .from('users')
-        //       .select('id')
-        //       .eq('id', data.session?.user.id)
-        //       .single();
+        if (event === 'SIGNED_IN' && data.session?.user) {
+          try {
+            // Check if user exists
+            const { data: existingUser, error: userError } = await supabase
+              .from('users')
+              .select('id')
+              .eq('id', data.session?.user.id)
+              .single();
   
-        //     // Handle potential errors (excluding 'not found')
-        //     if (userError && userError.code !== 'PGRST116') {
-        //       console.error('Error checking user existence:', userError);
-        //       // Maybe show a toast notification
-        //       return;
-        //     }
+            // Handle potential errors (excluding 'not found')
+            if (userError && userError.code !== 'PGRST116') {
+              console.error('Error checking user existence:', userError);
+              // Maybe show a toast notification
+              return;
+            }
   
-        //     // If user doesn't exist, create them
-        //     if (!existingUser) {
-        //       const { error: createError } = await supabase
-        //         .from('users')
-        //         .insert({
-        //           id: session.user.id,
-        //           email: session.user.email,
-        //           full_name: session.user.user_metadata?.full_name || null,
-        //           created_at: new Date().toISOString()
-        //         });
+            // If user doesn't exist, create them
+            if (!existingUser) {
+              const { error: createError } = await supabase
+                .from('users')
+                .insert({
+                  id: session.user.id,
+                  email: session.user.email,
+                  full_name: session.user.user_metadata?.full_name || null,
+                  created_at: new Date().toISOString()
+                });
   
-        //       if (createError) {
-        //         console.error('Error creating user record:', createError);
-        //         // Maybe show a toast notification
-        //       } else {
-        //          console.log('New user record created successfully.');
-        //       }
-        //     }
-        //   } catch (checkCreateError) {
-        //      console.error('Error during post-signin user check/create:', checkCreateError);
-        //      // Maybe show a toast notification
-        //   }
-        // }
+              if (createError) {
+                console.error('Error creating user record:', createError);
+                // Maybe show a toast notification
+              } else {
+                 console.log('New user record created successfully.');
+              }
+            }
+          } catch (checkCreateError) {
+             console.error('Error during post-signin user check/create:', checkCreateError);
+             // Maybe show a toast notification
+          }
+        }
       } catch (error) {
         console.error('Error getting session:', error)
       } finally {

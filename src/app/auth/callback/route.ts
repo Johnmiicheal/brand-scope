@@ -90,11 +90,11 @@ export async function GET(request: Request) {
     } else {
       console.error("Auth Callback Error:", error.message)
       // Optionally redirect to an error page
-      return NextResponse.redirect(`${origin}/auth/auth-code-error`)
+      return NextResponse.redirect(`${origin}/login`)
     }
   }
 
   // return the user to an error page with instructions
   console.error("Auth Callback Error: No code received or exchange failed.")
-  return NextResponse.redirect(`${origin}/auth/auth-code-error`)
+  return NextResponse.redirect(`${origin}/login`)
 } 
