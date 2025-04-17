@@ -196,12 +196,13 @@ export default function AnalysisPage() {
   };
 
   const firstLevelLinks = (results?.social_insights || [])
-  .slice(0, 3)
   .map((item) =>
     (item?.links || []).map((link) => safeParseJSON(link, link))
-  );
+  )
+  .flat();
 
-  const sourcesLinks = firstLevelLinks?.flat() || [];
+  const sourcesLinks = firstLevelLinks.slice(0, 15);
+  console.log(sourcesLinks)
 
   if (loading) {
     return <AnalysisLoadingState />;
@@ -346,7 +347,7 @@ export default function AnalysisPage() {
               )}
             </TabsList>
 
-            {faviconUrls && (
+            {(isExplorerMode || isVoyagerMode) && (
               <Sheet>
                 <SheetTrigger asChild>
                   <div className="bg-zinc-900 border text-muted-foreground inline-flex h-8 w-fit items-center justify-center rounded-lg py-1 px-3 text-xs gap-2 cursor-pointer">
