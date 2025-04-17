@@ -402,11 +402,11 @@ export default function AnalysisPage() {
                       <div className="space-y-4">
                         {sourcesLinks?.map((insight, index) => (
                           <div key={index} className="w-full cursor-pointer group hover:bg-neutral-800 rounded-md p-3" onClick={() => window.open(insight.url, "_blank")}>
-                            <p className="text-white/80 font-semibold">{insight.title}</p>
-                            <p className="text-white/60 font-regular text-sm" style={{ WebkitLineClamp: '3', WebkitBoxOrient: 'vertical', overflow: 'hidden', display: '-webkit-box' }}>{insight.summary}</p>
+                            <p className="text-white/80 font-semibold">{insight?.title}</p>
+                            <p className="text-white/60 font-regular text-sm" style={{ WebkitLineClamp: '3', WebkitBoxOrient: 'vertical', overflow: 'hidden', display: '-webkit-box' }}>{insight?.summary}</p>
                             <div className="flex gap-2 items-center mt-3">
-                              <img src={insight.favicon} alt={"favicon"} className="rounded-md w-5 h-5"/>
-                              <p className="text-xs">{new URL(insight.id).hostname}</p>
+                              <img src={insight?.favicon} alt={"favicon"} className="rounded-md w-5 h-5"/>
+                              <p className="text-xs">{new URL(insight?.id).hostname || insight?.id}</p>
                             </div>
                           </div>
                         ))}
