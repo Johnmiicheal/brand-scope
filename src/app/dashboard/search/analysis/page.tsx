@@ -178,15 +178,28 @@ export default function AnalysisPage() {
   const isVoyagerMode = results?.mode === "Voyager";
   const isExplorerMode = results?.mode === "Explorer";
 
-  const firstLevelLinks = results?.social_insights?.map(item => item?.links
-    ?.map((link) => {
-      try {
-        return JSON.parse(link);
-      } catch (error) {
-        console.error("Error parsing link:", error);
-        return link;
+  const safeParseJSON = (str, fallback = null) => {
+    try {
+      // Check if str is a string and not empty
+      if (typeof str === 'string' && str.trim() !== '') {
+        return JSON.parse(str);
       }
-    })).slice(0,3)
+      // If str is already an object, return it
+      if (typeof str === 'object' && str !== null) {
+        return str;
+      }
+      return fallback;
+    } catch (error) {
+      console.error("Error parsing JSON:", error, "Input:", str);
+      return fallback;
+    }
+  };
+
+  const firstLevelLinks = (results?.social_insights || [])
+  .slice(0, 3)
+  .map((item) =>
+    (item?.links || []).map((link) => safeParseJSON(link, link))
+  );
 
   const sourcesLinks = firstLevelLinks?.flat() || [];
 
@@ -224,9 +237,13 @@ export default function AnalysisPage() {
     );
   }
 
-  const faviconUrls = results?.social_insights[0]?.links
-    ?.map((link) => JSON?.parse(link)?.favicon)
-    .join(", ");
+  const faviconUrls = (results?.social_insights?.[0]?.links || [])
+  .map((link) => {
+    const parsedLink = safeParseJSON(link);
+    return parsedLink?.favicon || null;
+  })
+  .filter((favicon) => favicon !== null)
+  .join(", ");
 
   return (
     <div className="mx-auto p-4 bg-gradient-to-b from-background to-zinc-900 w-full h-full">
