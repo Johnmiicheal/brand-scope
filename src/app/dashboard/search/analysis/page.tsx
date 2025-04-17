@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @next/next/no-img-element */
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 //@ts-nocheck
 
@@ -31,6 +33,19 @@ import {
 import { supabase } from "@/lib/supabase";
 import { TbScanPosition, TbTextScan2 } from "react-icons/tb";
 import { useAuth } from "@/hooks/useAuth";
+import ReactMarkdown from "react-markdown";
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Button } from "@/components/ui/button";
 
 // Type for brand data
 interface Brand {
@@ -53,7 +68,7 @@ export default function AnalysisPage() {
     const fetchResults = async () => {
       try {
         setLoading(true);
-        let url ='/api/search';
+        let url = "/api/search";
 
         if (searchId) {
           url += `?search_id=${searchId}`;
@@ -111,6 +126,7 @@ export default function AnalysisPage() {
         // For Voyager mode, ensure we have social insights
         if (
           data.mode === "Voyager" &&
+          data.mode === "Explorer" &&
           (!data.social_insights || data.social_insights.length === 0)
         ) {
           const { data: socialData, error: socialError } = await supabase
@@ -160,6 +176,12 @@ export default function AnalysisPage() {
 
   // Check for Voyager mode
   const isVoyagerMode = results?.mode === "Voyager";
+  const isExplorerMode = results?.mode === "Explorer";
+
+  const firstLevelLinks =  results?.social_insights?.map(item => item?.links
+    ?.map((link) => JSON.parse(link))).slice(0,3)
+
+  const sourcesLinks = firstLevelLinks?.flat() || [];
 
   if (loading) {
     return <AnalysisLoadingState />;
@@ -195,15 +217,19 @@ export default function AnalysisPage() {
     );
   }
 
+  const faviconUrls = results.social_insights[0]?.links
+    ?.map((link) => JSON.parse(link).favicon)
+    .join(", ");
+
   return (
     <div className="mx-auto p-4 bg-gradient-to-b from-background to-zinc-900 w-full h-full">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="rounded-lg p-6"
+        className="rounded-lg p-6 w-full"
       >
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex justify-between items-center mb-6 w-full">
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-2xl font-medium">Analysis Results</h1>
@@ -247,42 +273,125 @@ export default function AnalysisPage() {
         </div>
 
         <Tabs defaultValue="rankings" className="w-full ">
-          <TabsList className="mb-4  bg-transparent">
-            <TabsTrigger
-              value="rankings"
-              className="data-[state=active]:bg-zinc-700 cursor-pointer"
-            >
-              <TbTextScan2 className="w-4 h-4" />
-              AI Model Insights
-            </TabsTrigger>
-            {isVoyagerMode &&
-              results.social_insights &&
-              results.social_insights.length > 0 && (
-                <TabsTrigger
-                  value="social"
-                  className="data-[state=active]:bg-zinc-700 cursor-pointer"
-                >
-                  <TbScanPosition className="w-4 h-4" />
-                  Social Insights
-                </TabsTrigger>
-              )}
-            {results.charts && results.charts.length > 0 && (
+          <div className="flex w-full justify-between items-center">
+            <TabsList className="mb-4  bg-transparent">
               <TabsTrigger
-                value="trends"
-                className="data-[state=active]:bg-zinc-700"
-              >
-                Trends
-              </TabsTrigger>
-            )}
-            {results.comparisons && results.comparisons.length > 0 && (
-              <TabsTrigger
-                value="competitors"
+                value="rankings"
                 className="data-[state=active]:bg-zinc-700 cursor-pointer"
               >
-                Competitor Analysis
+                <TbTextScan2 className="w-4 h-4" />
+                AI Model Insights
               </TabsTrigger>
+              {
+                  results.social_insights &&
+                  results.social_insights.length > 0 && (
+                    <TabsTrigger
+                      value="social"
+                      className="data-[state=active]:bg-zinc-700 cursor-pointer"
+                    >
+                      <TbScanPosition className="w-4 h-4" />
+                      Social Insights
+                    </TabsTrigger>
+                  )}
+              {isExplorerMode &&
+                results.recommendations &&
+                results.recommendations.length > 0 && (
+                  <TabsTrigger
+                    value="recs"
+                    className="data-[state=active]:bg-zinc-700 cursor-pointer"
+                  >
+                    <TbScanPosition className="w-4 h-4" />
+                    Recommendations
+                  </TabsTrigger>
+                )}
+              {results.charts && results.charts.length > 0 && (
+                <TabsTrigger
+                  value="trends"
+                  className="data-[state=active]:bg-zinc-700"
+                >
+                  Trends
+                </TabsTrigger>
+              )}
+              {results.comparisons && results.comparisons.length > 0 && (
+                <TabsTrigger
+                  value="competitors"
+                  className="data-[state=active]:bg-zinc-700 cursor-pointer"
+                >
+                  Competitor Analysis
+                </TabsTrigger>
+              )}
+            </TabsList>
+
+            {faviconUrls && (
+              <Sheet>
+                <SheetTrigger asChild>
+                  <div className="bg-zinc-900 border text-muted-foreground inline-flex h-8 w-fit items-center justify-center rounded-lg py-1 px-3 text-xs gap-2 cursor-pointer">
+                    <div className="flex -space-x-2 overflow-hidden p-1">
+                      {faviconUrls
+                        ?.split(",")
+                        .slice(0, 4)
+                        .map(
+                          (
+                            iconUrl,
+                            index // Show max 4 icons
+                          ) => (
+                            <img
+                              key={index}
+                              className="inline-block h-5 w-5 rounded-full ring-2 ring-white dark:ring-gray-800 bg-zinc-900"
+                              src={iconUrl}
+                              alt={`Favicon ${index + 1}`}
+                              // Add error handling for broken image links
+                              onError={(e) => {
+                                // Replace with a placeholder or hide the image on error
+                                e.target.src =
+                                  "https://placehold.co/24x24/cccccc/ffffff?text=?";
+                                e.target.onerror = null; // Prevent infinite loop if placeholder fails
+                              }}
+                            />
+                          )
+                        )}
+                      {faviconUrls?.split(",").length > 4 && (
+                        <span className="flex items-center justify-center h-5 w-5 rounded-full bg-gray-200 text-xs font-medium text-gray-500 ring-2 ring-white dark:ring-gray-800 dark:bg-gray-700 dark:text-gray-400">
+                          +{faviconUrls?.split(",").length - 4}
+                        </span>
+                      )}
+                    </div>
+                    Sources
+                  </div>
+                </SheetTrigger>
+                <SheetContent>
+                  <SheetHeader>
+                    <SheetTitle className="text-2xl font-bold">
+                      Citation Sources
+                    </SheetTitle>
+                    <SheetDescription className="text-white/60">
+                      View citations used in our analysis.
+                    </SheetDescription>
+                  </SheetHeader>
+                  <ScrollArea className="px-4 h-[90%] w-full space-y-4">
+                    {sourcesLinks?.length === 0 ? (
+                      <p className="text-gray-500 text-center">
+                        No insights available.
+                      </p>
+                    ) : (
+                      <div className="space-y-4">
+                        {sourcesLinks?.map((insight, index) => (
+                          <div key={index} className="w-full cursor-pointer group hover:bg-neutral-800 rounded-md p-3" onClick={() => window.open(insight.url, "_blank")}>
+                            <p className="text-white/80 font-semibold">{insight.title}</p>
+                            <p className="text-white/60 font-regular text-sm" style={{ WebkitLineClamp: '3', WebkitBoxOrient: 'vertical', overflow: 'hidden', display: '-webkit-box' }}>{insight.summary}</p>
+                            <div className="flex gap-2 items-center mt-3">
+                              <img src={insight.favicon} alt={"favicon"} className="rounded-md w-5 h-5"/>
+                              <p className="text-xs">{new URL(insight.id).hostname}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </ScrollArea>
+                </SheetContent>
+              </Sheet>
             )}
-          </TabsList>
+          </div>
 
           <TabsContent value="rankings" className="space-y-4">
             <RankingsTabContent
@@ -291,14 +400,27 @@ export default function AnalysisPage() {
             />
           </TabsContent>
 
-          {isVoyagerMode &&
-            results.social_insights &&
-            results.social_insights.length > 0 && (
-              <TabsContent value="social" className="space-y-4">
-                <SocialInsightsTabContent
-                  insights={results.social_insights}
-                  getEntityName={getEntityName}
-                />
+          {
+              results.social_insights &&
+              results.social_insights.length > 0 && (
+                <TabsContent value="social" className="space-y-4">
+                  <SocialInsightsTabContent
+                    insights={results.social_insights}
+                    getEntityName={getEntityName}
+                  />
+                </TabsContent>
+              )}
+
+          {isExplorerMode &&
+            results.recommendations &&
+            results.recommendations.length > 0 && (
+              <TabsContent
+                value="recs"
+                className="space-y-4 [&_h1]:text-white [&_h2]:text-white [&_h3]:text-white [&_p]:text-white/80"
+              >
+                <ReactMarkdown>
+                  {results?.recommendations[0]?.suggestion}
+                </ReactMarkdown>
               </TabsContent>
             )}
 
