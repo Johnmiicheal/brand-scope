@@ -178,8 +178,15 @@ export default function AnalysisPage() {
   const isVoyagerMode = results?.mode === "Voyager";
   const isExplorerMode = results?.mode === "Explorer";
 
-  const firstLevelLinks =  results?.social_insights?.map(item => item?.links
-    ?.map((link) => JSON?.parse(link))).slice(0,3)
+  const firstLevelLinks = results?.social_insights?.map(item => item?.links
+    ?.map((link) => {
+      try {
+        return JSON.parse(link);
+      } catch (error) {
+        console.error("Error parsing link:", error);
+        return link;
+      }
+    })).slice(0,3)
 
   const sourcesLinks = firstLevelLinks?.flat() || [];
 
