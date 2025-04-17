@@ -179,7 +179,7 @@ export default function AnalysisPage() {
   const isExplorerMode = results?.mode === "Explorer";
 
   const firstLevelLinks =  results?.social_insights?.map(item => item?.links
-    ?.map((link) => JSON.parse(link))).slice(0,3)
+    ?.map((link) => JSON?.parse(link))).slice(0,3)
 
   const sourcesLinks = firstLevelLinks?.flat() || [];
 
@@ -217,8 +217,8 @@ export default function AnalysisPage() {
     );
   }
 
-  const faviconUrls = results.social_insights[0]?.links
-    ?.map((link) => JSON.parse(link).favicon)
+  const faviconUrls = results?.social_insights[0]?.links
+    ?.map((link) => JSON?.parse(link)?.favicon)
     .join(", ");
 
   return (
