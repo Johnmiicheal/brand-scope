@@ -54,17 +54,17 @@ export default function Home() {
         <main className="bg-background container mx-auto space-y-30 pt-16 pb-24 w-full">
           <section>
             <div className=" p-4 max-w-5xl space-y-6 text-center  mx-auto relative z-10  w-full pt-20 md:pt-0">
-              <BlurText
-                text="Get insights on how your brand performs in AI Search."
-                delay={150}
-                animateBy="words"
-                direction="top"
-                className="text-4xl md:text-7xl font-bold text-center"
-              />
-              <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 2.5, duration: 0.8 }}
+            <BlurText
+              text="Get insights on how your brand performs in AI Search."
+              delay={150}
+              animateBy="words"
+              direction="top"
+              className="text-4xl md:text-7xl font-bold text-center"
+            />
+            <motion.p 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 2.5, duration: 0.8 }}
                 className="font-normal text-base text-neutral-300 max-w-2xl text-center mx-auto"
               >
                 Using the latest and top AI models, we'll work with you on how
@@ -607,7 +607,7 @@ export default function Home() {
                 {/* Radial Gradient to prevent sharp edges */}
                 <div className="absolute inset-0 w-full h-full bg-background [mask-image:radial-gradient(350px_200px_at_top,transparent_20%,white)]"></div>
               </div>
-            </div>
+          </div>
           </section>
         </main>
 

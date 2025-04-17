@@ -6,7 +6,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { z } from 'https://esm.sh/zod@3.22.4'
 import { v4 as uuidv4 } from 'https://esm.sh/uuid@11.0.0'
 import { createGroq } from 'https://esm.sh/@ai-sdk/groq@latest'
-import { generateObject } from 'https://esm.sh/ai@latest'
+import { generateObject, generateText, extractReasoningMiddleware, experimental_wrapLanguageModel as wrapLanguageModel  } from 'https://esm.sh/ai@latest'
 import Exa from 'https://esm.sh/exa-js@latest'
 
 
@@ -48,6 +48,19 @@ interface SocialInsight {
   mention_count: number
   sentiment: string
   data_fetched_at: string
+  links?: Array<string>
+}
+
+interface Recommendations {
+  id: string
+  brand_id: string
+  mode_id: string
+  query: string
+  type: string
+  suggestion: string
+  reasoning: string
+  priority: number
+  created_at: string
 }
 
 interface ChartData {
@@ -63,6 +76,7 @@ interface SearchResults {
   social_insights?: SocialInsight[]
   charts?: ChartData[]
   comparisons?: CompetitorComparison[]
+  recommendations?: Recommendations
 }
 
 interface Brand {
@@ -71,11 +85,11 @@ interface Brand {
 }
 
 // System prompt for competitor analysis
-const COMPETITOR_ANALYSIS_PROMPT = `You are a competitive analysis expert. 
-Compare the brand "{brand_name}" with its competitor "{competitor_name}" (if no competitor provider, find the top 10 competitors and continue the analysis) for the query: "{query}".
-Provide a numerical rank (1-10, with 1 being the best) for both the brand and the competitor.
-Also assign a confidence score (0-100) and provide a detailed analysis of how the brand can gain an edge over this competitor.
-Focus on actionable insights and specific advantages/disadvantages.`
+// const COMPETITOR_ANALYSIS_PROMPT = `You are a competitive analysis expert. 
+// Compare the brand "{brand_name}" with its competitor "{competitor_name}" (if no competitor provider, find the top 10 competitors and continue the analysis) for the query: "{query}".
+// Provide a numerical rank (1-10, with 1 being the best) for both the brand and the competitor.
+// Also assign a confidence score (0-100) and provide a detailed analysis of how the brand can gain an edge over this competitor.
+// Focus on actionable insights and specific advantages/disadvantages.`
 
 
 
@@ -97,6 +111,14 @@ Return the results in the following format:
     }
   ]
 }`
+
+const EXPLORER_RECOMMENDER_PROMPT = `
+  You are an expert brand analyst and marketing expert.
+  Analyze the query: "{query}".
+  Generate a detailed recommendation on how to improve the brand: "{brand}" which is in the industry: "{industry}" based on the query provided.
+  If the industry does not relate to the query, inform the user of this with a slight joke.
+  Focus on actionable and detailed steps on insights, keyword recommendations, SEO and Generative Engine Optimization and AI Search Engine visibility improvements.
+`
 
 
 // System prompts
@@ -136,6 +158,9 @@ const searchRequestSchema = z.object({
   mode: z.enum(analysisModes),
   user_id: z.string().uuid(),
   query: z.string(),
+  brand_name: z.string(),
+  brand_industry: z.string(),
+  brand_id: z.string().uuid(),
   competitors: z.array(z.string()).optional(),
 })
 
@@ -145,8 +170,10 @@ serve(async (req) => {
     // Set CORS headers
     const headers = new Headers({
       'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Origin': req.headers.get('Origin') || 'https://brandscope.vercel.app',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
       'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+      'Access-Control-Allow-Credentials': 'true',
     })
 
     // Handle OPTIONS request
@@ -222,7 +249,7 @@ serve(async (req) => {
     const body = await req.json()
     
     // Validate request body
-    const { mode, user_id, query, competitors } = searchRequestSchema.parse(body)
+    const { mode, user_id, query, brand_name, brand_industry, brand_id } = searchRequestSchema.parse(body)
 
     // Generate shared IDs for this search session
     const mode_id = uuidv4()
@@ -236,13 +263,7 @@ serve(async (req) => {
       } else if (mode === 'Voyager') {
         results = await voyagerAnalysis(user_id, query, mode_id, search_id)
       } else if (mode === 'Explorer') {
-        if (!competitors || competitors.length === 0) {
-          return new Response(
-            JSON.stringify({ error: 'Explorer mode requires competitors' }),
-            { headers, status: 400 }
-          )
-        }
-        results = await explorerAnalysis([query], user_id, [query], competitors, mode_id, search_id)
+        results = await explorerAnalysis(user_id, query, mode_id, search_id, brand_name, brand_industry, brand_id)
       } else {
         return new Response(
           JSON.stringify({ error: 'Invalid analysis mode' }),
@@ -312,93 +333,236 @@ serve(async (req) => {
 })
 
 
-// Explorer: Competitor comparison and analysis
+// Explorer: Competitor comparison and analysis - Optimized
 export async function explorerAnalysis(
-  brands: string[],
-  user_id: string,
-  queries: string[],
-  competitors: string[],
+  user_id: string, 
+  query: string,
   mode_id: string = uuidv4(),
-  search_id: string = uuidv4()
+  search_id: string = uuidv4(),
+  brand_name: string,
+  brand_industry: string,
+  brand_id: string
 ): Promise<SearchResults> {
-  const model = groq('deepseek-r1-distill-llama-70b')
+  const models = [
+    { model: groq('meta-llama/llama-4-maverick-17b-128e-instruct'), name: 'Llama 4 Maverick'},
+    { model: groq('llama3-70b-8192'), name: 'Llama 3'},
+    { model: groq('mistral-saba-24b'), name: 'Mistral Saba' },
+    { model: groq('gemma2-9b-it'), name: 'Gemma 2 Instruct' },
+    { model: groq('deepseek-r1-distill-llama-70b'), name: 'DeepSeek R1' }
+  ]
+  
   const rankings: AIRanking[] = []
-  const comparisons: CompetitorComparison[] = []
+  const socialInsights: SocialInsight[] = []
+  const charts: ChartData[] = []
+  let recommendations: Recommendations = {
+    id: uuidv4(),
+    brand_id: brand_id,
+    mode_id: mode_id,
+    query: query,
+    type: `Recommendation for ${brand_name}`,
+    suggestion: '',
+    reasoning: '',
+    priority: 1,
+    created_at: new Date().toISOString(),
+  }
 
-  for (const query of queries) {
-    // Brand ranking
-    const brand_id = uuidv4()
-    const { object: brandResult } = await generateObject({
+  // Initialize Exa client
+  const exa = new Exa(Deno.env.get('EXA_API_KEY') || '')
+
+  // Start recommendation generation in parallel with other processing
+  const formattedRecommenderPrompt = EXPLORER_RECOMMENDER_PROMPT
+    .replace('{query}', query)
+    .replace('{brand}', brand_name)
+    .replace('{industry}', brand_industry)
+  
+  const enhancedModel = wrapLanguageModel({
+    model: groq('qwen-qwq-32b'),
+    middleware: extractReasoningMiddleware({ tagName: 'think' }),
+  })
+
+  // Start recommendation generation asynchronously
+  const recommendationPromise = generateText({
+    model: enhancedModel,
+    prompt: formattedRecommenderPrompt,
+  })
+
+  // Prepare for multi-model ranking
+  const formattedPrompt = VOYAGER_RANKING_PROMPT.replace('{query}', query)
+  const responseSchema = z.object({ 
+    brands: z.array(z.object({
+      name: z.string(),
+      rank: z.number().nullable(),
+      score: z.number(),
+      reasoning: z.string()
+    }))
+  })
+
+  // Run all model queries in parallel
+  const modelPromises = models.map(({ model, name }) => 
+    generateObject({
       model,
-      schema: z.object({ 
-        rank: z.number().nullable(), 
-        score: z.number(),
-        reasoning: z.string()
-      }),
-      prompt: `Analyze brand "${brands}" for query "${query}". Provide rank, confidence score, and detailed reasoning.`,
-    })
+      schema: responseSchema,
+      prompt: formattedPrompt,
+      max_retries: 3,
+      temperature: 0.1,
+    }).then(response => ({ response, name }))
+  )
 
-    rankings.push({
-      id: uuidv4(),
-      entity_id: brand_id,
-      entity_name: brands[0] || "", // Use first brand name if available
-      entity_type: 'brand',
-      user_id,
-      llm_name: 'DeepSeek R-1',
-      query,
-      rank: brandResult.rank,
-      score: brandResult.score,
-      reasoning: brandResult.reasoning,
-      mode: 'Explorer',
-      mode_id,
-      analyzed_at: new Date().toISOString(),
-    })
-
-    // Competitor rankings and comparison
-    for (const competitor of competitors) {
-      // Get competitor analysis
-      const competitor_id = uuidv4()
-      const comparisonPrompt = COMPETITOR_ANALYSIS_PROMPT
-        .replace('{brand_name}', brand_id)
-        .replace('{competitor_name}', competitor)
-        .replace('{query}', query)
-      
-      const { object: compResult } = await generateObject({
-        model,
-        schema: z.object({ 
-          brand_rank: z.number().nullable(), 
-          competitor_rank: z.number().nullable(),
-          score: z.number(),
-          analysis: z.string(),
-        }),
-        prompt: comparisonPrompt,
-      })
-
-      // Add competitor ranking
+  // Wait for all model responses
+  const modelResults = await Promise.all(modelPromises)
+  
+  // Process all model results and build a set of unique brands
+  const uniqueBrands = new Set()
+  for (const { response, name } of modelResults) {
+    for (const brand of response.object.brands) {
       rankings.push({
         id: uuidv4(),
-        entity_id: competitor_id,
-        entity_name: competitor,
-        entity_type: 'competitor',
+        entity_id: uuidv4(),
+        entity_name: brand.name,
+        entity_type: 'brand',
         user_id,
-        llm_name: 'DeepSeek R-1',
+        llm_name: name,
         query,
-        rank: compResult.competitor_rank,
-        score: compResult.score,
-        reasoning: `Competitor analysis vs ${brand_id}: ${compResult.analysis.substring(0, 100)}...`,
+        rank: brand.rank,
+        score: brand.score,
+        reasoning: brand.reasoning,
         mode: 'Explorer',
         mode_id,
         analyzed_at: new Date().toISOString(),
       })
-
-      // Add comparison
-      comparisons.push({
-        competitor: competitor,
-        competitor_id: competitor_id,
-        ranking_diff: (brandResult.rank || 0) - (compResult.competitor_rank || 0),
-        analysis: compResult.analysis,
-      })
+      
+      uniqueBrands.add(brand.name)
     }
+  }
+
+  // Process social data for each unique brand in parallel
+  const socialPromises: Promise<{
+    brandName: string,
+    sentiment?: string,
+    mentions?: number,
+    sources?: any,
+    xResults?: any,
+    error?: Error
+  }>[] = []
+
+  for (const brandName of uniqueBrands) {
+    socialPromises.push(
+      (async () => {
+        try {
+          // Run both Exa API calls in parallel for each brand
+          const searchQuery = `${brandName} ${query}`
+          const [xResults, sources] = await Promise.all([
+            exa.searchAndContents(searchQuery, {
+              type: 'keyword',
+              numResults: 5,
+              includeDomains: ['x.com', 'reddit.com'],
+              text: true,
+            }),
+            exa.searchAndContents(`social insights on ${query}, brand: ${brandName}`, {
+              text: true,
+              type: "keyword",
+              summary: true,
+              numResults: 5
+            })
+          ])
+
+          // Calculate brand mentions
+          const brandMentions = sources.results.reduce((count, result) => {
+            const text = result.text || '';
+            const summary = result.summary || '';
+            return count + (text.includes(brandName) ? 1 : 0) + (summary.includes(brandName) ? 1 : 0);
+          }, 0);
+
+          // Extract post text for sentiment analysis
+          const posts = xResults.results.map(r => r.text).join('\n')
+          
+          // Analyze sentiment
+          const sentiment = await analyzeSentiment(posts)
+          
+          return {
+            brandName,
+            sentiment,
+            mentions: brandMentions,
+            sources: sources.results,
+            xResults
+          }
+        } catch (error) {
+          console.error(`Error processing social data for ${brandName}:`, error)
+          return {
+            brandName,
+            error
+          }
+        }
+      })()
+    )
+  }
+
+  // Process all social data results
+  const socialResults = await Promise.all(socialPromises)
+  
+  // Create final data structures from results
+  for (const result of socialResults) {
+    if (result.error) {
+      // Handle error case
+      socialInsights.push({
+        id: uuidv4(),
+        entity_id: uuidv4(),
+        entity_name: result.brandName,
+        entity_type: 'brand',
+        user_id,
+        search_id: mode_id,
+        platform: 'X',
+        keyword: query,
+        mention_count: 0,
+        sentiment: 'neutral',
+        data_fetched_at: new Date().toISOString(),
+        links: [""]
+      })
+    } else {
+      // Add social insights
+      socialInsights.push({
+        id: uuidv4(),
+        entity_id: uuidv4(),
+        entity_name: result.brandName,
+        entity_type: 'brand',
+        user_id,
+        search_id: mode_id,
+        platform: 'X', 
+        keyword: query,
+        mention_count: result.mentions || 0,
+        sentiment: result.sentiment || 'neutral',
+        data_fetched_at: new Date().toISOString(),
+        links: result.sources || [""]
+      })
+
+      // Generate trend data
+      if (result.xResults) {
+        charts.push({
+          keyword: result.brandName,
+          trend_points: generateTrendPoints(result.xResults.results),
+        })
+      }
+    }
+  }
+
+  // Collect recommendation results
+  try {
+    const {text, reasoning} = await recommendationPromise
+    if (text) {
+      recommendations = {
+        id: uuidv4(),
+        brand_id: brand_id,
+        mode_id: mode_id,
+        query: query,
+        type: `Recommendation for ${brand_name}`,
+        reasoning: reasoning || '',
+        suggestion: text,
+        priority: 1,
+        created_at: new Date().toISOString(),
+      }
+    }
+  } catch (error) {
+    console.error("Error generating recommendation:", error)
   }
 
   return {
@@ -406,7 +570,9 @@ export async function explorerAnalysis(
     mode: 'Explorer',
     mode_id,
     ai_rankings: rankings,
-    comparisons,
+    social_insights: socialInsights,
+    recommendations,
+    charts
   }
 }
 
@@ -427,15 +593,18 @@ export async function findCompetitors(
     // Extract competitor names using LLM
     const model = groq('gemma2-9b-it')
     const prompt = `Based on the following search results about competitors of ${brand} in the ${industry} industry, 
-    identify the top 3-5 competitor brands. Return only the list of competitor brand names without additional text.
+    identify the top 3-5 competitor brands. Return ONLY the list of competitor brand names as a JSON array of strings.
     
     Search results:
-    ${searchResults.results.map(r => r.title + ': ' + r.text).join('\n\n')}`
+    ${searchResults.results.map(r => r.title + ': ' + r.text).join('\n\n')}
+    
+    The response should be formatted as a JSON array, for example: ["Competitor 1", "Competitor 2", "Competitor 3"]`
     
     const { object } = await generateObject({
       model,
       schema: z.array(z.string()),
       prompt,
+      max_retries: 3,
     })
     
     return object
@@ -447,34 +616,51 @@ export async function findCompetitors(
 
 // Edge Function handler if you want to expose this as a standalone function
 serve(async (req) => {
+  const headers = new Headers({
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS'
+  })
+
   try {
-    const { brand, industry } = await req.json()
-    
-    if (!brand || !industry) {
+    if (req.method === 'OPTIONS') {
+      return new Response(null, { headers })
+    }
+
+    if (req.method !== 'POST') {
       return new Response(
-        JSON.stringify({ error: 'Both brand and industry parameters are required' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: 'Method not allowed' }),
+        { status: 405, headers }
       )
     }
 
-    const competitors = await findCompetitors(brand, industry)
+    const { user_id, query, mode_id, search_id, brand_name, brand_industry, brand_id } = await req.json()
+    
+    if (!user_id || !query || !brand_name) {
+      return new Response(
+        JSON.stringify({ error: 'Query and Brand Name are required to perform this search analysis' }),
+        { status: 400, headers }
+      )
+    }
+
+    const results = await explorerAnalysis(user_id, query, mode_id, search_id, brand_name, brand_industry, brand_id)
     
     return new Response(
-      JSON.stringify({ competitors }),
-      { headers: { 'Content-Type': 'application/json' } }
+      JSON.stringify(results),
+      { headers }
     )
   } catch (error) {
-    console.error('Error in findCompetitors edge function:', error)
+    console.error('Error in explorerAnalysis edge function:', error)
     return new Response(
       JSON.stringify({ error: 'Internal server error' }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
+      { status: 500, headers }
     )
   }
 })
 
 
 
-// Voyager: Multi-model analysis with social sentiment
+// Voyager: Multi-model analysis with social sentiment - Optimized
 export async function voyagerAnalysis(
   user_id: string, 
   query: string,
@@ -482,41 +668,58 @@ export async function voyagerAnalysis(
   search_id: string = uuidv4()
 ): Promise<SearchResults> {
   const models = [
-    { model: groq('meta-llama/llama-4-maverick-17b-128e-instruct'), name: 'Llama 4'},
-    { model: groq('mistral-saba-24b'), name: 'Mistral Saba 24B' },
-    { model: groq('gemma2-9b-it'), name: 'Gemma 2 9B' },
-    { model: groq('deepseek-r1-distill-llama-70b'), name: 'DeepSeek R-1' },
+    { model: groq('meta-llama/llama-4-scout-17b-16e-instruct'), name: 'Llama 4 Scout'},
+    { model: groq('deepseek-r1-distill-llama-70b'), name: 'DeepSeek R1' },
     { model: groq('qwen-qwq-32b'), name: 'Qwen QwQ 32B' }
   ]
   
   const rankings: AIRanking[] = []
   const socialInsights: SocialInsight[] = []
   const charts: ChartData[] = []
+  const recommendations: Recommendations = {
+    id: uuidv4(),
+    brand_id: "",
+    mode_id: mode_id,
+    query: query,
+    type: `Recommendation for Brand`,
+    suggestion: '',
+    reasoning: '',
+    priority: 0,
+    created_at: new Date().toISOString(),
+  }
 
   // Initialize Exa client
   const exa = new Exa(Deno.env.get('EXA_API_KEY') || '')
+  const formattedPrompt = VOYAGER_RANKING_PROMPT.replace('{query}', query)
+  const responseSchema = z.object({ 
+    brands: z.array(z.object({
+      name: z.string(),
+      rank: z.number().nullable(),
+      score: z.number(),
+      reasoning: z.string()
+    }))
+  })
 
-  // Multi-model ranking
-  for (const { model, name } of models) {
-    const responseSchema = z.object({ 
-      brands: z.array(z.object({
-        name: z.string(),
-        rank: z.number().nullable(),
-        score: z.number(),
-        reasoning: z.string()
-      }))
-    })
-
-    const formattedPrompt = VOYAGER_RANKING_PROMPT.replace('{query}', query)
-
-    const { object } = await generateObject({
+  // Run model requests in parallel
+  const modelPromises = models.map(({ model, name }) => 
+    generateObject({
       model,
       schema: responseSchema,
       prompt: formattedPrompt,
-    })
+      max_retries: 3,
+      temperature: 0.1,
+    }).then(response => ({ response, name }))
+  )
 
-    // Convert brand analysis results to rankings
-    for (const brand of object.brands) {
+  // Execute all model calls concurrently
+  const modelResults = await Promise.all(modelPromises)
+  
+  // Process all model results and build rankings
+  // Also collect unique brands for sentiment analysis
+  const uniqueBrands = new Set<string>()
+  
+  for (const { response, name } of modelResults) {
+    for (const brand of response.object.brands) {
       rankings.push({
         id: uuidv4(),
         entity_id: uuidv4(),
@@ -532,57 +735,117 @@ export async function voyagerAnalysis(
         mode_id,
         analyzed_at: new Date().toISOString(),
       })
+      
+      // Add to unique brands set
+      uniqueBrands.add(brand.name)
+    }
+  }
 
-      try {
-        // Get social sentiment for each brand
-        const searchQuery = `${brand.name} ${query}`
-        const xResults = await exa.searchAndContents(searchQuery, {
-          type: 'keyword',
-          numResults: 5,
-          includeDomains: ['x.com'],
-          text: true,
-        })
+  // Process social data for each unique brand in parallel
+  const socialPromises: Promise<{
+    brandName: string,
+    sentiment?: string,
+    mentions?: number,
+    sources?: any,
+    xResults?: any,
+    error?: Error
+  }>[] = []
 
-        // Extract post text for sentiment analysis
-        const posts = xResults.results.map(r => r.text).join('\n')
-        
-        // Analyze sentiment with Llama 3
-        const sentiment = await analyzeSentiment(posts)
-        
-        socialInsights.push({
-          id: uuidv4(),
-          entity_id: uuidv4(),
-          entity_name: brand.name,
-          entity_type: 'brand',
-          user_id,
-          search_id: mode_id,
-          platform: 'X',
-          keyword: query,
-          mention_count: xResults.results.length,
-          sentiment,
-          data_fetched_at: new Date().toISOString(),
-        })
+  for (const brandName of uniqueBrands) {
+    socialPromises.push(
+      (async () => {
+        try {
+          // Run both Exa API calls in parallel for each brand
+          const searchQuery = `${brandName} ${query}`
+          const [xResults, sources] = await Promise.all([
+            exa.searchAndContents(searchQuery, {
+              type: 'keyword',
+              numResults: 5,
+              includeDomains: ['x.com', 'reddit.com'],
+              text: true,
+            }),
+            exa.searchAndContents(`social insights on ${query}, brand: ${brandName}`, {
+              text: true,
+              type: "keyword",
+              summary: true,
+              numResults: 5
+            })
+          ])
 
-        // Generate trend data based on the results
+          // Calculate brand mentions
+          const brandMentions = sources.results.reduce((count, result) => {
+            const text = result.text || '';
+            const summary = result.summary || '';
+            return count + (text.includes(brandName) ? 1 : 0) + (summary.includes(brandName) ? 1 : 0);
+          }, 0);
+
+          // Extract post text for sentiment analysis
+          const posts = xResults.results.map(r => r.text).join('\n')
+          
+          // Analyze sentiment
+          const sentiment = await analyzeSentiment(posts)
+          
+          return {
+            brandName,
+            sentiment,
+            mentions: brandMentions,
+            sources: sources.results,
+            xResults
+          }
+        } catch (error) {
+          console.error(`Error processing social data for ${brandName}:`, error)
+          return {
+            brandName,
+            error
+          }
+        }
+      })()
+    )
+  }
+
+  // Wait for all social data processing to complete
+  const socialResults = await Promise.all(socialPromises)
+  
+  // Create final data structures from results
+  for (const result of socialResults) {
+    if (result.error) {
+      // Handle error case
+      socialInsights.push({
+        id: uuidv4(),
+        entity_id: uuidv4(),
+        entity_name: result.brandName,
+        entity_type: 'brand',
+        user_id,
+        search_id: mode_id,
+        platform: 'X',
+        keyword: query,
+        mention_count: 0,
+        sentiment: 'neutral',
+        data_fetched_at: new Date().toISOString(),
+        links: [""]
+      })
+    } else {
+      // Add social insights
+      socialInsights.push({
+        id: uuidv4(),
+        entity_id: uuidv4(),
+        entity_name: result.brandName,
+        entity_type: 'brand',
+        user_id,
+        search_id: mode_id,
+        platform: 'X', 
+        keyword: query,
+        mention_count: result.mentions || 0,
+        sentiment: result.sentiment || 'neutral',
+        data_fetched_at: new Date().toISOString(),
+        links: result.sources || [""]
+      })
+
+      // Generate trend data
+      if (result.xResults) {
         charts.push({
-          keyword: brand.name,
-          trend_points: generateTrendPoints(xResults.results),
-        })
-      } catch (error) {
-        console.error(`Error processing social data for ${brand.name}:`, error)
-        // Push default values if social analysis fails
-        socialInsights.push({
-          id: uuidv4(),
-          entity_id: uuidv4(),
-          entity_name: brand.name,
-          entity_type: 'brand',
-          user_id,
-          search_id: mode_id,
-          platform: 'X',
-          keyword: query,
-          mention_count: 0,
-          sentiment: 'neutral',
-          data_fetched_at: new Date().toISOString(),
+          keyword: result.brandName,
+          trend_points: generateTrendPoints(result.xResults.results),
         })
       }
     }
@@ -595,6 +858,7 @@ export async function voyagerAnalysis(
     ai_rankings: rankings,
     social_insights: socialInsights,
     charts,
+    recommendations
   }
 }
 
@@ -610,8 +874,13 @@ async function analyzeSentiment(text: string): Promise<'positive' | 'negative' |
     const { object } = await generateObject({
       model: groq('llama3-70b-8192'),
       schema: z.object({ sentiment: z.enum(['positive', 'negative', 'neutral']) }),
-      prompt: `Analyze the sentiment of this text: "${truncatedText}"`,
+      prompt: `Analyze the sentiment of the following text and respond with ONLY one of these exact words: "positive", "negative", or "neutral".      
+        Text to analyze: "${truncatedText}"
+
+        Your response should follow this format exactly:
+        {"sentiment": "positive"} or {"sentiment": "negative"} or {"sentiment": "neutral"}`,
       temperature: 0.1,
+      max_retries: 3,
     })
     
     return object.sentiment
@@ -679,7 +948,7 @@ serve(async (req) => {
 
 
 
-// DeepFocus: Analysis with gemma2 and llama-3.3
+// DeepFocus: Analysis with gemma2 and llama-3.3 - Optimized
 export async function deepFocusAnalysis(
   user_id: string, 
   query: string, 
@@ -692,28 +961,44 @@ export async function deepFocusAnalysis(
   ]
   
   const rankings: AIRanking[] = []
+  const recommendations: Recommendations = {
+    id: uuidv4(),
+    brand_id: "",
+    mode_id: mode_id,
+    query: query,
+    type: `Recommendation for Brand`,
+    suggestion: '',
+    reasoning: '',
+    priority: 1,
+    created_at: new Date().toISOString(),
+  }
 
   try {
-    for (const { model, name } of models) {
-      const responseSchema = z.object({ 
-        brands: z.array(z.object({
-          name: z.string(),
-          rank: z.number().nullable(),
-          score: z.number(),
-          reasoning: z.string()
-        }))
-      })
+    const formattedPrompt = BRAND_RANKING_PROMPT.replace('{query}', query)
+    const responseSchema = z.object({ 
+      brands: z.array(z.object({
+        name: z.string(),
+        rank: z.number().nullable(),
+        score: z.number(),
+        reasoning: z.string()
+      }))
+    })
 
-      const formattedPrompt = BRAND_RANKING_PROMPT.replace('{query}', query)
-
-      const { object } = await generateObject({
+    // Run all model queries in parallel
+    const modelPromises = models.map(({ model, name }) => 
+      generateObject({
         model,
         schema: responseSchema,
         prompt: formattedPrompt,
-      })
+      }).then(response => ({ response, name }))
+    )
 
-      // Convert brand analysis results to rankings
-      for (const brand of object.brands) {
+    // Wait for all model responses
+    const modelResults = await Promise.all(modelPromises)
+    
+    // Process results
+    for (const { response, name } of modelResults) {
+      for (const brand of response.object.brands) {
         rankings.push({
           id: uuidv4(),
           entity_id: uuidv4(),
@@ -739,6 +1024,7 @@ export async function deepFocusAnalysis(
       mode: 'DeepFocus',
       mode_id,
       ai_rankings: rankings,
+      recommendations
     }
   } catch (error) {
     console.error("Error in deepFocusAnalysis:", error)
@@ -750,7 +1036,8 @@ export async function deepFocusAnalysis(
 export async function generateTopBrands(industry: string): Promise<Brand[]> {
   try {
     const model = groq('llama-3.3-70b-versatile')
-    const prompt = BRAND_GENERATION_PROMPT.replace('{industry}', industry)
+    const prompt = BRAND_GENERATION_PROMPT.replace('{industry}', industry) + 
+      "\n\nThe response should be a valid JSON array of objects, with each object having 'name' and 'description' fields."
     
     const { object } = await generateObject({
       model,
@@ -759,6 +1046,8 @@ export async function generateTopBrands(industry: string): Promise<Brand[]> {
         description: z.string()
       })),
       prompt,
+      max_retries: 3,
+      temperature: 0.1,
     })
     
     return object
@@ -901,6 +1190,17 @@ export async function saveToSupabase(results: SearchResults, user_id: string): P
       throw new Error(`AI Rankings save failed: ${rankingsError.message}`)
     }
 
+    if (results.recommendations && results.recommendations.suggestion) {
+      const { error: recommendationsError } = await supabase
+        .from('recommendations')
+        .insert(results.recommendations)
+
+      if (recommendationsError) {
+        console.error('Recommendations save failed:', recommendationsError)
+        throw new Error(`Recommendations save failed: ${recommendationsError.message}`)
+      }
+    }
+
     // Save social insights if available
     if (results.social_insights && results.social_insights.length > 0) {
       const socialInsightsToSave = results.social_insights.map((insights, index) => ({
@@ -915,6 +1215,7 @@ export async function saveToSupabase(results: SearchResults, user_id: string): P
         mention_count: insights.mention_count || 0,
         sentiment: insights.sentiment || 'neutral',
         data_fetched_at: new Date().toISOString(),
+        links: insights.links
       }))
 
       const { error: socialError } = await supabase

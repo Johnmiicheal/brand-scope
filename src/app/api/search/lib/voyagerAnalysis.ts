@@ -112,6 +112,7 @@ export async function voyagerAnalysis(
         mention_count: xResults.results.length,
         sentiment,
         data_fetched_at: new Date().toISOString(),
+        links: []
       });
 
       // Generate trend data based on the results

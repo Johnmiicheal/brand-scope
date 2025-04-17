@@ -47,7 +47,6 @@ export default function RootLayout({
         <meta name="author" content="Johnmicheal Elijah" />
         <link rel="icon" href="/icons/favicon.png" />
         <link rel="apple-touch-icon" href="/icons/favicon.png" />
-        <link rel="manifest" href="/manifest.json" />
         <meta property="og:title" content="Brand Scope - AI-Powered Brand Insights & SEO Analytics" />
         <meta property="og:description" content="Optimize your brand's visibility in AI search results." />
         <meta property="og:url" content="https://brandscope.vercel.app" />

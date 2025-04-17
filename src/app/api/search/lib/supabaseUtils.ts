@@ -3,7 +3,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { serverEnv } from '@/env/server';
-import { SearchResults, AIRanking, SocialInsight, AnalysisMode } from '@/types/search';
+import { SearchResults, AIRanking, SocialInsight, AnalysisMode, Recommendations } from '@/types/search';
 
 
 // Initialize Supabase client
@@ -131,7 +131,9 @@ export async function getSearchResultsByModeId(mode_id: string): Promise<SearchR
   const { data: insightsData } = await supabase
     .from('social_insights')
     .select('*')
-    .eq('search_id', rankingsData[0].id);
+    .eq('search_id', mode_id);
+
+    const { data: recs } = await supabase.from('recommendations').select('*').eq('mode_id', mode_id)
   
   return {
     search_id: rankingsData[0].id,
@@ -139,6 +141,7 @@ export async function getSearchResultsByModeId(mode_id: string): Promise<SearchR
     mode_id,
     ai_rankings: rankingsData as AIRanking[],
     social_insights: insightsData as SocialInsight[] || [],
+    recommendations: recs as Recommendations
   };
 }
 

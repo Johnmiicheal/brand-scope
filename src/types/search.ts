@@ -45,6 +45,7 @@ export const socialInsightSchema = z.object({
   mention_count: z.number(),
   sentiment: z.enum(['positive', 'negative', 'neutral']).nullable(),
   data_fetched_at: z.string().datetime(),
+  links: z.string().array()
 });
 
 export type SocialInsight = z.infer<typeof socialInsightSchema>;
@@ -53,6 +54,18 @@ export const chartDataSchema = z.object({
   keyword: z.string(),
   trend_points: z.array(z.object({ date: z.string(), value: z.number() })),
 });
+
+export interface Recommendations {
+  id: string
+  brand_id: string
+  mode_id: string
+  query: string
+  type: string
+  suggestion: string
+  reasoning: string
+  priority: number
+  created_at: string
+}
 
 export type ChartData = z.infer<typeof chartDataSchema>;
 
@@ -73,4 +86,5 @@ export interface SearchResults {
   social_insights?: SocialInsight[];
   charts?: ChartData[];
   comparisons?: CompetitorComparison[];
+  recommendations?: Recommendations
 } 

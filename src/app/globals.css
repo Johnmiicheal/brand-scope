@@ -225,3 +225,29 @@
   height: 0;
 }
 
+.think-section {
+  background-color: #f5f5f5;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 2rem;
+  border-left: 4px solid #666;
+}
+
+.response-section {
+  background-color: #fff;
+  padding: 1rem;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+}
+
+
+.think-content {
+  white-space: pre-wrap;
+  font-family: monospace;
+  color: #555;
+}
+
+.response-content {
+  white-space: pre-wrap;
+}
+
