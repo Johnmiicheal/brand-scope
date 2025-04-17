@@ -240,11 +240,8 @@ export default function AnalysisPage() {
     );
   }
 
-  const faviconUrls = (results?.social_insights?.[0]?.links || [])
-  .map((link) => {
-    const parsedLink = safeParseJSON(link);
-    return parsedLink?.favicon || null;
-  })
+  const faviconUrls = sourcesLinks
+  .map((link) => link?.favicon || null)
   .filter((favicon) => favicon !== null)
   .join(", ");
 
