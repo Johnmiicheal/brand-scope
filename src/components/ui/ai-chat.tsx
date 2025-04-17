@@ -146,15 +146,6 @@ export function AIChatInterface() {
       setLoading(true);
       setIsAnalyzing(true);
 
-      console.log("Sending request with data:", {
-        mode,
-        user_id: user.id,
-        query: value.trim(),
-        brand_name: brand.name,
-        brand_industry: brand.industry,
-        brand_id: brand.id,
-      });
-
       const response = await fetch(process.env.NEXT_PUBLIC_SEARCH as string, {
         method: "POST",
         headers: {

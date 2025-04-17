@@ -64,9 +64,6 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           .select("id")
           .eq("id", data.session.user.id)
           .single();
-        if (existingUser) {
-          console.log("User exists already: ", existingUser);
-        }
 
         // Handle potential errors (excluding 'not found')
         if (userError && userError.code !== "PGRST116") {
@@ -88,9 +85,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           if (createError) {
             console.error("Error creating user record:", createError);
             // Maybe show a toast notification
-          } else {
-            console.log("New user record created successfully.");
-          }
+          } 
         }
       } catch (checkCreateError) {
         console.error(

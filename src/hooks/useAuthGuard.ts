@@ -12,7 +12,6 @@ import { useAuth } from '@/contexts/AuthContext'
 export function useAuthGuard(redirectTo: string = '/login') {
   const { session, user, isLoading } = useAuth()
   const router = useRouter()
-  console.log(user, session)
 
   useEffect(() => {
     // Only run after the auth state has been determined (not loading)

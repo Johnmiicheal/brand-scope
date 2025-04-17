@@ -1017,7 +1017,6 @@ export async function deepFocusAnalysis(
       }
     }
 
-    console.log("Generated rankings:", rankings.length)
     
     return {
       search_id,

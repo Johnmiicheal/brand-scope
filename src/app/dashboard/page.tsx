@@ -191,7 +191,6 @@ function DashboardContent() {
         return;
       }
 
-      console.log("Brand created:", data);
 
       // Clear form
       setBrandName("");
@@ -241,7 +240,6 @@ function DashboardContent() {
       if(data){
         window.location.reload()
       }
-      console.log("Brand analysis completed:", data);
       setIsAnalyzing(false);
     } catch (error) {
       console.error("Error analyzing brand:", error);
