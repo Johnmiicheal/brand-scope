@@ -197,7 +197,9 @@ export default function AnalysisPage() {
 
   const firstLevelLinks = (results?.social_insights || [])
   .map((item) =>
-    (item?.links || []).map((link) => safeParseJSON(link, link))
+    (item?.links || [])
+      .map((link) => safeParseJSON(link, link))
+      .filter((link) => link !== '' && link != null) // Exclude empty strings and null
   )
   .flat();
 
@@ -406,7 +408,7 @@ export default function AnalysisPage() {
                             <p className="text-white/60 font-regular text-sm" style={{ WebkitLineClamp: '3', WebkitBoxOrient: 'vertical', overflow: 'hidden', display: '-webkit-box' }}>{insight?.summary}</p>
                             <div className="flex gap-2 items-center mt-3">
                               <img src={insight?.favicon} alt={"favicon"} className="rounded-md w-5 h-5"/>
-                              <p className="text-xs">{new URL(insight?.id).hostname || insight?.id}</p>
+                              <p className="text-xs">{new URL(insight?.id).hostname || "No Hostname"}</p>
                             </div>
                           </div>
                         ))}
