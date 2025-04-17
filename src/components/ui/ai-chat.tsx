@@ -27,6 +27,7 @@ import { Button } from "./button";
 import { motion } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 import { LoadingState } from "../loading-state";
+import { useBrandData } from "@/contexts/brand-data-context";
 
 interface UseAutoResizeTextareaProps {
   minHeight: number;
@@ -85,21 +86,22 @@ export function AIChatInterface() {
   const router = useRouter();
   const [value, setValue] = useState("");
   const { user, session } = useAuth();
+  const { brand } = useBrandData();
   const [mode, setMode] = useState<AnalysisMode>("DeepFocus");
   const [loading, setLoading] = useState(false);
-  const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const { textareaRef, adjustHeight } = useAutoResizeTextarea({
     minHeight: 60,
     maxHeight: 200,
   });
   const [currentTime, setCurrentTime] = useState(new Date());
-  
+
   // Update time every second
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date());
     }, 1000);
-    
+
     return () => clearInterval(timer);
   }, []);
 
@@ -113,7 +115,6 @@ export function AIChatInterface() {
   };
 
   const handleSubmit = async () => {
-
     if (!value.trim()) {
       toast({
         title: "Error",
@@ -132,34 +133,46 @@ export function AIChatInterface() {
       return;
     }
 
+    if (!brand) {
+      toast({
+        title: "Error",
+        description: "Please create a brand to continue",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       setLoading(true);
-      setIsAnalyzing(true)
+      setIsAnalyzing(true);
 
       console.log("Sending request with data:", {
         mode,
         user_id: user.id,
         query: value.trim(),
-        competitors: mode === "Explorer" ? ["Competitor A", "Competitor B"] : undefined,
+        brand_name: brand.name,
+        brand_industry: brand.industry,
+        brand_id: brand.id,
       });
 
       const response = await fetch(process.env.NEXT_PUBLIC_SEARCH as string, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${session}`
-
+          Authorization: `Bearer ${session}`,
         },
         body: JSON.stringify({
           mode,
           user_id: user.id,
           query: value.trim(),
-          competitors: mode === "Explorer" ? ["Competitor A", "Competitor B"] : undefined,
+          brand_name: brand.name,
+          brand_industry: brand.industry,
+          brand_id: brand.id,
         }),
       });
 
       if (!response.ok) {
-      setIsAnalyzing(false)
+        setIsAnalyzing(false);
         const contentType = response.headers.get("content-type");
         if (contentType && contentType.includes("application/json")) {
           const error = await response.json();
@@ -185,68 +198,138 @@ export function AIChatInterface() {
         result += new TextDecoder().decode(value);
       }
 
-
       // Parse the final result
       const { mode_id } = JSON.parse(result);
-      
+
       toast({
         title: "Analysis started",
         description: `Your ${mode} analysis is processing. You'll be redirected to results when complete.`,
       });
 
-      setIsAnalyzing(false)
+      setIsAnalyzing(false);
       setTimeout(() => {
-          // Redirect to analysis results page
-          router.push(`/dashboard/search/analysis?mode_id=${mode_id}`);
-      }, 400)
-
+        // Redirect to analysis results page
+        router.push(`/dashboard/search/analysis?mode_id=${mode_id}`);
+      }, 400);
 
       // Clear input and reset height
       setValue("");
       adjustHeight(true);
     } catch (error) {
       console.error("Error submitting analysis:", error);
-      setIsAnalyzing(false)
+      setIsAnalyzing(false);
 
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "An unknown error occurred",
+        description:
+          error instanceof Error ? error.message : "An unknown error occurred",
         variant: "destructive",
       });
     } finally {
       setLoading(false);
-      setIsAnalyzing(false)
-
+      setIsAnalyzing(false);
     }
   };
 
   const modes = [
     {
       key: "DeepFocus",
-      caption: "Advanced brand analysis with detailed reasoning and market insights",
+      caption:
+        "Advanced brand analysis with detailed reasoning and market insights",
     },
     {
       key: "Voyager",
-      caption: "Comprehensive analysis with social sentiment tracking & market perception insights",
+      caption:
+        "Comprehensive analysis with social sentiment tracking & market perception insights",
     },
-    // {
-    //   key: "Explorer",
-    //   caption: "Compare your brands with competitors in your industry",
-    // },
+    {
+      key: "Explorer",
+      caption:
+        "In-depth search and tracking with leading AI Search Engines for enhanced insights",
+    },
   ];
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+
+useEffect(() => {
+  let interval: NodeJS.Timeout | undefined = undefined;
+
+  if (isAnalyzing) {
+    interval = setInterval(() => {
+      setElapsedSeconds((prevSeconds) => prevSeconds + 1);
+    }, 1000);
+  } else {
+    setElapsedSeconds(0);
+  }
+
+  return () => {
+    if (interval) {
+      clearInterval(interval);
+    }
+  };
+}, [isAnalyzing]);
+
+const formatTime = (totalSeconds: number): string => {
+  if (totalSeconds < 0) return "0s"; // Safety check
+  if (totalSeconds === 0) return "0s"; // Handle zero explicitly
+
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  const parts: string[] = [];
+
+  if (hours > 0) {
+    parts.push(`${hours}h`);
+  }
+  if (minutes > 0) {
+    parts.push(`${minutes}m`);
+  }
+  // Show seconds if they are > 0 OR if hours and minutes are both 0 (i.e., time < 1 minute)
+  if (seconds > 0 || parts.length === 0) {
+     // Don't show seconds if they are 0 and we already have hours or minutes
+     if(seconds > 0 || (hours === 0 && minutes === 0)) {
+        parts.push(`${seconds}s`);
+     }
+  }
+
+  return parts.join(' '); // Join the parts with a space
+};
 
   if (isAnalyzing) {
     return (
       <div className="flex flex-col items-center justify-center p-4">
         <div className="w-full ">
-          <h1 className="text-2xl font-bold mb-3 text-center">Analyzing Your Search Query</h1>
+          <div className="flex flex-col items-center space-y-3">
+          <div className="flex items-center space-x-2">
+            <span
+              className={`px-2 py-1 text-xs rounded-full ${
+                mode === "Voyager"
+                  ? "bg-orange-500/20 text-orange-400"
+                  : mode === "DeepFocus"
+                  ? "bg-blue-500/20 text-blue-400"
+                  : mode === "Explorer"
+                  ? "bg-green-500/20 text-green-400"
+                  : ""
+              }`}
+            >
+              {mode}
+            </span>
+            <span className="text-xs text-muted-foreground">
+             thought for {formatTime(elapsedSeconds)}
+          </span>
+          </div>
+          <h1 className="text-2xl font-bold mb-3 text-center">
+            Analyzing Your Search Query
+          </h1>
+          </div>
           <p className="text-muted-foreground mb-10 text-center">
-            We&apos;re gathering data and insights about {value || "your query"}. This may take a few moments.
+            We&apos;re gathering data and insights about {value || "your query"}
+            . This may take a few moments.
           </p>
           <LoadingState />
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -383,10 +466,10 @@ export function AIChatInterface() {
           animate={{
             height: ["0px", "60px", "60px", "0px"],
             opacity: [0, 1, 1, 0],
-            transition: { 
-              duration: 3.3, 
+            transition: {
+              duration: 3.3,
               times: [0, 0.1, 0.9, 1],
-            }
+            },
           }}
           className="flex w-full justify-center overflow-hidden"
         >
@@ -395,7 +478,9 @@ export function AIChatInterface() {
               <Telescope className="w-4 h-4" />
               {mode}
             </div>
-            <span className="text-xs w-full">{modes.find(item => item.key === mode)?.caption}</span>
+            <span className="text-xs w-full">
+              {modes.find((item) => item.key === mode)?.caption}
+            </span>
           </div>
         </motion.div>
 
