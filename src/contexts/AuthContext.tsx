@@ -229,7 +229,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             email: authData.user.email,
             full_name: metadata?.full_name || null,
             plan_type: 'free',
-            created_at: new Date().toISOString()
+            created_at: new Date().toISOString(),
+            user_type: metadata?.user_type
           });
 
         if (userError) {
