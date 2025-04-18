@@ -25,6 +25,7 @@ export function SignupForm({
     fullName: "",
     email: "",
     password: "",
+    userType: "brand",
   })
   const [complete, setComplete] = useState(false)
 
@@ -43,6 +44,7 @@ export function SignupForm({
     try {
       await signUp(formData.email, formData.password, {
         full_name: formData.fullName,
+        user_type: formData.userType,
       })
       // Successful signup, set complete state
       setComplete(true)
@@ -151,6 +153,29 @@ export function SignupForm({
                     disabled={isLoading}
                     required
                   />
+                </div>
+                <div className="grid gap-3">
+                  <Label>Role</Label>
+                  <div className="flex gap-3">
+                    <Button
+                      type="button"
+                      variant={formData.userType === 'brand' ? 'default' : 'outline'}
+                      onClick={() => setFormData({ ...formData, userType: 'brand' })}
+                      disabled={isLoading}
+                      className="flex-1"
+                    >
+                      Brand
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={formData.userType === 'researcher' ? 'default' : 'outline'}
+                      onClick={() => setFormData({ ...formData, userType: 'researcher' })}
+                      disabled={isLoading}
+                      className="flex-1"
+                    >
+                      Researcher
+                    </Button>
+                  </div>
                 </div>
                 <Button type="submit" className="w-full" disabled={isLoading}>
                   {isLoading ? "Creating account..." : "Create account"}
