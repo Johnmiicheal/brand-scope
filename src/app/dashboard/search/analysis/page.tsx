@@ -246,17 +246,17 @@ export default function AnalysisPage() {
   .join(", ");
 
   return (
-    <div className="mx-auto p-4 bg-gradient-to-b from-background to-zinc-900 w-full h-full">
+    <div className="mx-auto p-2 sm:p-4 bg-gradient-to-b from-background to-zinc-900 w-full h-full">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="rounded-lg p-6 w-full"
+        className="rounded-lg p-3 sm:p-6 w-full"
       >
-        <div className="flex justify-between items-center mb-6 w-full">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 sm:mb-6 w-full gap-3 sm:gap-0">
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-medium">Analysis Results</h1>
+              <h1 className="text-xl sm:text-2xl font-medium">Analysis Results</h1>
               <span
                 className={`px-2 py-1 text-xs rounded-full ${
                   results.mode === "Voyager"
@@ -274,7 +274,7 @@ export default function AnalysisPage() {
           </div>
 
           {results.ai_rankings.length > 0 && (
-            <div className="w-[200px]">
+            <div className="w-full sm:w-[200px]">
               <Select
                 value={selectedModel || ""}
                 onValueChange={setSelectedModel}
@@ -296,14 +296,14 @@ export default function AnalysisPage() {
           )}
         </div>
 
-        <Tabs defaultValue="rankings" className="w-full ">
-          <div className="flex w-full justify-between items-center">
-            <TabsList className="mb-4  bg-transparent">
+        <Tabs defaultValue="rankings" className="w-full">
+          <div className="flex flex-col sm:flex-row w-full justify-between items-start sm:items-center gap-3 sm:gap-0">
+            <TabsList className="mb-4 bg-transparent overflow-x-auto w-full sm:w-auto pb-1 flex justify-start">
               <TabsTrigger
                 value="rankings"
-                className="data-[state=active]:bg-zinc-700 cursor-pointer"
+                className="data-[state=active]:bg-zinc-700 cursor-pointer whitespace-nowrap"
               >
-                <TbTextScan2 className="w-4 h-4" />
+                <TbTextScan2 className="w-4 h-4 mr-1 hidden sm:inline" />
                 AI Model Insights
               </TabsTrigger>
               {
@@ -311,9 +311,9 @@ export default function AnalysisPage() {
                   results.social_insights.length > 0 && (
                     <TabsTrigger
                       value="social"
-                      className="data-[state=active]:bg-zinc-700 cursor-pointer"
+                      className="data-[state=active]:bg-zinc-700 cursor-pointer whitespace-nowrap"
                     >
-                      <TbScanPosition className="w-4 h-4" />
+                      <TbScanPosition className="w-4 h-4 mr-1 hidden sm:inline" />
                       Social Insights
                     </TabsTrigger>
                   )}
@@ -322,16 +322,16 @@ export default function AnalysisPage() {
                 results.recommendations.length > 0 && (
                   <TabsTrigger
                     value="recs"
-                    className="data-[state=active]:bg-zinc-700 cursor-pointer"
+                    className="data-[state=active]:bg-zinc-700 cursor-pointer whitespace-nowrap"
                   >
-                    <TbScanPosition className="w-4 h-4" />
+                    <TbScanPosition className="w-4 h-4 mr-1 hidden sm:inline" />
                     Recommendations
                   </TabsTrigger>
                 )}
               {results.charts && results.charts.length > 0 && (
                 <TabsTrigger
                   value="trends"
-                  className="data-[state=active]:bg-zinc-700"
+                  className="data-[state=active]:bg-zinc-700 whitespace-nowrap"
                 >
                   Trends
                 </TabsTrigger>
@@ -339,7 +339,7 @@ export default function AnalysisPage() {
               {results.comparisons && results.comparisons.length > 0 && (
                 <TabsTrigger
                   value="competitors"
-                  className="data-[state=active]:bg-zinc-700 cursor-pointer"
+                  className="data-[state=active]:bg-zinc-700 cursor-pointer whitespace-nowrap"
                 >
                   Competitor Analysis
                 </TabsTrigger>
@@ -383,7 +383,7 @@ export default function AnalysisPage() {
                     Sources
                   </div>
                 </SheetTrigger>
-                <SheetContent>
+                <SheetContent className="sm:max-w-md">
                   <SheetHeader>
                     <SheetTitle className="text-2xl font-bold">
                       Citation Sources
@@ -392,7 +392,7 @@ export default function AnalysisPage() {
                       View citations used in our analysis.
                     </SheetDescription>
                   </SheetHeader>
-                  <ScrollArea className="px-4 h-[90%] w-full space-y-4">
+                  <ScrollArea className="px-2 sm:px-4 h-[90%] w-full space-y-4">
                     {sourcesLinks?.length === 0 ? (
                       <p className="text-gray-500 text-center">
                         No insights available.
@@ -401,10 +401,10 @@ export default function AnalysisPage() {
                       <div className="space-y-4">
                         {sourcesLinks?.map((insight, index) => (
                           <div key={index} className="w-full cursor-pointer group hover:bg-neutral-800 rounded-md p-3" onClick={() => window.open(insight.url, "_blank")}>
-                            <p className="text-white/80 font-semibold">{insight?.title}</p>
-                            <p className="text-white/60 font-regular text-sm" style={{ WebkitLineClamp: '3', WebkitBoxOrient: 'vertical', overflow: 'hidden', display: '-webkit-box' }}>{insight?.summary}</p>
+                            <p className="text-white/80 font-semibold text-sm sm:text-base">{insight?.title}</p>
+                            <p className="text-white/60 font-regular text-xs sm:text-sm" style={{ WebkitLineClamp: '3', WebkitBoxOrient: 'vertical', overflow: 'hidden', display: '-webkit-box' }}>{insight?.summary}</p>
                             <div className="flex gap-2 items-center mt-3">
-                              <img src={insight?.favicon} alt={"favicon"} className="rounded-md w-5 h-5"/>
+                              <img src={insight?.favicon} alt={"favicon"} className="rounded-md w-4 h-4 sm:w-5 sm:h-5"/>
                               <p className="text-xs">{new URL(insight?.id).hostname || "No Hostname"}</p>
                             </div>
                           </div>
@@ -442,9 +442,11 @@ export default function AnalysisPage() {
                 value="recs"
                 className="space-y-4 [&_h1]:text-white [&_h2]:text-white [&_h3]:text-white [&_p]:text-white/80"
               >
-                <ReactMarkdown>
-                  {results?.recommendations[0]?.suggestion}
-                </ReactMarkdown>
+                <div className="prose prose-invert max-w-none prose-p:text-sm sm:prose-p:text-base prose-headings:text-base sm:prose-headings:text-lg md:prose-headings:text-xl">
+                  <ReactMarkdown>
+                    {results?.recommendations[0]?.suggestion}
+                  </ReactMarkdown>
+                </div>
               </TabsContent>
             )}
 
@@ -468,11 +470,11 @@ export default function AnalysisPage() {
 // Loading state component
 function AnalysisLoadingState() {
   return (
-    <div className="mx-auto p-4 bg-gradient-to-b from-background to-zinc-900 w-full h-full">
-      <div className="rounded-lg p-6 border border-accent">
-        <div className="mb-6">
-          <Skeleton className="h-10 w-[250px] mb-2 bg-zinc-800" />
-          <Skeleton className="h-5 w-[150px] bg-zinc-800" />
+    <div className="mx-auto p-2 sm:p-4 bg-gradient-to-b from-background to-zinc-900 w-full h-full">
+      <div className="rounded-lg p-3 sm:p-6 border border-accent">
+        <div className="mb-4 sm:mb-6">
+          <Skeleton className="h-8 sm:h-10 w-[180px] sm:w-[250px] mb-2 bg-zinc-800" />
+          <Skeleton className="h-4 sm:h-5 w-[120px] sm:w-[150px] bg-zinc-800" />
         </div>
 
         <div className="space-y-4">
@@ -481,14 +483,14 @@ function AnalysisLoadingState() {
             .map((_, i) => (
               <Card key={i} className="bg-zinc-800/50 border-accent">
                 <CardHeader>
-                  <Skeleton className="h-7 w-[200px] mb-2 bg-zinc-700" />
-                  <Skeleton className="h-4 w-full max-w-[300px] bg-zinc-700" />
+                  <Skeleton className="h-6 sm:h-7 w-[150px] sm:w-[200px] mb-2 bg-zinc-700" />
+                  <Skeleton className="h-3 sm:h-4 w-full max-w-[250px] sm:max-w-[300px] bg-zinc-700" />
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
-                    <Skeleton className="h-4 w-full bg-zinc-700" />
-                    <Skeleton className="h-4 w-full bg-zinc-700" />
-                    <Skeleton className="h-4 w-3/4 bg-zinc-700" />
+                    <Skeleton className="h-3 sm:h-4 w-full bg-zinc-700" />
+                    <Skeleton className="h-3 sm:h-4 w-full bg-zinc-700" />
+                    <Skeleton className="h-3 sm:h-4 w-3/4 bg-zinc-700" />
                   </div>
                 </CardContent>
               </Card>
@@ -522,41 +524,41 @@ function RankingsTabContent({
 
   return (
     <motion.div
-      className="space-y-6"
+      className="space-y-4 sm:space-y-6"
       variants={containerVariants}
       initial="hidden"
       animate="visible"
     >
       {Object.entries(queriesMap).map(([query, queryRankings]) => (
         <motion.div key={query} variants={itemVariants}>
-          <div className="mb-4">
-            <h3 className="text-xl font-bold">&ldquo;{query}&rdquo;</h3>
-            <p className="text-sm text-muted-foreground">
+          <div className="mb-3 sm:mb-4">
+            <h3 className="text-lg sm:text-xl font-bold break-words">&ldquo;{query}&rdquo;</h3>
+            <p className="text-xs sm:text-sm text-muted-foreground">
               Analysis performed on{" "}
               {new Date(queryRankings[0].analyzed_at).toLocaleString()}
             </p>
           </div>
 
           <div className="relative overflow-x-auto rounded-md border border-accent">
-            <table className="w-full text-sm text-left">
+            <table className="w-full text-xs sm:text-sm text-left">
               <thead className="text-xs uppercase bg-zinc-900/50">
                 <tr>
-                  <th scope="col" className="px-6 py-3">
+                  <th scope="col" className="px-2 sm:px-6 py-2 sm:py-3">
                     Entity
                   </th>
-                  <th scope="col" className="px-6 py-3">
+                  <th scope="col" className="px-2 sm:px-6 py-2 sm:py-3">
                     Type
                   </th>
-                  <th scope="col" className="px-6 py-3">
+                  <th scope="col" className="px-2 sm:px-6 py-2 sm:py-3">
                     Rank
                   </th>
-                  <th scope="col" className="px-6 py-3">
+                  <th scope="col" className="px-2 sm:px-6 py-2 sm:py-3">
                     Score
                   </th>
-                  <th scope="col" className="px-6 py-3">
+                  <th scope="col" className="px-2 sm:px-6 py-2 sm:py-3">
                     Model
                   </th>
-                  <th scope="col" className="px-6 py-3">
+                  <th scope="col" className="px-2 sm:px-6 py-2 sm:py-3">
                     Reasoning
                   </th>
                 </tr>
@@ -573,23 +575,25 @@ function RankingsTabContent({
                         transition={{ delay: idx * 0.05 }}
                         className="border-b border-accent hover:bg-zinc-800/20"
                       >
-                        <td className="px-6 py-4 font-medium text-white">
+                        <td className="px-2 sm:px-6 py-3 sm:py-4 font-medium text-white">
                           {getEntityName(ranking.entity_id)}
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-2 sm:px-6 py-3 sm:py-4">
                           {ranking.entity_type === "brand"
                             ? "Brand"
                             : "Competitor"}
                         </td>
-                        <td className="px-6 py-4">{ranking.rank ?? "N/A"}</td>
-                        <td className="px-6 py-4">{ranking.score}</td>
-                        <td className="px-6 py-4">
-                          <Badge className="bg-blue-500/20 text-blue-200 border-blue-500/30">
+                        <td className="px-2 sm:px-6 py-3 sm:py-4">{ranking.rank ?? "N/A"}</td>
+                        <td className="px-2 sm:px-6 py-3 sm:py-4">{ranking.score}</td>
+                        <td className="px-2 sm:px-6 py-3 sm:py-4">
+                          <Badge className="bg-blue-500/20 text-blue-200 border-blue-500/30 text-xs whitespace-nowrap">
                             {ranking.llm_name}
                           </Badge>
                         </td>
-                        <td className="px-6 py-4 max-w-md">
-                          {ranking.reasoning || "N/A"}
+                        <td className="px-2 sm:px-6 py-3 sm:py-4 max-w-[200px] sm:max-w-md">
+                          <div className="line-clamp-3 sm:line-clamp-none text-xs sm:text-sm">
+                            {ranking.reasoning || "N/A"}
+                          </div>
                         </td>
                       </motion.tr>
                     ))}
@@ -623,25 +627,25 @@ function SocialInsightsTabContent({
       animate="visible"
     >
       <div className="relative overflow-x-auto rounded-md border border-accent">
-        <table className="w-full text-sm text-left">
+        <table className="w-full text-xs sm:text-sm text-left">
           <thead className="text-xs uppercase bg-zinc-900/50">
             <tr>
-              <th scope="col" className="px-6 py-3">
+              <th scope="col" className="px-2 sm:px-6 py-2 sm:py-3">
                 Entity
               </th>
-              <th scope="col" className="px-6 py-3">
+              <th scope="col" className="px-2 sm:px-6 py-2 sm:py-3">
                 Keyword
               </th>
-              <th scope="col" className="px-6 py-3">
+              <th scope="col" className="px-2 sm:px-6 py-2 sm:py-3">
                 Platform
               </th>
-              <th scope="col" className="px-6 py-3">
+              <th scope="col" className="px-2 sm:px-6 py-2 sm:py-3">
                 Mentions
               </th>
-              <th scope="col" className="px-6 py-3">
+              <th scope="col" className="px-2 sm:px-6 py-2 sm:py-3">
                 Sentiment
               </th>
-              <th scope="col" className="px-6 py-3">
+              <th scope="col" className="px-2 sm:px-6 py-2 sm:py-3 hidden sm:table-cell">
                 Date Collected
               </th>
             </tr>
@@ -654,21 +658,21 @@ function SocialInsightsTabContent({
                 custom={idx}
                 className="border-b border-accent hover:bg-zinc-800/20"
               >
-                <td className="px-6 py-4 font-medium text-white">
+                <td className="px-2 sm:px-6 py-3 sm:py-4 font-medium text-white">
                   {getEntityName(insight.entity_id)}
                 </td>
-                <td className="px-6 py-4">
+                <td className="px-2 sm:px-6 py-3 sm:py-4">
                   {insight.keyword ? (
-                    <Badge className="bg-zinc-700 text-zinc-300">
+                    <Badge className="bg-zinc-700 text-zinc-300 text-xs">
                       #{insight.keyword}
                     </Badge>
                   ) : (
                     "N/A"
                   )}
                 </td>
-                <td className="px-6 py-4">{insight.platform}</td>
-                <td className="px-6 py-4">{insight.mention_count}</td>
-                <td className="px-6 py-4">
+                <td className="px-2 sm:px-6 py-3 sm:py-4">{insight.platform}</td>
+                <td className="px-2 sm:px-6 py-3 sm:py-4">{insight.mention_count}</td>
+                <td className="px-2 sm:px-6 py-3 sm:py-4">
                   <Badge
                     variant={
                       insight.sentiment === "positive"
@@ -677,18 +681,18 @@ function SocialInsightsTabContent({
                         ? "destructive"
                         : "outline"
                     }
-                    className={
+                    className={`text-xs ${
                       insight.sentiment === "positive"
                         ? "bg-green-500/20 text-green-200 border-green-500/30"
                         : insight.sentiment === "negative"
                         ? "bg-red-500/20 text-red-200 border-red-500/30"
                         : "bg-zinc-500/20 text-zinc-200 border-zinc-500/30"
-                    }
+                    }`}
                   >
                     {insight.sentiment || "Neutral"}
                   </Badge>
                 </td>
-                <td className="px-6 py-4">
+                <td className="px-2 sm:px-6 py-3 sm:py-4 hidden sm:table-cell">
                   {new Date(insight.data_fetched_at).toLocaleString()}
                 </td>
               </motion.tr>
@@ -708,19 +712,19 @@ function TrendsTabContent({ charts }: { charts: ChartData[] }) {
 
   return (
     <motion.div
-      className="space-y-6"
+      className="space-y-4 sm:space-y-6"
       variants={containerVariants}
       initial="hidden"
       animate="visible"
     >
       <div className="relative overflow-x-auto rounded-md border border-accent">
-        <table className="w-full text-sm text-left">
+        <table className="w-full text-xs sm:text-sm text-left">
           <thead className="text-xs uppercase bg-zinc-900/50">
             <tr>
-              <th scope="col" className="px-6 py-3">
+              <th scope="col" className="px-2 sm:px-6 py-2 sm:py-3">
                 Keyword
               </th>
-              <th scope="col" className="px-6 py-3">
+              <th scope="col" className="px-2 sm:px-6 py-2 sm:py-3">
                 Trend Chart
               </th>
             </tr>
@@ -733,21 +737,22 @@ function TrendsTabContent({ charts }: { charts: ChartData[] }) {
                 custom={idx}
                 className="border-b border-accent bg-zinc-800/30 hover:bg-zinc-800/70"
               >
-                <td className="px-6 py-4 font-medium text-white">
+                <td className="px-2 sm:px-6 py-3 sm:py-4 font-medium text-white">
                   {chart.keyword}
                 </td>
-                <td className="px-6 py-4">
-                  <div className="h-[300px] w-full">
+                <td className="px-2 sm:px-6 py-3 sm:py-4">
+                  <div className="h-[200px] sm:h-[300px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={chart.trend_points}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                        <XAxis dataKey="date" stroke="#9CA3AF" />
-                        <YAxis stroke="#9CA3AF" />
+                        <XAxis dataKey="date" stroke="#9CA3AF" tick={{ fontSize: 10 }} />
+                        <YAxis stroke="#9CA3AF" tick={{ fontSize: 10 }} />
                         <Tooltip
                           contentStyle={{
                             backgroundColor: "#1F2937",
                             borderColor: "#374151",
                             color: "#E5E7EB",
+                            fontSize: "12px"
                           }}
                         />
                         <Line
@@ -755,7 +760,7 @@ function TrendsTabContent({ charts }: { charts: ChartData[] }) {
                           dataKey="value"
                           stroke="#60A5FA"
                           strokeWidth={2}
-                          activeDot={{ r: 8, fill: "#3B82F6" }}
+                          activeDot={{ r: 6, fill: "#3B82F6" }}
                         />
                       </LineChart>
                     </ResponsiveContainer>
@@ -793,16 +798,16 @@ function CompetitorsTabContent({
       animate="visible"
     >
       <div className="relative overflow-x-auto rounded-md border border-accent">
-        <table className="w-full text-sm text-left">
+        <table className="w-full text-xs sm:text-sm text-left">
           <thead className="text-xs uppercase bg-zinc-900/50">
             <tr>
-              <th scope="col" className="px-6 py-3">
+              <th scope="col" className="px-2 sm:px-6 py-2 sm:py-3">
                 Competitor
               </th>
-              <th scope="col" className="px-6 py-3">
+              <th scope="col" className="px-2 sm:px-6 py-2 sm:py-3">
                 Ranking Difference
               </th>
-              <th scope="col" className="px-6 py-3">
+              <th scope="col" className="px-2 sm:px-6 py-2 sm:py-3">
                 Analysis
               </th>
             </tr>
@@ -815,10 +820,10 @@ function CompetitorsTabContent({
                 custom={idx}
                 className="border-b border-accent bg-zinc-800/30 hover:bg-zinc-800/70"
               >
-                <td className="px-6 py-4 font-medium text-white">
+                <td className="px-2 sm:px-6 py-3 sm:py-4 font-medium text-white">
                   {comparison.competitor}
                 </td>
-                <td className="px-6 py-4">
+                <td className="px-2 sm:px-6 py-3 sm:py-4">
                   <span
                     className={
                       comparison.ranking_diff > 0
@@ -835,10 +840,10 @@ function CompetitorsTabContent({
                       : "0 (equal)"}
                   </span>
                 </td>
-                <td className="px-6 py-4 max-w-md">
+                <td className="px-2 sm:px-6 py-3 sm:py-4 max-w-[200px] sm:max-w-md">
                   {comparison.analysis ? (
                     <div
-                      className="text-zinc-400"
+                      className="text-zinc-400 text-xs sm:text-sm line-clamp-3 sm:line-clamp-none"
                       dangerouslySetInnerHTML={{
                         __html: comparison.analysis.replace(/\n/g, "<br/>"),
                       }}

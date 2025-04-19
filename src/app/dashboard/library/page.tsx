@@ -65,7 +65,7 @@ export default function LibraryPage() {
       
       fetchSearches();
     }
-  }, [router]);
+  }, [router, user, isLoading]);
   
   // Group by query to get unique searches
   const uniqueSearches = searches.length ? 
@@ -106,7 +106,7 @@ export default function LibraryPage() {
   if (isLoading || loading) {
     return (
       <div className="h-full bg-gradient-to-b from-background to-zinc-900 text-white flex flex-col items-center justify-center">
-        <div className="px-5 py-6">
+        <div className="px-4 sm:px-5 py-6">
           <p className="text-muted-foreground">Loading...</p>
         </div>
       </div>
@@ -114,46 +114,46 @@ export default function LibraryPage() {
   }
   
   return (
-    <div className="h-full bg-gradient-to-b from-background to-zinc-900 text-white">
-      <div className="relative flex flex-col w-5xl mx-auto">
-        <div className="flex justify-between items-center px-5 py-4">
+    <div className="h-full min-h-screen bg-gradient-to-b from-background to-zinc-900 text-white">
+      <div className="relative flex flex-col w-full max-w-5xl mx-auto">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center px-4 sm:px-5 py-4 gap-4 sm:gap-0">
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-medium">Library</h1>
+            <h1 className="text-xl sm:text-2xl font-medium">Library</h1>
           </div>
           {/* Search Bar */}
-        <div className="px-5 py-2 mb-2 w-md">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-zinc-400" />
-            <Input
-              placeholder="Search your threads..."
-              className="bg-zinc-800/50 border-zinc-700 pl-10 rounded-full text-white"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-            {searchTerm && (
-              <Button 
-                variant="ghost" 
-                size="sm"
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 h-5 w-5 rounded-full p-0 text-zinc-400"
-                onClick={() => setSearchTerm('')}
-              >
-                ×
-              </Button>
-            )}
+          <div className="w-full sm:w-64 md:w-72 lg:w-96">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-zinc-400" />
+              <Input
+                placeholder="Search your threads..."
+                className="bg-zinc-800/50 border-zinc-700 pl-10 rounded-full text-white w-full"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+              {searchTerm && (
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 h-5 w-5 rounded-full p-0 text-zinc-400"
+                  onClick={() => setSearchTerm('')}
+                >
+                  ×
+                </Button>
+              )}
+            </div>
           </div>
         </div>
-        </div>
 
-        <div className="px-5 py-6 ">
+        <div className="px-4 sm:px-5 py-4 sm:py-6">
           <div className="flex items-center justify-between mb-4 border-b">
             <div className="flex items-center gap-2">
-                <ScrollText className="w-5 h-5 text-zinc-500" />
-                <h2 className="text-xl font-semibold">
+                <ScrollText className="w-4 sm:w-5 h-4 sm:h-5 text-zinc-500" />
+                <h2 className="text-lg sm:text-xl font-semibold truncate">
                 {searchTerm ? `Search Results (${filteredSearches.length})` : 'Threads'}
                 </h2>
             </div>
             <Button variant="ghost" size="icon" className="text-zinc-400 rounded-full hover:text-white" onClick={() => router.push('/dashboard/search')}>
-              <Plus className="h-5 w-5" />
+              <Plus className="h-4 sm:h-5 w-4 sm:w-5" />
             </Button>
           </div>
           
@@ -164,8 +164,8 @@ export default function LibraryPage() {
             animate="show"
           >
             {filteredSearches.length === 0 ? (
-              <div className="text-center py-10">
-                <p className="text-muted-foreground">
+              <div className="text-center py-8 sm:py-10">
+                <p className="text-muted-foreground text-sm sm:text-base">
                   {searchTerm ? `No results found for "${searchTerm}"` : 'No search history found'}
                 </p>
               </div>
@@ -182,26 +182,25 @@ export default function LibraryPage() {
                   >
                     <div className="border-b border-zinc-800 pb-4">
                       <div className="flex flex-col gap-2">
-                        <div className="font-medium">{search.query}</div>
-                        <div className="text-zinc-400 text-sm line-clamp-2">
+                        <div className="font-medium text-sm sm:text-base line-clamp-2">{search.query}</div>
+                        <div className="text-zinc-400 text-xs sm:text-sm line-clamp-2">
                           {search.reasoning}
                         </div>
-                        <div className="flex items-center justify-between mt-1">
-                          <div className="flex gap-2 items-center">
-                              <div className="flex items-center text-xs text-zinc-400 bg-gradient-to-b from-zinc-900/40 to-zinc-900 border border-accent px-3 py-2 rounded-full ">
-                                  {search.mode}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between mt-1 gap-2">
+                          <div className="flex flex-wrap gap-2 items-center">
+                              <div className="flex items-center text-xs text-zinc-400 bg-gradient-to-b from-zinc-900/40 to-zinc-900 border border-accent px-2 sm:px-3 py-1 sm:py-2 rounded-full truncate max-w-[160px] sm:max-w-none">
+                                  <span className="truncate">{search.mode}</span>
                               </div>
                               <div className="text-xs text-zinc-500">
-                              {format(new Date(search.analyzed_at), "MMM d, yyyy")}
+                                {format(new Date(search.analyzed_at), "MMM d, yyyy")}
                               </div>
-
                           </div>
-                          <div className="flex gap-2">
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                              <Plus className="h-4 w-4" />
+                          <div className="flex gap-2 self-end sm:self-auto">
+                            <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8">
+                              <Plus className="h-3 w-3 sm:h-4 sm:w-4" />
                             </Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                              <MoreHorizontal className="h-4 w-4" />
+                            <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8">
+                              <MoreHorizontal className="h-3 w-3 sm:h-4 sm:w-4" />
                             </Button>
                           </div>
                         </div>
