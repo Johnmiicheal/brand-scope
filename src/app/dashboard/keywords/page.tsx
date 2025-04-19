@@ -13,6 +13,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "@/components/ui/use-toast";
 
 type FormData = {
   keywords: string;
@@ -25,6 +27,10 @@ type FormData = {
 type KeywordResult = {
   keyword: string;
   prompts: string[];
+  search_volume?: number;
+  difficulty?: number;
+  opportunity_score?: number;
+  relevance?: number;
 };
 
 type ModelResults = {
@@ -65,6 +71,7 @@ export default function KeywordResearchPage() {
   const [activeTab, setActiveTab] = useState<string>("Llama 4 Scout");
   const [selectedPrompt, setSelectedPrompt] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const {user} = useAuth()
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -118,6 +125,7 @@ export default function KeywordResearchPage() {
           brandName: formData.brandName,
           domain: formData.domain,
           intent: formData.intent,
+          user: user
         }),
       });
 
@@ -288,9 +296,9 @@ export default function KeywordResearchPage() {
               className="w-full md:w-auto min-w-40"
             >
               {isLoading ? (
-                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating...</>
+                <><Loader2 className="h-4 w-4 animate-spin" /> Generating...</>
               ) : (
-                <><Bot className="mr-2 h-4 w-4" /> Generate Search Prompts</>
+                <><Bot className="h-4 w-4" /> Generate Search Prompts</>
               )}
             </Button>
           </motion.div>
@@ -332,7 +340,7 @@ export default function KeywordResearchPage() {
             </div>
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="mb-6 w-full justify-start rounded-md bg-muted/30 p-1">
+              <TabsList className="mb-6 justify-start rounded-md bg-transparent p-1">
                 {results && Object.keys(results).map((modelName) => (
                   <TabsTrigger 
                     key={modelName} 
@@ -354,14 +362,15 @@ export default function KeywordResearchPage() {
                   >
                     <Table>
                       <TableHeader>
-                        <TableRow>
+                        <TableRow className="hover:bg-transparent">
                           <TableHead className="w-[200px]">Keyword</TableHead>
                           <TableHead>Generated Search Prompts</TableHead>
+                          <TableHead className="text-right">Metrics</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {results[modelName]?.map((result, idx) => (
-                          <TableRow key={`${result.keyword}-${idx}`}>
+                          <TableRow key={`${result.keyword}-${idx}`} className="hover:bg-transparent">
                             <TableCell className="font-medium align-top py-4">
                               {result.keyword}
                             </TableCell>
@@ -386,6 +395,26 @@ export default function KeywordResearchPage() {
                                   </motion.div>
                                 ))}
                               </motion.div>
+                            </TableCell>
+                            <TableCell className="text-right align-top py-4">
+                              <div className="space-y-3 text-sm">
+                                <div>
+                                  <div className="font-medium text-muted-foreground">Search Volume</div>
+                                  <div className="font-mono">{result.search_volume || 'N/A'}</div>
+                                </div>
+                                <div>
+                                  <div className="font-medium text-muted-foreground">Difficulty</div>
+                                  <div className="font-mono">{result.difficulty?.toFixed(1) || 'N/A'}</div>
+                                </div>
+                                <div>
+                                  <div className="font-medium text-muted-foreground">Opportunity</div>
+                                  <div className="font-mono">{result.opportunity_score?.toFixed(1) || 'N/A'}</div>
+                                </div>
+                                <div>
+                                  <div className="font-medium text-muted-foreground">Relevance</div>
+                                  <div className="font-mono">{result.relevance?.toFixed(1) || 'N/A'}</div>
+                                </div>
+                              </div>
                             </TableCell>
                           </TableRow>
                         ))}
@@ -412,13 +441,17 @@ export default function KeywordResearchPage() {
             <div className="rounded-md bg-muted/30 p-4 font-mono text-sm">
               {selectedPrompt}
             </div>
-            <div className="flex gap-2 justify-between">
+            <div className="flex gap-2 ">
               <Button
                 variant="outline"
                 onClick={() => {
                   if (selectedPrompt) {
                     navigator.clipboard.writeText(selectedPrompt);
-                    // Could add a toast notification here
+                    toast({
+                      title: "Prompt Copied",
+                      description: "The prompt has been copied to your clipboard.",
+                      duration: 5000,
+                    });
                   }
                 }}
               >
