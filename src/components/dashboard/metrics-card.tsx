@@ -1,19 +1,19 @@
 /* eslint-disable @typescript-eslint/no-non-null-asserted-optional-chain */
-"use client"
+"use client";
 
-import { motion } from "framer-motion"
-import { ArrowUpRight, ArrowDownRight, TrendingUp } from "lucide-react"
-import { cn } from "@/lib/utils"
-import { BrandMetrics, Competitor } from "@/contexts/brand-data-context"
-import { CompetitorChart } from "./competitor-chart"
+import { motion } from "framer-motion";
+import { ArrowUpRight, ArrowDownRight, TrendingUp } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { BrandMetrics, Competitor } from "@/contexts/brand-data-context";
+import { CompetitorChart } from "./competitor-chart";
 
 interface MetricCardProps {
-  title: string
-  value: string | number
-  trend?: number
-  trendLabel?: string
-  className?: string
-  trendTimeframe?: string
+  title: string;
+  value: string | number;
+  trend?: number;
+  trendLabel?: string;
+  className?: string;
+  trendTimeframe?: string;
 }
 
 function MetricCard({
@@ -24,7 +24,7 @@ function MetricCard({
   trendTimeframe = "vs last period",
   className,
 }: MetricCardProps) {
-  const showTrend = trend !== undefined
+  const showTrend = trend !== undefined;
 
   return (
     <motion.div
@@ -41,12 +41,16 @@ function MetricCard({
           {trend > 0 ? (
             <div className="flex items-center text-status-positive">
               <ArrowUpRight className="h-4 w-4" />
-              <span className="text-xs font-medium">+{Math.abs(trend * 100).toFixed(1)}%</span>
+              <span className="text-xs font-medium">
+                +{Math.abs(trend * 100).toFixed(1)}%
+              </span>
             </div>
           ) : trend < 0 ? (
             <div className="flex items-center text-status-negative">
               <ArrowDownRight className="h-4 w-4" />
-              <span className="text-xs font-medium">-{Math.abs(trend * 100).toFixed(1)}%</span>
+              <span className="text-xs font-medium">
+                -{Math.abs(trend * 100).toFixed(1)}%
+              </span>
             </div>
           ) : (
             <div className="flex items-center text-muted-foreground">
@@ -57,28 +61,30 @@ function MetricCard({
           {trendLabel ? (
             <span className="text-xs text-muted-foreground">{trendLabel}</span>
           ) : (
-            <span className="text-xs text-muted-foreground">{trendTimeframe}</span>
+            <span className="text-xs text-muted-foreground">
+              {trendTimeframe}
+            </span>
           )}
         </div>
       )}
     </motion.div>
-  )
+  );
 }
 
 interface MetricsHeaderProps {
-  metrics: BrandMetrics | null
-  competitors: Competitor[]
+  metrics: BrandMetrics | null;
+  competitors: Competitor[];
 }
 
 export function MetricsHeader({ metrics, competitors }: MetricsHeaderProps) {
-  const visibilityScore = metrics?.visibility_score || 0
-  const positive = metrics?.positive_sentiment || 0
-  const neutral = metrics?.neutral_sentiment || 0
-  const negative = metrics?.negative_sentiment || 0
+  const visibilityScore = metrics?.visibility_score || 0;
+  const positive = metrics?.positive_sentiment || 0;
+  const neutral = metrics?.neutral_sentiment || 0;
+  const negative = metrics?.negative_sentiment || 0;
 
   return (
     <div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 border rounded-t-lg overflow-hidden">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 border rounded-t-lg overflow-hidden">
         <MetricCard
           title="Visibility Score"
           value={`${Math.round(visibilityScore * 100)}%`}
@@ -86,14 +92,12 @@ export function MetricsHeader({ metrics, competitors }: MetricsHeaderProps) {
           className="border-b-4 border-b-[hsl(var(--brand-primary))]"
         />
 
-        <MetricCard
-          title="Positive Sentiment"
-          value={negative}
-          trend={0.04}
-        />
+        <MetricCard title="Detection Rate" value={negative} trend={0.04} />
+
+        <MetricCard title="Mentions" value={negative} trend={0.04} />
 
         <MetricCard
-          title="Neutral Sentiment"
+          title="Citations"
           value={neutral}
           trend={0.25}
           trendLabel="since last week"
@@ -106,8 +110,11 @@ export function MetricsHeader({ metrics, competitors }: MetricsHeaderProps) {
           className="border-r-0"
         />
       </div>
-      <CompetitorChart competitors={competitors.slice(0, 10)} visibilityScore={visibilityScore} customer_perception={metrics?.consumer_perception!} />
+      <CompetitorChart
+        competitors={competitors.slice(0, 10)}
+        visibilityScore={visibilityScore}
+        customer_perception={metrics?.consumer_perception!}
+      />
     </div>
-  )
+  );
 }
-

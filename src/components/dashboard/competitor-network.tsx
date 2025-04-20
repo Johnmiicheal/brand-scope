@@ -49,7 +49,7 @@ export function CompetitorNetwork({ competitors, detailed = false }: CompetitorN
 
     // Create nodes data
     const nodes = [
-      { id: "Acme Corp", group: 0, radius: 40 },
+      { id: "My Brand", group: 0, radius: 40 },
       ...competitors.map((comp, i) => ({
         id: comp.name,
         group: 1,
@@ -60,7 +60,7 @@ export function CompetitorNetwork({ competitors, detailed = false }: CompetitorN
 
     // Create links data
     const links = competitors.map((comp) => ({
-      source: "Acme Corp",
+      source: "My Brand",
       target: comp.name,
       value: Math.abs(comp.ranking_diff) + 1,
     }))
@@ -128,7 +128,7 @@ export function CompetitorNetwork({ competitors, detailed = false }: CompetitorN
         if (d.group !== 0) {
           // Highlight connected link
           link
-            .filter((l: any) => l.source.id === "Acme Corp" && l.target.id === d.id)
+            .filter((l: any) => l.source.id === "My Brand" && l.target.id === d.id)
             .transition()
             .duration(200)
             .attr("stroke", "hsl(var(--brand-primary))")

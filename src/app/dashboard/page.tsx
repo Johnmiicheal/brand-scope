@@ -22,7 +22,7 @@ import { BrandInsights } from "@/components/dashboard/insights-card";
 import Image from "next/image";
 import Link from "next/link";
 import { v4 as uuidv4 } from "uuid";
-import { CloudUpload, RefreshCcw, SquareArrowOutUpRight } from "lucide-react";
+import { CloudUpload, RefreshCcw, SquareArrowOutUpRight, Star } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -41,6 +41,21 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
 const INDUSTRIES = [
   "Technology",
@@ -57,6 +72,94 @@ const INDUSTRIES = [
   "Energy",
   "Telecommunications",
 ];
+
+// Define props for the new table component
+interface IndustryRankingsTableProps {
+  competitors: Competitor[];
+  brand: Brand;
+}
+
+// Updated component for the Industry Rankings Table
+function IndustryRankingsTable({ competitors, brand }: IndustryRankingsTableProps) {
+
+  // Create an entry for the user's brand
+  const userBrandEntry = {
+    competitor_id: brand.id,
+    name: brand.name,
+    ranking_diff: 0, // User's brand is the baseline
+    // Add other properties if needed, matching Competitor type structure
+  };
+
+  // Combine user's brand with competitors
+  const allEntities = [...competitors, userBrandEntry];
+
+  // Sort all entities by ranking_diff (higher difference is better, so descending order)
+  const sortedEntities = allEntities.sort(
+    (a, b) => (b.ranking_diff || 0) - (a.ranking_diff || 0)
+  );
+
+  return (
+    <Card className="bg-background border-accent text-white">
+      <CardHeader>
+        <CardTitle>Industry Ranking</CardTitle>
+        <CardDescription>Your brand and competitors ranked by performance difference</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5 }}
+        >
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[50px]">Rank</TableHead>
+                <TableHead>Entity</TableHead>
+                <TableHead className="text-right">Ranking Difference</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {sortedEntities.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={3} className="text-center text-muted-foreground">
+                    No ranking data available yet.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                sortedEntities.map((entity, index) => (
+                  <TableRow key={entity.competitor_id || entity.id || index}>
+                    <TableCell className="font-medium">{index + 1}</TableCell>
+                    <TableCell className="flex items-center gap-2">
+                      {entity.name}
+                      {entity.competitor_id === brand.id && ( // Check if it's the user's brand
+                        <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <span
+                        className={
+                          (entity.ranking_diff || 0) > 0
+                            ? "text-green-400"
+                            : (entity.ranking_diff || 0) < 0
+                            ? "text-red-400"
+                            : "text-zinc-400" // Style for 0 difference (user's brand)
+                        }
+                      >
+                        {(entity.ranking_diff || 0) > 0
+                          ? `+${entity.ranking_diff}`
+                          : entity.ranking_diff ?? "0"}
+                      </span>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </motion.div>
+      </CardContent>
+    </Card>
+  );
+}
 
 function DashboardContent() {
   const router = useRouter();
@@ -606,6 +709,11 @@ function DashboardContent() {
                   <div className="space-y-6 lg:col-span-2">
                     <KeywordCloud keywords={keywords} />
                   </div>
+                  
+                  {/* Industry Ranking Table - Full width */}
+                  <div className="lg:col-span-2">
+                     <IndustryRankingsTable competitors={competitors} brand={brand} />
+                  </div>
 
                   {/* Two columns for other components */}
                   <div className="space-y-6">
@@ -630,7 +738,6 @@ export default function DashboardPage() {
   return (
     <BrandDataProvider>
       <DashboardContent />
-      {/* Brand creation dialog */}
     </BrandDataProvider>
   );
 }
