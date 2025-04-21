@@ -22,8 +22,8 @@ export interface BrandMetrics {
   negative_sentiment: number;
   neutral_sentiment: number;
   detection_rate: number;
-  mentions: number;
-  citations: string[];
+  brand_mentions: number;
+  brand_citations: string[];
   consumer_perception: string;
   strengths: string[];
   weaknesses: string[];

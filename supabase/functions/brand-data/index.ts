@@ -63,7 +63,7 @@ serve(async (req) => {
         .from('competitors')
         .select('*')
         .eq('brand_id', brandId)
-        .order('created_at', { ascending: false }),
+        .order('created_at', { ascending: false }).limit(9),
       supabaseClient
         .from('keywords')
         .select('*')
@@ -94,7 +94,7 @@ serve(async (req) => {
   } catch (error) {
     return new Response(
       JSON.stringify({ 
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: error.message,
         details: error instanceof Error ? error.stack : undefined
       }),
       {

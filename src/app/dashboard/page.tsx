@@ -22,7 +22,12 @@ import { BrandInsights } from "@/components/dashboard/insights-card";
 import Image from "next/image";
 import Link from "next/link";
 import { v4 as uuidv4 } from "uuid";
-import { CloudUpload, RefreshCcw, SquareArrowOutUpRight, Star } from "lucide-react";
+import {
+  CloudUpload,
+  RefreshCcw,
+  SquareArrowOutUpRight,
+  Star,
+} from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -56,6 +61,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { useAuth } from "@/hooks/useAuth";
 
 const INDUSTRIES = [
   "Technology",
@@ -80,8 +86,10 @@ interface IndustryRankingsTableProps {
 }
 
 // Updated component for the Industry Rankings Table
-function IndustryRankingsTable({ competitors, brand }: IndustryRankingsTableProps) {
-
+function IndustryRankingsTable({
+  competitors,
+  brand,
+}: IndustryRankingsTableProps) {
   // Create an entry for the user's brand
   const userBrandEntry = {
     competitor_id: brand.id,
@@ -102,7 +110,9 @@ function IndustryRankingsTable({ competitors, brand }: IndustryRankingsTableProp
     <Card className="bg-background border-accent text-white">
       <CardHeader>
         <CardTitle>Industry Ranking</CardTitle>
-        <CardDescription>Your brand and competitors ranked by performance difference</CardDescription>
+        <CardDescription>
+          Your brand and competitors ranked by performance difference
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <motion.div
@@ -121,7 +131,10 @@ function IndustryRankingsTable({ competitors, brand }: IndustryRankingsTableProp
             <TableBody>
               {sortedEntities.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={3} className="text-center text-muted-foreground">
+                  <TableCell
+                    colSpan={3}
+                    className="text-center text-muted-foreground"
+                  >
                     No ranking data available yet.
                   </TableCell>
                 </TableRow>
@@ -165,7 +178,7 @@ function DashboardContent() {
   const router = useRouter();
   const { brand, metrics, competitors, keywords, isLoading, error, refetch } =
     useBrandData();
-  const [sessionKey, setSessionKey] = useState("")
+  const [sessionKey, setSessionKey] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   useEffect(() => {
@@ -176,7 +189,7 @@ function DashboardContent() {
       if (!session) {
         router.push("/login");
       }
-      setSessionKey(session?.access_token)
+      setSessionKey(session?.access_token);
     };
     checkAuth();
   }, [router]);
@@ -294,7 +307,6 @@ function DashboardContent() {
         return;
       }
 
-
       // Clear form
       setBrandName("");
       setBrandWebsite("");
@@ -320,17 +332,19 @@ function DashboardContent() {
     try {
       setIsAnalyzing(true);
       // Call the analysis API
-      const response = await fetch(process.env.NEXT_PUBLIC_ANALYZE_BRAND as string, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${sessionKey}`,
-
-        },
-        body: JSON.stringify({
-          brandId,
-        }),
-      });
+      const response = await fetch(
+        process.env.NEXT_PUBLIC_ANALYZE_BRAND as string,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${sessionKey}`,
+          },
+          body: JSON.stringify({
+            brandId,
+          }),
+        }
+      );
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -340,8 +354,8 @@ function DashboardContent() {
       }
 
       const data = await response.json();
-      if(data){
-        window.location.reload()
+      if (data) {
+        window.location.reload();
       }
       setIsAnalyzing(false);
     } catch (error) {
@@ -355,21 +369,31 @@ function DashboardContent() {
 
     setIsAnalyzing(true);
     try {
-      const response = await fetch(process.env.NEXT_PUBLIC_ANALYZE_BRAND as string, {
-        method: "POST",
+      const response = await fetch(
+        process.env.NEXT_PUBLIC_ANALYZE_BRAND as string,
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type": "application/json",
             Authorization: `Bearer ${sessionKey}`,
-            headers: { "Content-Type": "application/json",  },
-        body: JSON.stringify({ brandId: brand.id }),
-      });
+          },
+          body: JSON.stringify({ brandId: brand.id }),
+        }
+      );
 
       if (!response.ok) {
-        throw new Error("Analysis failed");
+        const errorData = await response.json();
+        console.error("Brand analysis failed:", errorData);
+        setIsAnalyzing(false);
+        return;
       }
 
       // Refetch brand data to get updated metrics
       await refetch();
     } catch (error) {
       console.error("Error analyzing brand:", error);
+
     } finally {
       setIsAnalyzing(false);
     }
@@ -430,23 +454,19 @@ function DashboardContent() {
     }
   };
 
-
   if (!brand) {
-    return (
-      isAnalyzing ? (
-        <div className="flex items-center justify-center min-h-[400px]">
+    return isAnalyzing ? (
+      <div className="flex items-center justify-center min-h-[400px]">
         <div className="w-full max-w-3xl">
           <h1 className="text-2xl font-bold mb-6 text-center">
             Creating Brand Analysis
           </h1>
-          <p className="text-muted-foreground mb-8 text-center">
-            Analyzing...
-          </p>
+          <p className="text-muted-foreground mb-8 text-center">Analyzing...</p>
           <LoadingState />
         </div>
       </div>
-      ): isLoading ? (
-        <div className="flex items-center justify-center min-h-screen">
+    ) : isLoading ? (
+      <div className="flex items-center justify-center min-h-screen">
         <div className="w-full max-w-3xl">
           <div className="flex flex-col items-center justify-center">
             <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
@@ -459,94 +479,94 @@ function DashboardContent() {
           </div>
         </div>
       </div>
-      ) : (
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center gap-2">
-            <h2 className="text-2xl font-bold text-red-500/60 mb-4">
-              Empty Brand :/
-            </h2>
-            <p className="text-white/50 mb-8">
-              Create your Brand to unlock your dashboard, or try out the search
-              feature
-            </p>
-            <Button onClick={() => setShowBrandModal(true)}>Create Brand</Button>
-          </div>
-          <Dialog open={showBrandModal} onOpenChange={setShowBrandModal}>
-            <DialogContent className="sm:max-w-[500px] bg-gradient-to-b from-background to-zinc-900 overflow-hidden border-accent">
-              <DialogHeader>
-                <DialogTitle className="text-2xl text-white">
-                  Create Brand
-                </DialogTitle>
-                <DialogDescription className="text-white/50">
-                  Add your brand details to start tracking analytics
-                </DialogDescription>
-              </DialogHeader>
-  
-              <div className="p-6">
-                <div className="grid gap-6">
-                  <div className="grid gap-2">
-                    <Label htmlFor="name">Name</Label>
-                    <Input
-                      id="name"
-                      value={brandName}
-                      placeholder="Acme Corporation"
-                      onChange={(e) => setBrandName(e.target.value)}
-                      className="bg-zinc-800"
-                      required
+    ) : (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center gap-2">
+          <h2 className="text-2xl font-bold text-red-500/60 mb-4">
+            Empty Brand :/
+          </h2>
+          <p className="text-white/50 mb-8">
+            Create your Brand to unlock your dashboard, or try out the search
+            feature
+          </p>
+          <Button onClick={() => setShowBrandModal(true)}>Create Brand</Button>
+        </div>
+        <Dialog open={showBrandModal} onOpenChange={setShowBrandModal}>
+          <DialogContent className="sm:max-w-[500px] bg-gradient-to-b from-background to-zinc-900 overflow-hidden border-accent">
+            <DialogHeader>
+              <DialogTitle className="text-2xl text-white">
+                Create Brand
+              </DialogTitle>
+              <DialogDescription className="text-white/50">
+                Add your brand details to start tracking analytics
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="p-6">
+              <div className="grid gap-6">
+                <div className="grid gap-2">
+                  <Label htmlFor="name">Name</Label>
+                  <Input
+                    id="name"
+                    value={brandName}
+                    placeholder="Acme Corporation"
+                    onChange={(e) => setBrandName(e.target.value)}
+                    className="bg-zinc-800"
+                    required
+                  />
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="website">Website</Label>
+                  <Input
+                    id="website"
+                    value={brandWebsite}
+                    onChange={(e) => setBrandWebsite(e.target.value)}
+                    className="bg-zinc-800"
+                    placeholder="https://example.com"
+                    required
+                  />
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="industry">Industry</Label>
+                  <Select
+                    value={brandIndustry}
+                    onValueChange={setBrandIndustry}
+                  >
+                    <SelectTrigger className="bg-zinc-800 w-full">
+                      <SelectValue placeholder="Select industry" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {INDUSTRIES.map((industry) => (
+                        <SelectItem key={industry} value={industry}>
+                          {industry}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="logo">Logo</Label>
+                  <div className="flex items-center gap-4">
+                    <input
+                      ref={fileInputRef}
+                      id="logo"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileChange}
+                      className="hidden"
                     />
-                  </div>
-  
-                  <div className="grid gap-2">
-                    <Label htmlFor="website">Website</Label>
-                    <Input
-                      id="website"
-                      value={brandWebsite}
-                      onChange={(e) => setBrandWebsite(e.target.value)}
-                      className="bg-zinc-800"
-                      placeholder="https://example.com"
-                      required
-                    />
-                  </div>
-  
-                  <div className="grid gap-2">
-                    <Label htmlFor="industry">Industry</Label>
-                    <Select
-                      value={brandIndustry}
-                      onValueChange={setBrandIndustry}
-                    >
-                      <SelectTrigger className="bg-zinc-800 w-full">
-                        <SelectValue placeholder="Select industry" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {INDUSTRIES.map((industry) => (
-                          <SelectItem key={industry} value={industry}>
-                            {industry}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-  
-                  <div className="grid gap-2">
-                    <Label htmlFor="logo">Logo</Label>
-                    <div className="flex items-center gap-4">
-                      <input
-                        ref={fileInputRef}
-                        id="logo"
-                        type="file"
-                        accept="image/*"
-                        onChange={handleFileChange}
-                        className="hidden"
-                      />
-  
-                      {!brandLogoPreview ? (
-                        <div
-                          onClick={openFileDialog}
-                          onDragEnter={handleDragEnter}
-                          onDragOver={handleDragOver}
-                          onDragLeave={handleDragLeave}
-                          onDrop={handleFileDrop}
-                          className={`
+
+                    {!brandLogoPreview ? (
+                      <div
+                        onClick={openFileDialog}
+                        onDragEnter={handleDragEnter}
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        onDrop={handleFileDrop}
+                        className={`
                           h-32 w-full rounded-md border-2 border-dashed 
                           flex flex-col items-center justify-center p-4 
                           cursor-pointer transition-all duration-200
@@ -556,61 +576,59 @@ function DashboardContent() {
                               : "border-zinc-700 bg-zinc-800 hover:border-zinc-500"
                           }
                         `}
+                      >
+                        <div className="flex flex-col items-center text-center">
+                          <CloudUpload className="w-5 h-5 text-zinc-400 mb-2" />
+                          <div className="font-medium text-sm mb-1">
+                            Click to upload
+                          </div>
+                          <div className="text-xs text-zinc-400">
+                            or drag and drop your logo here
+                          </div>
+                          <div className="text-[10px] text-zinc-500 mt-3">
+                            PNG, JPG or SVG (max 5MB)
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="w-full flex flex-col items-center">
+                        <div className="w-28 h-28 p-3 rounded-md overflow-hidden bg-zinc-700 flex items-center justify-center mb-3">
+                          <Image
+                            src={brandLogoPreview}
+                            alt="Preview"
+                            width={50}
+                            height={50}
+                            className="w-full h-full object-contain"
+                          />
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={openFileDialog}
+                          className="mt-2"
                         >
-                          <div className="flex flex-col items-center text-center">
-                            <CloudUpload className="w-5 h-5 text-zinc-400 mb-2" />
-                            <div className="font-medium text-sm mb-1">
-                              Click to upload
-                            </div>
-                            <div className="text-xs text-zinc-400">
-                              or drag and drop your logo here
-                            </div>
-                            <div className="text-[10px] text-zinc-500 mt-3">
-                              PNG, JPG or SVG (max 5MB)
-                            </div>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="w-full flex flex-col items-center">
-                          <div className="w-28 h-28 p-3 rounded-md overflow-hidden bg-zinc-700 flex items-center justify-center mb-3">
-                            <Image
-                              src={brandLogoPreview}
-                              alt="Preview"
-                              width={50}
-                              height={50}
-                              className="w-full h-full object-contain"
-                            />
-                          </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={openFileDialog}
-                            className="mt-2"
-                          >
-                            <CloudUpload className="w-4 h-4 mr-2" />
-                            Change Logo
-                          </Button>
-                        </div>
-                      )}
-                    </div>
+                          <CloudUpload className="w-4 h-4 mr-2" />
+                          Change Logo
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
-  
-              <DialogFooter className="px-6 py-4">
-                <Button
-                  onClick={handleCreateBrand}
-                  disabled={submitting}
-                  className="w-full"
-                >
-                  {submitting ? "Creating..." : "Create Brand"}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        </div>
+            </div>
 
-      )
+            <DialogFooter className="px-6 py-4">
+              <Button
+                onClick={handleCreateBrand}
+                disabled={submitting}
+                className="w-full"
+              >
+                {submitting ? "Creating..." : "Create Brand"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
     );
   }
 
@@ -642,8 +660,6 @@ function DashboardContent() {
       </div>
     );
   }
-
-
 
   return (
     <div className="container mx-auto px-4 py-4">
@@ -709,10 +725,13 @@ function DashboardContent() {
                   <div className="space-y-6 lg:col-span-2">
                     <KeywordCloud keywords={keywords} />
                   </div>
-                  
+
                   {/* Industry Ranking Table - Full width */}
                   <div className="lg:col-span-2">
-                     <IndustryRankingsTable competitors={competitors} brand={brand} />
+                    <IndustryRankingsTable
+                      competitors={competitors}
+                      brand={brand}
+                    />
                   </div>
 
                   {/* Two columns for other components */}

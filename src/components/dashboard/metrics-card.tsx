@@ -79,8 +79,9 @@ interface MetricsHeaderProps {
 export function MetricsHeader({ metrics, competitors }: MetricsHeaderProps) {
   const visibilityScore = metrics?.visibility_score || 0;
   const positive = metrics?.positive_sentiment || 0;
-  const neutral = metrics?.neutral_sentiment || 0;
   const negative = metrics?.negative_sentiment || 0;
+  const mentions = metrics?.brand_mentions || 0;
+  const citations = metrics?.brand_citations
 
   return (
     <div>
@@ -94,11 +95,11 @@ export function MetricsHeader({ metrics, competitors }: MetricsHeaderProps) {
 
         <MetricCard title="Detection Rate" value={negative} trend={0.04} />
 
-        <MetricCard title="Mentions" value={negative} trend={0.04} />
+        <MetricCard title="Mentions" value={mentions} trend={0.04} />
 
         <MetricCard
           title="Citations"
-          value={neutral}
+          value={citations?.length!}
           trend={0.25}
           trendLabel="since last week"
         />
