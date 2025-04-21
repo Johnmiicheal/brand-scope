@@ -236,7 +236,7 @@ export function AIChatInterface() {
     {
       key: "Explorer",
       caption:
-        "In-depth search and tracking with leading AI Search Engines for enhanced insights",
+        "Enhanced brand analysis and insights with actionable strategies for visibility enhancement",
     },
   ];
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
