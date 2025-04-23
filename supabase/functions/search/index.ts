@@ -8,6 +8,7 @@ import { v4 as uuidv4 } from 'https://esm.sh/uuid@11.0.0'
 import { createGroq } from 'https://esm.sh/@ai-sdk/groq@latest'
 import { generateObject, generateText, extractReasoningMiddleware, experimental_wrapLanguageModel as wrapLanguageModel  } from 'https://esm.sh/ai@latest'
 import Exa from 'https://esm.sh/exa-js@latest'
+import { createOpenRouter } from 'https://esm.sh/@openrouter/ai-sdk-provider@latest';
 
 
 
@@ -147,6 +148,9 @@ const groq = createGroq({
   baseUrl: 'https://api.groq.com/openai/v1'
 })
 
+const openrouter = createOpenRouter({
+  apiKey: Deno.env.get('OPEN_ROUTER_API_KEY'),
+});
 
 
 // Define analysis modes
@@ -344,10 +348,9 @@ export async function explorerAnalysis(
   brand_id: string
 ): Promise<SearchResults> {
   const models = [
-    { model: groq('meta-llama/llama-4-maverick-17b-128e-instruct'), name: 'Llama 4 Maverick'},
-    { model: groq('llama3-70b-8192'), name: 'Llama 3'},
-    { model: groq('mistral-saba-24b'), name: 'Mistral Saba' },
-    { model: groq('gemma2-9b-it'), name: 'Gemma 2 Instruct' },
+    { model: openrouter('openai/gpt-4o'), name: 'GPT 4o'},
+    { model: openrouter('anthropic/claude-3.5-sonnet'), name: 'Claude 3.5 Sonnet'},
+    { model: openrouter('google/gemini-2.0-flash-001'), name: 'Gemini 2.0 Flash' },
     { model: groq('deepseek-r1-distill-llama-70b'), name: 'DeepSeek R1' }
   ]
   
@@ -408,8 +411,36 @@ export async function explorerAnalysis(
     }).then(response => ({ response, name }))
   )
 
-  // Wait for all model responses
-  const modelResults = await Promise.all(modelPromises)
+  // Add Perplexity Sonar with generateText since it doesn't support tool calling
+  const sonarPromise = generateText({
+    model: openrouter('perplexity/sonar'),
+    prompt: formattedPrompt + "\n\nPlease ensure your response is a valid JSON object matching this schema:\n" + 
+      JSON.stringify(responseSchema.shape, null, 2),
+    temperature: 0.1,
+  }).then(response => {
+    try {
+      // generateText returns an object with a text property
+      const textResponse = response.text;
+      console.log("Perplexity Sonar response:", textResponse);
+      
+      // Try to parse the text response into JSON
+      const parsedResponse = JSON.parse(textResponse);
+      return { 
+        response: { object: parsedResponse }, 
+        name: 'Perplexity Sonar' 
+      };
+    } catch (error) {
+      console.error("Error parsing Perplexity Sonar response:", error);
+      return null; // We'll filter this out later
+    }
+  });
+
+  // Wait for all model responses including Perplexity Sonar
+  const allPromises = [...modelPromises, sonarPromise];
+  const allResults = await Promise.all(allPromises);
+  
+  // Filter out any failed responses and combine results
+  const modelResults = allResults.filter(result => result !== null);
   
   // Process all model results and build a set of unique brands
   const uniqueBrands = new Set()

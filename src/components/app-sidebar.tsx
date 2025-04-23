@@ -19,7 +19,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { TbAt, TbBookmarks, TbBuildings, TbGridScan, TbLayoutGridAdd, TbListSearch, TbSquareLetterA, TbTrendingUp } from "react-icons/tb";
+import { TbAt, TbBookmarks, TbBuildings, TbLayoutGridAdd, TbListSearch, TbSquareLetterA, TbTrendingUp } from "react-icons/tb";
 
 
 const data = {
@@ -67,17 +67,17 @@ const data = {
     //   group: "metrics"
     // },
     {
-      title: "Citations",
-      url: "/dashboard/citations",
-      icon: TbGridScan,
-      group: "metrics"
-    },
-    {
-      title: "Social Analysis",
-      url: "/dashboard/social",
+      title: "Brand Mentions",
+      url: "/dashboard/brand-mentions",
       icon: TbAt,
       group: "metrics"
     },
+    // {
+    //   title: "Social Analysis",
+    //   url: "/dashboard/social",
+    //   icon: TbGrid,
+    //   group: "metrics"
+    // },
     {
       title: "Improve",
       url: "/dashboard/improvement",

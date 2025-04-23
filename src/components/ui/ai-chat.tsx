@@ -341,7 +341,7 @@ const formatTime = (totalSeconds: number): string => {
                 adjustHeight();
               }}
               onKeyDown={handleKeyDown}
-              placeholder="Ask me anything..."
+              placeholder="Enter search prompt to analyze..."
               className={cn(
                 "w-full px-4 py-3",
                 "resize-none",
@@ -535,7 +535,7 @@ const formatTime = (totalSeconds: number): string => {
                 <div>
                   <h4 className="font-medium text-sm">Explorer Mode</h4>
                   <p className="text-sm text-neutral-400 mt-1">
-                    Our most comprehensive analysis using Llama 4 Maverick, Llama 3, Mistral, Google Gemma 2, and DeepSeek R1.
+                    Our most comprehensive analysis using GPT 4o, Perplexity Sonar, Gemini 2.0 Flash, Claude 3.5, and DeepSeek R1.
                     Provides tailored recommendations specific to your brand. <span className="text-yellow-400">Note: Requires you to have a brand selected.</span>
                   </p>
                 </div>
