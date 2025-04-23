@@ -246,7 +246,7 @@ export default function AnalysisPage() {
   .join(", ");
 
   return (
-    <div className="mx-auto p-2 sm:p-4 bg-gradient-to-b from-background to-zinc-900 w-full h-full">
+    <div className="mx-auto p-2 sm:p-4 w-full h-full">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

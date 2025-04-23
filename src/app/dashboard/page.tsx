@@ -180,6 +180,7 @@ function DashboardContent() {
     useBrandData();
   const [sessionKey, setSessionKey] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [monitoringFrequency, setMonitoringFrequency] = useState<string>("none");
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -366,6 +367,8 @@ function DashboardContent() {
 
   const handleAnalyze = async () => {
     if (!brand) return;
+    
+    console.log("Selected Monitoring Frequency:", monitoringFrequency);
 
     setIsAnalyzing(true);
     try {
@@ -373,7 +376,6 @@ function DashboardContent() {
         process.env.NEXT_PUBLIC_ANALYZE_BRAND as string,
         {
           method: "POST",
-
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${sessionKey}`,
@@ -393,7 +395,6 @@ function DashboardContent() {
       await refetch();
     } catch (error) {
       console.error("Error analyzing brand:", error);
-
     } finally {
       setIsAnalyzing(false);
     }
@@ -683,15 +684,29 @@ function DashboardContent() {
             {brand.website} <SquareArrowOutUpRight className="w-3 h-3 mt-1" />
           </Link>
         </div>
-        <button
-          onClick={handleAnalyze}
-          disabled={isAnalyzing}
-          className="cursor-pointer border rounded-full text-white/50 p-2 hover:border-gray-600 hover:text-white disabled:opacity-50 transition ease"
-        >
-          <RefreshCcw
-            className={`w-4 h-4 ${isAnalyzing ? "animate-spin" : ""}`}
-          />
-        </button>
+        <div className="flex items-center gap-2">
+          <Select value={monitoringFrequency} onValueChange={setMonitoringFrequency} >
+            <SelectTrigger className="w-[150px] text-xs h-9" disabled={isAnalyzing}>
+              <SelectValue placeholder="Monitoring" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">No Monitoring</SelectItem>
+              <SelectItem value="daily">Daily</SelectItem>
+              <SelectItem value="weekly">Weekly</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button
+            onClick={handleAnalyze} 
+            disabled={isAnalyzing}
+            variant="outline" 
+            size="icon"
+            className="h-9 w-9"
+          >
+            <RefreshCcw
+              className={`w-4 h-4 ${isAnalyzing ? "animate-spin" : ""}`}
+            />
+          </Button>
+        </div>
       </div>
 
       {isAnalyzing ? (
@@ -714,7 +729,7 @@ function DashboardContent() {
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2 }}
           >
-            <div className="min-h-screen flex-1 bg-background">
+            <div className="min-h-screen flex-1">
               <div className="space-y-6">
                 {/* Key metrics */}
                 <MetricsHeader metrics={metrics} competitors={competitors} />

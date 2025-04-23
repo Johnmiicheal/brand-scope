@@ -15,7 +15,7 @@ const fadeIn = {
 export default function AISearchPage() {
 
   return (
-    <div className="h-full bg-gradient-to-b from-background to-zinc-900 text-white">
+    <div className="h-full text-white">
       <div className="relative">
         <div className="flex justify-between items-center px-5">
         <motion.div 

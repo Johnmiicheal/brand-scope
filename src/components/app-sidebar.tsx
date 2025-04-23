@@ -19,7 +19,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { TbAt, TbBookmarks, TbBuildings, TbGridScan, TbLayoutGridAdd, TbListSearch, TbMessage, TbSparkles, TbSquareLetterA, TbTrendingUp } from "react-icons/tb";
+import { TbAt, TbBookmarks, TbBuildings, TbGridScan, TbLayoutGridAdd, TbListSearch, TbSquareLetterA, TbTrendingUp } from "react-icons/tb";
 
 
 const data = {
@@ -42,12 +42,12 @@ const data = {
       icon: TbBookmarks,
       group: "main"
     },
-    {
-      title: "Inbox",
-      url: "/dashboard/inbox",
-      icon: TbMessage,
-      group: "main"
-    },
+    // {
+    //   title: "Inbox",
+    //   url: "/dashboard/inbox",
+    //   icon: TbMessage,
+    //   group: "main"
+    // },
     {
       title: "Research",
       url: "/dashboard/research",
@@ -60,15 +60,15 @@ const data = {
       icon: TbSquareLetterA,
       group: "metrics"
     },
+    // {
+    //   title: "Model",
+    //   url: "/dashboard/model",
+    //   icon: TbSparkles,
+    //   group: "metrics"
+    // },
     {
-      title: "Model",
-      url: "/dashboard/model",
-      icon: TbSparkles,
-      group: "metrics"
-    },
-    {
-      title: "Citation",
-      url: "/dashboard/citation",
+      title: "Citations",
+      url: "/dashboard/citations",
       icon: TbGridScan,
       group: "metrics"
     },
@@ -80,7 +80,7 @@ const data = {
     },
     {
       title: "Improve",
-      url: "/dashboard/improve",
+      url: "/dashboard/improvement",
       icon: TbTrendingUp,
       group: "metrics"
     },

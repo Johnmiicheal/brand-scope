@@ -105,7 +105,7 @@ export default function LibraryPage() {
   
   if (isLoading || loading) {
     return (
-      <div className="h-full bg-gradient-to-b from-background to-zinc-900 text-white flex flex-col items-center justify-center">
+      <div className="h-full text-white flex flex-col items-center justify-center">
         <div className="px-4 sm:px-5 py-6">
           <p className="text-muted-foreground">Loading...</p>
         </div>
@@ -114,7 +114,7 @@ export default function LibraryPage() {
   }
   
   return (
-    <div className="h-full min-h-screen bg-gradient-to-b from-background to-zinc-900 text-white">
+    <div className="h-full min-h-screen text-white">
       <div className="relative flex flex-col w-full max-w-5xl mx-auto">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center px-4 sm:px-5 py-4 gap-4 sm:gap-0">
           <div className="flex items-center gap-3">

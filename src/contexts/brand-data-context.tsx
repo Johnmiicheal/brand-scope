@@ -2,7 +2,7 @@
 'use client';
 
 import { useAuth } from '@/hooks/useAuth';
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useMemo, useCallback } from 'react';
 
 export interface Brand {
   id: string;
@@ -76,16 +76,15 @@ export function BrandDataProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const { user, session } = useAuth();
 
-
-  const fetchBrandData = async (userId: string) => {
-
+  const fetchBrandData = useCallback(async (userId: string) => {
+    if (!userId) {
+        console.warn("fetchBrandData called without userId");
+        setIsLoading(false);
+        return;
+    }
     try {
       setIsLoading(true);
       setError(null);
-
-      if (!userId) {
-        throw new Error('User ID is required');
-      }
 
       const response = await fetch(`${process.env.NEXT_PUBLIC_BRAND_DATA}`, {
         method: 'POST',
@@ -111,26 +110,38 @@ export function BrandDataProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [session]);
 
   useEffect(() => {
     if (user?.id) {
       fetchBrandData(user.id);
     }
-  }, [user?.id]);
+  }, [user?.id, fetchBrandData]);
+
+  const refetch = useCallback(() => {
+    return user?.id ? fetchBrandData(user.id) : Promise.resolve();
+  }, [user?.id, fetchBrandData]);
+
+  const value = useMemo(() => ({
+    brand,
+    metrics,
+    competitors,
+    keywords,
+    isLoading,
+    error,
+    refetch,
+  }), [
+    brand,
+    metrics,
+    competitors,
+    keywords,
+    isLoading,
+    error,
+    refetch
+  ]);
 
   return (
-    <BrandDataContext.Provider
-      value={{
-        brand,
-        metrics,
-        competitors,
-        keywords,
-        isLoading,
-        error,
-        refetch: () => user?.id ? fetchBrandData(user.id) : Promise.resolve(),
-      }}
-    >
+    <BrandDataContext.Provider value={value}>
       {children}
     </BrandDataContext.Provider>
   );

@@ -12,6 +12,7 @@ import {
   ArrowRightIcon,
   ClockIcon,
   CalendarIcon,
+  Lightbulb,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "@/components/ui/use-toast";
@@ -493,6 +494,60 @@ const formatTime = (totalSeconds: number): string => {
               year: "numeric",
             })}
           />
+        </div>
+      </div>
+
+      {/* Search Mode Tips */}
+      <div className="w-full max-w-4xl mt-8">
+        <div className="bg-neutral-900/50 rounded-xl border border-neutral-800 p-5">
+          <h3 className="text-lg font-medium mb-3 flex items-center gap-2">
+            <Lightbulb className="w-5 h-5 text-yellow-400" />
+            Search Mode Tips
+          </h3>
+          
+          <div className="space-y-4">
+            {mode === "DeepFocus" && (
+              <div className="flex items-start gap-3">
+                <div>
+                  <h4 className="font-medium text-sm">DeepFocus Mode</h4>
+                  <p className="text-sm text-neutral-400 mt-1">
+                    Uses Llama3 and Google Gemma 2 to analyze search prompts, providing detailed brand ranking and analysis. 
+                    Best for focused research on specific topics or competitors.
+                  </p>
+                </div>
+              </div>
+            )}
+            
+            {mode === "Voyager" && (
+              <div className="flex items-start gap-3">
+                <div>
+                  <h4 className="font-medium text-sm">Voyager Mode</h4>
+                  <p className="text-sm text-neutral-400 mt-1">
+                    Leverages Llama 4 Scout, DeepSeek R1, and Qwen to create in-depth brand ranking and analysis with social sentiment insights.
+                    Includes citations for more credible results. Ideal for comprehensive market research.
+                  </p>
+                </div>
+              </div>
+            )}
+            
+            {mode === "Explorer" && (
+              <div className="flex items-start gap-3">
+                <div>
+                  <h4 className="font-medium text-sm">Explorer Mode</h4>
+                  <p className="text-sm text-neutral-400 mt-1">
+                    Our most comprehensive analysis using Llama 4 Maverick, Llama 3, Mistral, Google Gemma 2, and DeepSeek R1.
+                    Provides tailored recommendations specific to your brand. <span className="text-yellow-400">Note: Requires you to have a brand selected.</span>
+                  </p>
+                </div>
+              </div>
+            )}
+            
+            <div className="pt-2 border-t border-neutral-800">
+              <p className="text-xs text-neutral-500">
+                For best results, be specific in your queries and include relevant industry terms.
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     </div>

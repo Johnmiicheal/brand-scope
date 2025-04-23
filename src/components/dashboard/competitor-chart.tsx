@@ -56,7 +56,7 @@ export function CompetitorChart({ competitors, visibilityScore }: CompetitorChar
     }
     
     return (
-      <div className="rounded-b-lg border p-5 border-t-0 gap-5 flex flex-col">
+      <div className="rounded-b-lg border p-5 border-t-0 gap-5 flex flex-col bg-background">
         <CardHeader>
           <CardTitle>Visibility Analysis</CardTitle>
           <CardDescription>

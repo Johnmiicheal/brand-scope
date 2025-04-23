@@ -52,7 +52,7 @@ interface BrandInsightsProps {
 
 export function BrandInsights({ insights }: BrandInsightsProps) {
   return (
-    <Card className="bg-transparent">
+    <Card className="bg-background">
       <CardHeader>
         <CardTitle>Brand Insights</CardTitle>
         <CardDescription>{insights.consumer_perception}</CardDescription>

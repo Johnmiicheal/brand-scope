@@ -20,6 +20,7 @@ import { Separator } from "@radix-ui/react-separator";
 import { usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { BrandDataProvider } from "@/contexts/brand-data-context";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 function BreadcrumbNav() {
   const pathname = usePathname();
@@ -115,7 +116,11 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               </Breadcrumb>
             </div>
           </header>
-          <BrandDataProvider>{children}</BrandDataProvider>
+          <BrandDataProvider>
+          <ScrollArea className="h-full bg-gradient-to-b from-background to-zinc-900">
+            {children}
+          </ScrollArea>
+          </BrandDataProvider>
         </SidebarInset>
       </SidebarProvider>
     </ProtectedRoute>
