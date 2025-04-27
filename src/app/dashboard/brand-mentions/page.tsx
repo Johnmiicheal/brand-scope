@@ -94,7 +94,7 @@ export default function CitationsPage() {
 
         {brand && (
           <div className="flex justify-between items-center mt-10">
-          <div className="flex items-end gap-2">
+          <div className="flex md:flex-row flex-col items-start md:items-end gap-2">
             <div className="flex items-center gap-2">
               <Image
                 src={brand.logo_url || ''}
@@ -103,12 +103,12 @@ export default function CitationsPage() {
                 height={24}
                 className="rounded-md"
               />
-              <h2 className="text-2xl">{brand.name}</h2>
+              <h2 className="md:text-2xl">{brand.name}</h2>
             </div>
             <Link
               href={brand.website || ''}
               target="_blank"
-              className="text-sm text-white/40 hover:text-white/80 flex items-center gap-1"
+              className="text-[12px] md:text-sm text-white/40 hover:text-white/80 flex items-center gap-1"
             >
               {brand.website} <SquareArrowOutUpRight className="w-3 h-3 mt-1" />
             </Link>

@@ -62,6 +62,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useAuth } from "@/hooks/useAuth";
+import { ScheduledQueriesDashboard } from "@/components/dashboard/scheduled-queries-dashboard";
+import { ScheduledQueriesList } from "@/components/library/scheduled-queries-list";
 
 const INDUSTRIES = [
   "Technology",
@@ -760,6 +762,10 @@ function DashboardContent() {
                   </div>
                 </div>
               </div>
+            <Card className="mt-12 bg-background rounded-md p-4">
+              <h2 className="text-xl  mb-4">Scheduled Queries</h2>
+              <ScheduledQueriesList />
+            </Card>
             </div>
           </motion.div>
         </AnimatePresence>

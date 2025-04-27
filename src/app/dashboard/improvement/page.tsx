@@ -93,7 +93,7 @@ export default function BrandImprovementPage() {
         </div>
         {brand && (
           <div className="flex justify-between items-center mt-10">
-          <div className="flex items-end gap-2">
+          <div className="flex md:flex-row flex-col items-start md:items-end gap-2">
             <div className="flex items-center gap-2">
               <Image
                 src={brand.logo_url || ''}
@@ -102,12 +102,12 @@ export default function BrandImprovementPage() {
                 height={24}
                 className="rounded-md"
               />
-              <h2 className="text-2xl">{brand.name}</h2>
+              <h2 className="md:text-2xl">{brand.name}</h2>
             </div>
             <Link
               href={brand.website || ''}
               target="_blank"
-              className="text-sm text-white/40 hover:text-white/80 flex items-center gap-1"
+              className="text-[12px] md:text-sm text-white/40 hover:text-white/80 flex items-center gap-1"
             >
               {brand.website} <SquareArrowOutUpRight className="w-3 h-3 mt-1" />
             </Link>
@@ -206,17 +206,19 @@ export default function BrandImprovementPage() {
                 {suggestions.map((suggestion, index) => (
                   <AccordionItem key={index} value={`item-${index}`}>
                     <AccordionTrigger className="text-left">
-                      <div className="flex justify-between items-center w-full pr-4">
-                        <span>{suggestion.title}</span>
-                        <Badge variant={getFocusAreaBadgeVariant(suggestion.focus_area)}>{suggestion.focus_area}</Badge>
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center w-full pr-4 gap-2">
+                        <span className="text-sm sm:text-base">{suggestion.title}</span>
+                        <Badge variant={getFocusAreaBadgeVariant(suggestion.focus_area)} className="mt-1 sm:mt-0 text-xs whitespace-nowrap">
+                          {suggestion.focus_area}
+                        </Badge>
                       </div>
                     </AccordionTrigger>
                     <AccordionContent>
-                      <p className="mb-3 text-muted-foreground">{suggestion.description}</p>
-                      <h4 className="font-semibold mb-1">Action Items:</h4>
-                      <ul className="list-disc space-y-1 pl-5 text-sm">
+                      <p className="mb-3 text-muted-foreground text-xs sm:text-sm">{suggestion.description}</p>
+                      <h4 className="font-semibold mb-1 text-sm sm:text-base">Action Items:</h4>
+                      <ul className="list-disc space-y-1 pl-3 sm:pl-5 text-xs sm:text-sm">
                         {suggestion.action_items.map((item, itemIndex) => (
-                          <li key={itemIndex}>{item}</li>
+                          <li key={itemIndex} className="break-words">{item}</li>
                         ))}
                       </ul>
                     </AccordionContent>

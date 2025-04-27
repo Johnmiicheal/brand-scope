@@ -29,6 +29,7 @@ export const aiRankingSchema = z.object({
   mode: z.enum(analysisModes),
   mode_id: z.string().uuid(),
   analyzed_at: z.string().datetime(),
+  is_monitoring: z.boolean().default(false)
 });
 
 export type AIRanking = z.infer<typeof aiRankingSchema>;

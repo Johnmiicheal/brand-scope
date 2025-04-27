@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useCallback } from "react";
-import { useState } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import {
@@ -13,6 +12,8 @@ import {
   ClockIcon,
   CalendarIcon,
   Lightbulb,
+  Search,
+  Repeat,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "@/components/ui/use-toast";
@@ -91,11 +92,16 @@ export function AIChatInterface() {
   const [mode, setMode] = useState<AnalysisMode>("DeepFocus");
   const [loading, setLoading] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isMonitoringMode, setIsMonitoringMode] = useState(false);
+  const [monitorFrequency, setMonitorFrequency] = useState<"daily" | "weekly">(
+    "daily"
+  );
   const { textareaRef, adjustHeight } = useAutoResizeTextarea({
     minHeight: 60,
     maxHeight: 200,
   });
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
   // Update time every second
   useEffect(() => {
@@ -105,6 +111,25 @@ export function AIChatInterface() {
 
     return () => clearInterval(timer);
   }, []);
+
+  // Timer for analysis duration
+  useEffect(() => {
+    let interval: NodeJS.Timeout | undefined = undefined;
+
+    if (isAnalyzing) {
+      interval = setInterval(() => {
+        setElapsedSeconds((prevSeconds) => prevSeconds + 1);
+      }, 1000);
+    } else {
+      setElapsedSeconds(0);
+    }
+
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
+  }, [isAnalyzing]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -119,7 +144,7 @@ export function AIChatInterface() {
     if (!value.trim()) {
       toast({
         title: "Error",
-        description: "Please enter a query or keyword to search and analyse",
+        description: `Please enter a query or keyword to ${isMonitoringMode ? "monitor" : "search"}.`,
         variant: "destructive",
       });
       return;
@@ -134,10 +159,10 @@ export function AIChatInterface() {
       return;
     }
 
-    if (!brand) {
+    if (!brand && mode === "Explorer") {
       toast({
         title: "Error",
-        description: "Please create a brand to continue",
+        description: "Explorer mode requires a brand to be selected.",
         variant: "destructive",
       });
       return;
@@ -145,8 +170,44 @@ export function AIChatInterface() {
 
     try {
       setLoading(true);
-      setIsAnalyzing(true);
+      setIsAnalyzing(true); // Keep this for UI feedback, adjust meaning if needed for monitor
 
+      if (isMonitoringMode) {
+        setIsAnalyzing(true)
+        // --- Monitoring Mode Logic ---
+        const response = await fetch("/api/schedule-query", { // New API route
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session}`,
+          },
+          body: JSON.stringify({
+            user_id: user.id,
+            query: value.trim(),
+            frequency: monitorFrequency,
+            mode,
+          }),
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          console.error("API Error (Schedule Query):", error);
+          throw new Error(error.error || "Failed to schedule query");
+        }
+
+        toast({
+          title: "Query Scheduled",
+          description: `Your query has been scheduled for ${monitorFrequency} monitoring. Check the Monitoring tab for details.`,
+        });
+        setTimeout(() => {
+          router.push(`/dashboard/library`);
+        }, 400);
+        setValue(""); // Clear input
+        adjustHeight(true);
+        setIsAnalyzing(false); // Reset analyzing state
+
+      } else {
+        // --- Search Mode Logic (Existing) ---
       const response = await fetch(process.env.NEXT_PUBLIC_SEARCH as string, {
         method: "POST",
         headers: {
@@ -157,18 +218,17 @@ export function AIChatInterface() {
           mode,
           user_id: user.id,
           query: value.trim(),
-          brand_name: brand.name,
-          brand_industry: brand.industry,
-          brand_id: brand.id,
+            brand_name: brand?.name, // Use optional chaining
+            brand_industry: brand?.industry, // Use optional chaining
+            brand_id: brand?.id, // Use optional chaining
         }),
       });
 
       if (!response.ok) {
-        setIsAnalyzing(false);
         const contentType = response.headers.get("content-type");
         if (contentType && contentType.includes("application/json")) {
           const error = await response.json();
-          console.error("API Error:", error);
+            console.error("API Error (Search):", error);
           throw new Error(error.error || "Failed to start analysis");
         } else {
           const text = await response.text();
@@ -177,7 +237,7 @@ export function AIChatInterface() {
         }
       }
 
-      // Handle streaming response
+        // Handle streaming response (or adjust if backend changes)
       const reader = response.body?.getReader();
       if (!reader) {
         throw new Error("No response body");
@@ -190,7 +250,6 @@ export function AIChatInterface() {
         result += new TextDecoder().decode(value);
       }
 
-      // Parse the final result
       const { mode_id } = JSON.parse(result);
 
       toast({
@@ -200,17 +259,15 @@ export function AIChatInterface() {
 
       setIsAnalyzing(false);
       setTimeout(() => {
-        // Redirect to analysis results page
         router.push(`/dashboard/search/analysis?mode_id=${mode_id}`);
       }, 400);
 
-      // Clear input and reset height
       setValue("");
       adjustHeight(true);
+      }
     } catch (error) {
-      console.error("Error submitting analysis:", error);
+      console.error("Error submitting request:", error);
       setIsAnalyzing(false);
-
       toast({
         title: "Error",
         description:
@@ -219,7 +276,10 @@ export function AIChatInterface() {
       });
     } finally {
       setLoading(false);
+      // Ensure analyzing is false unless explicitly set during submission
+      if (!isMonitoringMode) {
       setIsAnalyzing(false);
+      } // For monitoring, it's reset earlier
     }
   };
 
@@ -240,29 +300,10 @@ export function AIChatInterface() {
         "Enhanced brand analysis and insights with actionable strategies for visibility enhancement",
     },
   ];
-  const [elapsedSeconds, setElapsedSeconds] = useState(0);
-
-useEffect(() => {
-  let interval: NodeJS.Timeout | undefined = undefined;
-
-  if (isAnalyzing) {
-    interval = setInterval(() => {
-      setElapsedSeconds((prevSeconds) => prevSeconds + 1);
-    }, 1000);
-  } else {
-    setElapsedSeconds(0);
-  }
-
-  return () => {
-    if (interval) {
-      clearInterval(interval);
-    }
-  };
-}, [isAnalyzing]);
 
 const formatTime = (totalSeconds: number): string => {
-  if (totalSeconds < 0) return "0s"; // Safety check
-  if (totalSeconds === 0) return "0s"; // Handle zero explicitly
+      if (totalSeconds < 0) return "0s";
+      if (totalSeconds === 0) return "0s";
 
   const hours = Math.floor(totalSeconds / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
@@ -270,21 +311,14 @@ const formatTime = (totalSeconds: number): string => {
 
   const parts: string[] = [];
 
-  if (hours > 0) {
-    parts.push(`${hours}h`);
-  }
-  if (minutes > 0) {
-    parts.push(`${minutes}m`);
-  }
-  // Show seconds if they are > 0 OR if hours and minutes are both 0 (i.e., time < 1 minute)
+      if (hours > 0) parts.push(`${hours}h`);
+      if (minutes > 0) parts.push(`${minutes}m`);
   if (seconds > 0 || parts.length === 0) {
-     // Don't show seconds if they are 0 and we already have hours or minutes
      if(seconds > 0 || (hours === 0 && minutes === 0)) {
         parts.push(`${seconds}s`);
      }
   }
-
-  return parts.join(' '); // Join the parts with a space
+      return parts.join(' ');
 };
 
   if (isAnalyzing) {
@@ -294,18 +328,25 @@ const formatTime = (totalSeconds: number): string => {
           <div className="flex flex-col items-center space-y-3">
           <div className="flex items-center space-x-2">
             <span
-              className={`px-2 py-1 text-xs rounded-full ${
-                mode === "Voyager"
-                  ? "bg-orange-500/20 text-orange-400"
-                  : mode === "DeepFocus"
-                  ? "bg-blue-500/20 text-blue-400"
-                  : mode === "Explorer"
-                  ? "bg-green-500/20 text-green-400"
-                  : ""
-              }`}
+                className={cn(
+                  "px-2 py-1 text-xs rounded-full",
+                  mode === "Voyager" && "bg-orange-500/20 text-orange-400",
+                  mode === "DeepFocus" && "bg-purple-500/20 text-purple-400",
+                  mode === "Explorer" && "bg-green-500/20 text-green-400"
+                )}
             >
               {mode}
             </span>
+            {isMonitoringMode && (
+              <span
+              className={cn(
+                "px-2 py-1 text-xs rounded-full",
+                isMonitoringMode && "bg-blue-500/20 text-blue-400"
+              )}
+          >
+            Monitor
+          </span>
+            )}
             <span className="text-xs text-muted-foreground">
              thought for {formatTime(elapsedSeconds)}
           </span>
@@ -315,8 +356,8 @@ const formatTime = (totalSeconds: number): string => {
           </h1>
           </div>
           <p className="text-muted-foreground mb-10 text-center">
-            We&apos;re gathering data and insights about {value || "your query"}
-            . This may take a few moments.
+            We&apos;re gathering data and insights about {value || "your query"}.
+            This may take a few moments.
           </p>
           <LoadingState />
         </div>
@@ -327,11 +368,18 @@ const formatTime = (totalSeconds: number): string => {
   return (
     <div className="flex flex-col items-center w-full max-w-4xl mx-auto p-4 space-y-8">
       <h1 className="text-4xl font-regular text-black dark:text-white">
-        Let&apos;s help you understand your brand
+        {isMonitoringMode
+          ? "Search and Monitor Prompts"
+          : "Let's help you understand your brand"}
       </h1>
 
       <div className="w-full">
-        <div className="relative bg-neutral-900 rounded-xl border border-neutral-800">
+        <div
+          className={cn(
+            "relative bg-neutral-900 rounded-xl border border-neutral-800",
+            isMonitoringMode && "ring-2 ring-blue-500 ring-offset-2 ring-offset-neutral-950"
+          )}
+        >
           <div className="overflow-y-auto">
             <Textarea
               ref={textareaRef}
@@ -341,7 +389,11 @@ const formatTime = (totalSeconds: number): string => {
                 adjustHeight();
               }}
               onKeyDown={handleKeyDown}
-              placeholder="Enter search prompt to analyze..."
+              placeholder={
+                isMonitoringMode
+                  ? "Enter query to monitor..."
+                  : "Enter search prompt to analyze..."
+              }
               className={cn(
                 "w-full px-4 py-3",
                 "resize-none",
@@ -359,8 +411,11 @@ const formatTime = (totalSeconds: number): string => {
             />
           </div>
 
-          <div className="flex items-center justify-between p-3">
-            <div className="flex items-center gap-2">
+          <div className="flex items-center justify-between p-3 flex-wrap gap-2">
+            {/* Left Side Controls */}
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Attach Brand Button - Consider disabling/hiding in Monitor mode if not needed */}
+              {!isMonitoringMode && (
               <button
                 type="button"
                 className="group p-3 hover:bg-neutral-800 cursor-pointer rounded-full border border-accent transition-all duration-400 ease flex items-center "
@@ -370,6 +425,9 @@ const formatTime = (totalSeconds: number): string => {
                   Attach Brand
                 </span>
               </button>
+               )}
+
+              {/* Analysis Mode Dropdown */}
               <DropdownMenu>
                 <div className="inline-flex bg-blue-500/20 text-white/70 -space-x-px divide-x divide-primary-foreground/30 rounded-full rtl:space-x-reverse">
                   <Button
@@ -430,16 +488,83 @@ const formatTime = (totalSeconds: number): string => {
                   ))}
                 </DropdownMenuContent>
               </DropdownMenu>
+
+              {/* Frequency Dropdown (Monitor Mode Only) */}
+              {isMonitoringMode && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="rounded-full text-xs">
+                      <Repeat className="w-3 h-3 mr-2" />
+                      {monitorFrequency === "daily" ? "Daily" : "Weekly"}
+                      <ChevronDown className="w-3 h-3 ml-1" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    <DropdownMenuItem
+                      onSelect={() => setMonitorFrequency("daily")}
+                    >
+                      <Check
+                        className={cn(
+                          "mr-2 h-4 w-4",
+                          monitorFrequency === "daily"
+                            ? "opacity-100"
+                            : "opacity-0"
+                        )}
+                      />
+                      Daily
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onSelect={() => setMonitorFrequency("weekly")}
+                    >
+                       <Check
+                        className={cn(
+                          "mr-2 h-4 w-4",
+                          monitorFrequency === "weekly"
+                            ? "opacity-100"
+                            : "opacity-0"
+                        )}
+                      />
+                      Weekly
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </div>
-            <div className="flex items-center gap-2">
+
+            {/* Right Side Controls */}
+            <div className="flex items-center gap-3">
+               {/* Search/Monitor Toggle */}
+                <div className="flex items-center space-x-2 bg-neutral-800/60 p-1 rounded-full">
+                    <Button
+                        variant={!isMonitoringMode ? "secondary" : "ghost"}
+                        size="sm"
+                        onClick={() => setIsMonitoringMode(false)}
+                        className="rounded-full h-7 px-3 text-xs"
+                    >
+                        <Search className="w-3 h-3 mr-1"/>
+                        Search
+                    </Button>
+                    <Button
+                        variant={isMonitoringMode ? "secondary" : "ghost"}
+                        size="sm"
+                        onClick={() => setIsMonitoringMode(true)}
+                        className={`rounded-full h-7 px-3 text-xs ${isMonitoringMode ? "bg-blue-600 hover:bg-blue-600" : ""}`}
+                    >
+                        <Repeat className="w-3 h-3 mr-1"/>
+                        Monitor
+                    </Button>
+                </div>
+
+              {/* Send Button */}
               <button
                 type="button"
                 onClick={handleSubmit}
                 disabled={loading || !value.trim()}
                 className={cn(
-                  "p-2 active:scale-95 rounded-full text-sm -rotate-45 cursor-pointer hover:rotate-0 transition-all ease-in-out duration-300 border border-zinc-700 hover:border-zinc-600 hover:bg-accent flex items-center justify-between gap-1",
+                  "p-2 active:scale-95 rounded-full text-sm -rotate-45 cursor-pointer hover:rotate-0 transition-all ease-in-out duration-300 border border-zinc-700 hover:border-zinc-600 hover:bg-accent flex items-center justify-center", // Centered icon
                   value.trim() ? "bg-white text-black" : "text-zinc-400"
                 )}
+                aria-label={isMonitoringMode ? "Schedule Monitor" : "Send Search"}
               >
                 <ArrowRightIcon
                   className={cn(
@@ -447,7 +572,6 @@ const formatTime = (totalSeconds: number): string => {
                     value.trim() ? "text-black" : "text-zinc-400"
                   )}
                 />
-                <span className="sr-only">Send</span>
               </button>
             </div>
           </div>
@@ -536,7 +660,7 @@ const formatTime = (totalSeconds: number): string => {
                   <h4 className="font-medium text-sm">Explorer Mode</h4>
                   <p className="text-sm text-neutral-400 mt-1">
                     Our most comprehensive analysis using GPT 4o, Perplexity Sonar, Gemini 2.0 Flash, Claude 3.5, and DeepSeek R1.
-                    Provides tailored recommendations specific to your brand. <span className="text-yellow-400">Note: Requires you to have a brand selected.</span>
+                    Provides tailored recommendations specific to your brand. <span className="text-yellow-400">Note: Requires you to have a brand created.</span>
                   </p>
                 </div>
               </div>
@@ -544,7 +668,10 @@ const formatTime = (totalSeconds: number): string => {
             
             <div className="pt-2 border-t border-neutral-800">
               <p className="text-xs text-neutral-500">
-                For best results, be specific in your queries and include relevant industry terms.
+                {isMonitoringMode
+                  ? "Monitored queries run automatically. View their status and results in the Monitoring tab."
+                  : "For best results, be specific in your queries and include relevant industry terms."
+                  }
               </p>
             </div>
           </div>

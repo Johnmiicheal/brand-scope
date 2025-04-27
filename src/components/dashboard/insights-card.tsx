@@ -3,9 +3,8 @@
 import type React from "react"
 
 import { motion } from "framer-motion"
-import { Check, AlertTriangle, Lightbulb, ChevronRight } from "lucide-react"
+import { Check, AlertTriangle, Lightbulb } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
 
 interface InsightCardProps {
   type: "strength" | "weakness" | "opportunity"
@@ -61,9 +60,6 @@ export function BrandInsights({ insights }: BrandInsightsProps) {
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-medium">Strengths</h3>
-            <Button variant="ghost" size="sm" className="h-7 text-xs">
-              View All <ChevronRight className="h-3 w-3 ml-1" />
-            </Button>
           </div>
           <div className="space-y-2">
             {insights.strengths.slice(0, 2).map((strength, i) => (
@@ -77,9 +73,6 @@ export function BrandInsights({ insights }: BrandInsightsProps) {
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-medium">Weaknesses</h3>
-            <Button variant="ghost" size="sm" className="h-7 text-xs">
-              View All <ChevronRight className="h-3 w-3 ml-1" />
-            </Button>
           </div>
           <div className="space-y-2">
             {insights.weaknesses.slice(0, 2).map((weakness, i) => (
@@ -93,9 +86,6 @@ export function BrandInsights({ insights }: BrandInsightsProps) {
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-medium">Opportunities</h3>
-            <Button variant="ghost" size="sm" className="h-7 text-xs">
-              View All <ChevronRight className="h-3 w-3 ml-1" />
-            </Button>
           </div>
           <div className="space-y-2">
             {insights.opportunities.slice(0, 2).map((opportunity, i) => (

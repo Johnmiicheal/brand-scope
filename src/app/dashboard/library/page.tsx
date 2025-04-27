@@ -10,6 +10,9 @@ import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { motion } from 'framer-motion';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScheduledQueriesList } from '@/components/library/scheduled-queries-list';
+
 
 interface SearchRecord {
   mode_id: string;
@@ -144,6 +147,13 @@ export default function LibraryPage() {
           </div>
         </div>
 
+        <Tabs defaultValue="threads" className="w-full">
+        <TabsList className="mb-6 gap-4 bg-background">
+          <TabsTrigger value="threads">Threads</TabsTrigger>
+          <TabsTrigger value="scheduled" >Scheduled Monitoring</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="threads">
         <div className="px-4 sm:px-5 py-4 sm:py-6">
           <div className="flex items-center justify-between mb-4 border-b">
             <div className="flex items-center gap-2">
@@ -212,6 +222,16 @@ export default function LibraryPage() {
             )}
           </motion.div>
         </div>
+        </TabsContent>
+
+        <TabsContent value="scheduled">
+          {/* Embed the Scheduled Queries List component */}
+          <ScheduledQueriesList />
+        </TabsContent>
+
+      </Tabs>
+
+        
       </div>
     </div>
   );
