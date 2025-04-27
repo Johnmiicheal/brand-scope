@@ -19,6 +19,8 @@ if (!supabaseUrl || !supabaseServiceKey || !openRouterApiKey || !groqApiKey) {
   throw new Error("Missing required environment variables for Supabase/AI clients.");
 }
 
+export const maxDuration = 60;
+
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 const openrouter = createOpenRouter({ apiKey: openRouterApiKey });
 
