@@ -34,7 +34,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     for (const query of queries) {
       console.log(`Processing query ID: ${query.id}`);
       const response = await fetch(
-        `${process.env.BASE_SYSTEM_URL}/api/process-query`,
+        `${process.env.BASE_SYSTEM_URL}/api/schedule-query`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
