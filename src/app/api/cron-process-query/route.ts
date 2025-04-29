@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
     // Fetch queries where next_analysis_at is due
     const { data: queries, error } = await supabase
       .from('scheduled_queries')
-      .select('id, query, frequency, mode')
+      .select('id, query, frequency, mode, user_id')
       .lte('next_analysis_at', new Date().toISOString())
       .eq('status', 'active');
 
@@ -43,6 +43,7 @@ export async function POST(req: NextRequest) {
             query: query.query,
             frequency: query.frequency,
             mode: query.mode,
+            user_id: query.user_id,
             now: new Date().toISOString(),
           }),
         }
