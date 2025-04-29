@@ -83,6 +83,7 @@ export default function ScheduledQueryDetailPage() {
   const [selectedModel, setSelectedModel] = useState<string | null>('GPT 4o');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedAnalysisDate, setSelectedAnalysisDate] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchScheduledQuery = async () => {
@@ -130,6 +131,11 @@ export default function ScheduledQueryDetailPage() {
             ? [...new Set(firstResult.results.flatMap(run => run.model_results?.map((r: { llm_name: string; }) => r.llm_name) || []))]
             : [];
           setSelectedModel(models[0] || null);
+          // Set the default analysis date to the most recent
+          if (Array.isArray(firstResult.results) && firstResult.results.length > 0) {
+            const sorted = [...firstResult.results].sort((a, b) => new Date(b.analysis_date).getTime() - new Date(a.analysis_date).getTime());
+            setSelectedAnalysisDate(sorted[0].analysis_date);
+          }
         } else {
           setAnalysisRun(null);
           setSelectedModel(null);
@@ -156,12 +162,12 @@ export default function ScheduledQueryDetailPage() {
   const filteredModelResults = useMemo(() => {
     if (!analysisRun || !Array.isArray(analysisRun)) return [];
     
-    return analysisRun.flatMap(run => 
+    return analysisRun?.filter((item) => item.analysis_date === selectedAnalysisDate).flatMap(run => 
       run.model_results?.filter(
         (r: { llm_name: string; }) => (!selectedModel || r.llm_name === selectedModel)
       ) || []
     );
-  }, [analysisRun, selectedModel]);
+  }, [analysisRun, selectedAnalysisDate, selectedModel]);
 
   const modelsInRun = useMemo(() => {
     if (!analysisRun || !Array.isArray(analysisRun)) return [];
@@ -171,6 +177,11 @@ export default function ScheduledQueryDetailPage() {
     );
     
     return [...new Set(allModels)];
+  }, [analysisRun]);
+
+  const analysisDates = useMemo(() => {
+    if (!analysisRun || !Array.isArray(analysisRun)) return [];
+    return [...new Set(analysisRun.map(run => run.analysis_date))];
   }, [analysisRun]);
 
   // --- Render Logic ---
@@ -218,9 +229,27 @@ export default function ScheduledQueryDetailPage() {
           </CardContent>
         </Card>
 
-        {/* Model Filter */}
+        {/* Analysis Date Filter */}
         {analysisRun && (
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 sm:mb-6 w-full gap-3 sm:gap-0">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center mb-4 sm:mb-6 w-full gap-9">
+            <div className="w-full sm:w-[200px]">
+              <Select
+                value={selectedAnalysisDate || ""}
+                onValueChange={setSelectedAnalysisDate}
+                disabled={analysisDates.length === 0}
+              >
+                <SelectTrigger className="bg-background border-accent">
+                  <SelectValue placeholder="Filter by Date" />
+                </SelectTrigger>
+                <SelectContent className="p-1">
+                  {analysisDates.map(date => (
+                    <SelectItem key={date} value={date}>
+                      {format(new Date(date), "PPpp")}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="w-full sm:w-[200px]">
               <Select
                 value={selectedModel!}
@@ -239,7 +268,7 @@ export default function ScheduledQueryDetailPage() {
                 </SelectContent>
               </Select>
             </div>
-        </div>
+          </div>
         )}
 
         {/* Display Results Card */}
@@ -254,7 +283,7 @@ export default function ScheduledQueryDetailPage() {
             <CardHeader>
               <CardTitle>Analysis Run Details</CardTitle>
               <CardDescription>
-                Showing results from {format(new Date(firstResult.last_analysis_at|| '000'), 'PPp')}
+                Showing results from {format(new Date(selectedAnalysisDate|| '000'), 'PPp')}
               </CardDescription>
             </CardHeader>
             <CardContent>
