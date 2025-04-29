@@ -36,16 +36,16 @@ export async function POST(req: NextRequest) {
       const response = await fetch(
         `${process.env.BASE_SYSTEM_URL}/api/schedule-query`,
         {
-          method: 'POST',
+          method: 'GET',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            id: query.id,
-            query: query.query,
-            frequency: query.frequency,
-            mode: query.mode,
-            user_id: query.user_id,
-            now: new Date().toISOString(),
-          }),
+        //   body: JSON.stringify({
+        //     id: query.id,
+        //     query: query.query,
+        //     frequency: query.frequency,
+        //     mode: query.mode,
+        //     user_id: query.user_id,
+        //     now: new Date().toISOString(),
+        //   }),
         }
       );
 
