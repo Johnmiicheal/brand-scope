@@ -2,10 +2,7 @@
     "crons": [
       {
         "path": "/api/cron-process-query",
-        "schedule": "0 0 * * *",
-        "headers": {
-          "Authorization": "Bearer thiscrazycronsecretshouldnotbeseenanywhere"
-        }
+        "schedule": "0 0 * * *"
       }
     ]
   }
