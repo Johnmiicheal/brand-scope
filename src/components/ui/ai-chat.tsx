@@ -4,7 +4,6 @@ import { useEffect, useRef, useCallback, useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import {
-  Paperclip,
   ChevronDown,
   Telescope,
   Check,
@@ -415,7 +414,7 @@ const formatTime = (totalSeconds: number): string => {
             {/* Left Side Controls */}
             <div className="flex items-center gap-2 flex-wrap">
               {/* Attach Brand Button - Consider disabling/hiding in Monitor mode if not needed */}
-              {!isMonitoringMode && (
+              {/* {!isMonitoringMode && (
               <button
                 type="button"
                 className="group p-3 hover:bg-neutral-800 cursor-pointer rounded-full border border-accent transition-all duration-400 ease flex items-center "
@@ -425,7 +424,7 @@ const formatTime = (totalSeconds: number): string => {
                   Attach Brand
                 </span>
               </button>
-               )}
+               )} */}
 
               {/* Analysis Mode Dropdown */}
               <DropdownMenu>

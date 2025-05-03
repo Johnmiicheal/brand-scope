@@ -7,7 +7,7 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-export async function POST(req: NextRequest) {
+export async function GET(req: NextRequest) {
   // Optional: Secure the endpoint with a secret token
   const authHeader = req.headers.get('authorization');
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -38,14 +38,6 @@ export async function POST(req: NextRequest) {
         {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' },
-        //   body: JSON.stringify({
-        //     id: query.id,
-        //     query: query.query,
-        //     frequency: query.frequency,
-        //     mode: query.mode,
-        //     user_id: query.user_id,
-        //     now: new Date().toISOString(),
-        //   }),
         }
       );
 
