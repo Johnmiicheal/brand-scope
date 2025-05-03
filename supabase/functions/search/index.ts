@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 // @ts-nocheck
@@ -92,8 +93,6 @@ interface Brand {
 // Also assign a confidence score (0-100) and provide a detailed analysis of how the brand can gain an edge over this competitor.
 // Focus on actionable insights and specific advantages/disadvantages.`
 
-
-
 // System prompt for brand analysis
 const VOYAGER_RANKING_PROMPT = `You are an expert brand analyst. 
 Analyze the following query: "{query}".
@@ -113,13 +112,20 @@ Return the results in the following format:
   ]
 }`
 
-const EXPLORER_RECOMMENDER_PROMPT = `
-  You are an expert brand analyst and marketing expert.
-  Analyze the query: "{query}".
-  Generate a detailed recommendation on how to improve the brand: "{brand}" which is in the industry: "{industry}" based on the query provided.
-  If the industry does not relate to the query, inform the user of this with a slight joke.
-  Focus on actionable and detailed steps on insights, keyword recommendations, SEO and Generative Engine Optimization and AI Search Engine visibility improvements.
-`
+const AI_SUMMARY_PROMPT = `You are an expert brand analyst. 
+Analyze the following query: "{query}".
+Generate a list of relevant brands.
+Also provide detailed reasoning for each ranking based on market analysis, consumer perception, and brand reputation.
+Your reasoning should be comprehensive yet concise.`
+
+
+// const EXPLORER_RECOMMENDER_PROMPT = `
+//   You are an expert brand analyst and marketing expert.
+//   Analyze the query: "{query}".
+//   Generate a detailed recommendation on how to improve the brand: "{brand}" which is in the industry: "{industry}" based on the query provided.
+//   If the industry does not relate to the query, inform the user of this with a slight joke.
+//   Focus on actionable and detailed steps on insights, keyword recommendations, SEO and Generative Engine Optimization and AI Search Engine visibility improvements.
+// `
 
 
 // System prompts
@@ -351,43 +357,16 @@ export async function explorerAnalysis(
     { model: openrouter('openai/gpt-4o'), name: 'GPT 4o'},
     { model: openrouter('anthropic/claude-3.5-sonnet'), name: 'Claude 3.5 Sonnet'},
     { model: openrouter('google/gemini-2.0-flash-001'), name: 'Gemini 2.0 Flash' },
-    { model: groq('deepseek-r1-distill-llama-70b'), name: 'DeepSeek R1' }
   ]
   
   const rankings: AIRanking[] = []
   const socialInsights: SocialInsight[] = []
   const charts: ChartData[] = []
-  let recommendations: Recommendations = {
-    id: uuidv4(),
-    brand_id: brand_id,
-    mode_id: mode_id,
-    query: query,
-    type: `Recommendation for ${brand_name}`,
-    suggestion: '',
-    reasoning: '',
-    priority: 1,
-    created_at: new Date().toISOString(),
-  }
+
 
   // Initialize Exa client
   const exa = new Exa(Deno.env.get('EXA_API_KEY') || '')
 
-  // Start recommendation generation in parallel with other processing
-  const formattedRecommenderPrompt = EXPLORER_RECOMMENDER_PROMPT
-    .replace('{query}', query)
-    .replace('{brand}', brand_name)
-    .replace('{industry}', brand_industry)
-  
-  const enhancedModel = wrapLanguageModel({
-    model: groq('qwen-qwq-32b'),
-    middleware: extractReasoningMiddleware({ tagName: 'think' }),
-  })
-
-  // Start recommendation generation asynchronously
-  const recommendationPromise = generateText({
-    model: enhancedModel,
-    prompt: formattedRecommenderPrompt,
-  })
 
   // Prepare for multi-model ranking
   const formattedPrompt = VOYAGER_RANKING_PROMPT.replace('{query}', query)
@@ -399,6 +378,19 @@ export async function explorerAnalysis(
       reasoning: z.string()
     }))
   })
+
+  function extractJsonFromString(text: string): string | null {
+    // Regex to find JSON possibly enclosed in ```json ... ``` or just starting with {
+    const jsonRegex = /```json\s*([\s\S]*?)\s*```|^\s*({[\s\S]*})\s*$/;
+    const match = text.trim().match(jsonRegex);
+  
+    if (match) {
+      // Return the captured group (either from ```json ... ``` or the standalone object)
+      return match[1] || match[2];
+    }
+    console.warn("Could not extract JSON object from text:", text);
+    return null; // Return null if no JSON object pattern is found
+  }
 
   // Run all model queries in parallel
   const modelPromises = models.map(({ model, name }) => 
@@ -420,7 +412,7 @@ export async function explorerAnalysis(
   }).then(response => {
     try {
       // generateText returns an object with a text property
-      const textResponse = response.text;
+      const textResponse = extractJsonFromString(response.text);
       console.log("Perplexity Sonar response:", textResponse);
       
       // Try to parse the text response into JSON
@@ -441,7 +433,98 @@ export async function explorerAnalysis(
   
   // Filter out any failed responses and combine results
   const modelResults = allResults.filter(result => result !== null);
-  
+
+  // Get the list of model names that provided successful responses
+  const successfulModelNames = modelResults.map(result => result.name);
+
+  // Define all text models
+  const textModels = [
+    { model: openrouter('openai/gpt-4o'), name: 'GPT 4o' },
+    { model: openrouter('anthropic/claude-3.5-sonnet'), name: 'Claude 3.5 Sonnet' },
+    { model: openrouter('google/gemini-2.0-flash-001'), name: 'Gemini 2.0 Flash' },
+    { model: openrouter('perplexity/sonar'), name: 'Perplexity Sonar' }
+  ];
+
+  // Filter text models to only include those that have ranking results
+  const filteredTextModels = textModels.filter(model => 
+    successfulModelNames.includes(model.name)
+  );
+
+  async function summarizeModelResults(result) {
+    const { response, name } = result;
+    // Find the corresponding model in textModels
+    const modelConfig = textModels.find(m => m.name === name);
+    
+    if (!modelConfig) {
+      console.error(`No corresponding model config found for ${name}`);
+      return null;
+    }
+    
+    // Create a summary prompt that includes this model's specific ranking results
+    const brands = response.object.brands;
+    const modelResultsSummary = brands.map(brand => 
+      `Brand: ${brand.name}\nRank: ${brand.rank}`
+    ).join('\n\n');
+    
+    const summaryPrompt = `The user has asked you this query: "${query}"
+    context:${modelResultsSummary}
+    Answer the query in a comprehensive and detailed way.
+`    
+    // Generate the summary using the same model
+    const response2 = await generateText({
+      model: modelConfig.model,
+      prompt: summaryPrompt,
+      temperature: 0.1,
+    });
+
+    let text = response2.text;
+    let citations = null;
+
+    // Only try to extract citations for Perplexity
+    if (name.toLowerCase().includes('perplexity')) {
+      // Try to extract citations as JSON at the end or as a section
+      const citationMatch = text.match(/Citations?:\s*([\s\S]+)$/i);
+      if (citationMatch) {
+        try {
+          citations = JSON.parse(citationMatch[1]);
+          text = text.replace(citationMatch[0], '').trim();
+        } catch {
+          // If not valid JSON, just leave as null
+        }
+      }
+      // Alternatively, extract all URLs as citations if no JSON found
+      if (!citations) {
+        const urlMatches = text.match(/https?:\/\/[^\s)]+/g);
+        if (urlMatches) {
+          citations = urlMatches;
+        }
+      }
+    }
+
+    return { name, text, citations };
+  }
+
+  // Generate summaries for each model's own results
+  const summaryPromises = modelResults.map(result => summarizeModelResults(result));
+  const allTextGenerations = (await Promise.all(summaryPromises)).filter(result => result !== null);
+
+  // Insert results into ai_summary
+  const insertPromises = allTextGenerations.map(async ({ name, text, citations }) => {
+    const { error } = await supabase
+      .from('ai_summary')
+      .insert({
+        model: name,
+        summary: text,
+        query,
+        mode_id,
+        reasoning: citations || null, // Use reasoning as citations
+      });
+
+    if (error) {
+      console.error('Error inserting into ai_summary:', error);
+    }
+  });
+
   // Process all model results and build a set of unique brands
   const uniqueBrands = new Set()
   for (const { response, name } of modelResults) {
@@ -466,6 +549,9 @@ export async function explorerAnalysis(
     }
   }
 
+  // Wait for all insertions to complete
+  await Promise.all(insertPromises);
+  
   // Process social data for each unique brand in parallel
   const socialPromises: Promise<{
     brandName: string,
@@ -576,25 +662,6 @@ export async function explorerAnalysis(
     }
   }
 
-  // Collect recommendation results
-  try {
-    const {text, reasoning} = await recommendationPromise
-    if (text) {
-      recommendations = {
-        id: uuidv4(),
-        brand_id: brand_id,
-        mode_id: mode_id,
-        query: query,
-        type: `Recommendation for ${brand_name}`,
-        reasoning: reasoning || '',
-        suggestion: text,
-        priority: 1,
-        created_at: new Date().toISOString(),
-      }
-    }
-  } catch (error) {
-    console.error("Error generating recommendation:", error)
-  }
 
   return {
     search_id,
@@ -602,7 +669,6 @@ export async function explorerAnalysis(
     mode_id,
     ai_rankings: rankings,
     social_insights: socialInsights,
-    recommendations,
     charts
   }
 }
@@ -834,7 +900,7 @@ export async function voyagerAnalysis(
     )
   }
 
-  // Wait for all social data processing to complete
+  // Process all social data results
   const socialResults = await Promise.all(socialPromises)
   
   // Create final data structures from results

@@ -88,7 +88,7 @@ export function AIChatInterface() {
   const [value, setValue] = useState("");
   const { user, session } = useAuth();
   const { brand } = useBrandData();
-  const [mode, setMode] = useState<AnalysisMode>("DeepFocus");
+  const [mode, setMode] = useState<AnalysisMode>("Explorer");
   const [loading, setLoading] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isMonitoringMode, setIsMonitoringMode] = useState(false);

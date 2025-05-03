@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @next/next/no-img-element */
 /* eslint-disable @typescript-eslint/ban-ts-comment */
-//@ts-nocheck
 
 "use client";
 
@@ -18,7 +17,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { SearchResults, AIRanking, SocialInsight } from "@/types/search";
+import {
+  SearchResults,
+  AIRanking,
+  SocialInsight,
+  Summary,
+} from "@/types/search";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChartData } from "@/types/search";
 import {
@@ -31,7 +35,13 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { supabase } from "@/lib/supabase";
-import { TbScanPosition, TbTextScan2 } from "react-icons/tb";
+import {
+  TbAt,
+  TbScanPosition,
+  TbSparkles,
+  TbTableSpark,
+  TbTextScan2,
+} from "react-icons/tb";
 import { useAuth } from "@/hooks/useAuth";
 import ReactMarkdown from "react-markdown";
 import {
@@ -46,6 +56,7 @@ import {
 } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
+import { Claude, Gemini, OpenAI, Perplexity } from "@lobehub/icons";
 
 // Type for brand data
 interface Brand {
@@ -97,7 +108,7 @@ export default function AnalysisPage() {
           const models = [
             ...new Set(data.ai_rankings.map((r: AIRanking) => r.llm_name)),
           ];
-          if (models[0]) setSelectedModel(models[0]);
+          if (models[0]) setSelectedModel(models[0] as string);
 
           // Get all unique entity_ids that might be UUIDs
           const entityIds = new Set<string>();
@@ -174,18 +185,24 @@ export default function AnalysisPage() {
       (r) => !selectedModel || r.llm_name === selectedModel
     ) || [];
 
+  const filteredSummary =
+    results?.summary?.find(
+      (s) => !selectedModel || s.model === selectedModel
+    ) || null;
+  // console.log(filteredSummary)
+
   // Check for Voyager mode
   const isVoyagerMode = results?.mode === "Voyager";
   const isExplorerMode = results?.mode === "Explorer";
 
-  const safeParseJSON = (str, fallback = null) => {
+  const safeParseJSON = (str: string | null, fallback: string | null = null) => {
     try {
       // Check if str is a string and not empty
-      if (typeof str === 'string' && str.trim() !== '') {
+      if (typeof str === "string" && str.trim() !== "") {
         return JSON.parse(str);
       }
       // If str is already an object, return it
-      if (typeof str === 'object' && str !== null) {
+      if (typeof str === "object" && str !== null) {
         return str;
       }
       return fallback;
@@ -196,15 +213,15 @@ export default function AnalysisPage() {
   };
 
   const firstLevelLinks = (results?.social_insights || [])
-  .map((item) =>
-    (item?.links || [])
-      .map((link) => safeParseJSON(link, link))
-      .filter((link) => link !== '' && link != null) // Exclude empty strings and null
-  )
-  .flat();
+    .map(
+      (item) =>
+        (item?.links || [])
+          .map((link) => safeParseJSON(link, link))
+          .filter((link) => link !== "" && link != null) // Exclude empty strings and null
+    )
+    .flat();
 
   const sourcesLinks = firstLevelLinks.slice(0, 15);
-  console.log(sourcesLinks)
 
   if (loading) {
     return <AnalysisLoadingState />;
@@ -241,9 +258,9 @@ export default function AnalysisPage() {
   }
 
   const faviconUrls = sourcesLinks
-  .map((link) => link?.favicon || null)
-  .filter((favicon) => favicon !== null)
-  .join(", ");
+    .map((link) => link?.favicon || null)
+    .filter((favicon) => favicon !== null)
+    .join(", ");
 
   return (
     <div className="mx-auto p-2 sm:p-4 w-full h-full">
@@ -256,7 +273,9 @@ export default function AnalysisPage() {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 sm:mb-6 w-full gap-3 sm:gap-0">
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-xl sm:text-2xl font-medium">Analysis Results</h1>
+              <h1 className="text-xl sm:text-2xl font-medium">
+                Analysis Results
+              </h1>
               <span
                 className={`px-2 py-1 text-xs rounded-full ${
                   results.mode === "Voyager"
@@ -303,29 +322,26 @@ export default function AnalysisPage() {
                 value="rankings"
                 className="data-[state=active]:bg-zinc-700 cursor-pointer whitespace-nowrap"
               >
-                <TbTextScan2 className="w-4 h-4 mr-1 hidden sm:inline" />
-                AI Model Insights
+                <TbTableSpark className="w-4 h-4 mr-1 hidden sm:inline" />
+                AI Ranking
               </TabsTrigger>
-              {
-                  results.social_insights &&
-                  results.social_insights.length > 0 && (
-                    <TabsTrigger
-                      value="social"
-                      className="data-[state=active]:bg-zinc-700 cursor-pointer whitespace-nowrap"
-                    >
-                      <TbScanPosition className="w-4 h-4 mr-1 hidden sm:inline" />
-                      Social Insights
-                    </TabsTrigger>
-                  )}
-              {isExplorerMode &&
-                results.recommendations &&
-                results.recommendations.length > 0 && (
+
+              <TabsTrigger
+                value="summary"
+                className="data-[state=active]:bg-zinc-700 cursor-pointer whitespace-nowrap"
+              >
+                <TbSparkles className="w-4 h-4 mr-1 hidden sm:inline" />
+                AI Summary
+              </TabsTrigger>
+
+              {results.social_insights &&
+                results.social_insights.length > 0 && (
                   <TabsTrigger
-                    value="recs"
+                    value="social"
                     className="data-[state=active]:bg-zinc-700 cursor-pointer whitespace-nowrap"
                   >
-                    <TbScanPosition className="w-4 h-4 mr-1 hidden sm:inline" />
-                    Recommendations
+                    <TbAt className="w-4 h-4 mr-1 hidden sm:inline" />
+                    Social Insights
                   </TabsTrigger>
                 )}
               {results.charts && results.charts.length > 0 && (
@@ -367,9 +383,9 @@ export default function AnalysisPage() {
                               // Add error handling for broken image links
                               onError={(e) => {
                                 // Replace with a placeholder or hide the image on error
-                                e.target.src =
-                                  "https://placehold.co/24x24/cccccc/ffffff?text=?";
-                                e.target.onerror = null; // Prevent infinite loop if placeholder fails
+                                const imgElement = e.currentTarget as HTMLImageElement;
+                                imgElement.src = "https://placehold.co/24x24/cccccc/ffffff?text=?";
+                                imgElement.onerror = null; // Prevent infinite loop if placeholder fails
                               }}
                             />
                           )
@@ -400,12 +416,34 @@ export default function AnalysisPage() {
                     ) : (
                       <div className="space-y-4">
                         {sourcesLinks?.map((insight, index) => (
-                          <div key={index} className="w-full cursor-pointer group hover:bg-neutral-800 rounded-md p-3" onClick={() => window.open(insight.url, "_blank")}>
-                            <p className="text-white/80 font-semibold text-sm sm:text-base">{insight?.title}</p>
-                            <p className="text-white/60 font-regular text-xs sm:text-sm" style={{ WebkitLineClamp: '3', WebkitBoxOrient: 'vertical', overflow: 'hidden', display: '-webkit-box' }}>{insight?.summary}</p>
+                          <div
+                            key={index}
+                            className="w-full cursor-pointer group hover:bg-neutral-800 rounded-md p-3"
+                            onClick={() => window.open(insight.url, "_blank")}
+                          >
+                            <p className="text-white/80 font-semibold text-sm sm:text-base">
+                              {insight?.title}
+                            </p>
+                            <p
+                              className="text-white/60 font-regular text-xs sm:text-sm"
+                              style={{
+                                WebkitLineClamp: "3",
+                                WebkitBoxOrient: "vertical",
+                                overflow: "hidden",
+                                display: "-webkit-box",
+                              }}
+                            >
+                              {insight?.summary}
+                            </p>
                             <div className="flex gap-2 items-center mt-3">
-                              <img src={insight?.favicon} alt={"favicon"} className="rounded-md w-4 h-4 sm:w-5 sm:h-5"/>
-                              <p className="text-xs">{new URL(insight?.id).hostname || "No Hostname"}</p>
+                              <img
+                                src={insight?.favicon}
+                                alt={"favicon"}
+                                className="rounded-md w-4 h-4 sm:w-5 sm:h-5"
+                              />
+                              <p className="text-xs">
+                                {new URL(insight?.id).hostname || "No Hostname"}
+                              </p>
                             </div>
                           </div>
                         ))}
@@ -424,31 +462,18 @@ export default function AnalysisPage() {
             />
           </TabsContent>
 
-          {
-              results.social_insights &&
-              results.social_insights.length > 0 && (
-                <TabsContent value="social" className="space-y-4">
-                  <SocialInsightsTabContent
-                    insights={results.social_insights}
-                    getEntityName={getEntityName}
-                  />
-                </TabsContent>
-              )}
+          <TabsContent value="summary" className="space-y-4">
+            <SummaryTabContent item={filteredSummary} />
+          </TabsContent>
 
-          {isExplorerMode &&
-            results.recommendations &&
-            results.recommendations.length > 0 && (
-              <TabsContent
-                value="recs"
-                className="space-y-4 [&_h1]:text-white [&_h2]:text-white [&_h3]:text-white [&_p]:text-white/80"
-              >
-                <div className="prose prose-invert max-w-none prose-p:text-sm sm:prose-p:text-base prose-headings:text-base sm:prose-headings:text-lg md:prose-headings:text-xl">
-                  <ReactMarkdown>
-                    {results?.recommendations[0]?.suggestion}
-                  </ReactMarkdown>
-                </div>
-              </TabsContent>
-            )}
+          {results.social_insights && results.social_insights.length > 0 && (
+            <TabsContent value="social" className="space-y-4">
+              <SocialInsightsTabContent
+                insights={results.social_insights}
+                getEntityName={getEntityName}
+              />
+            </TabsContent>
+          )}
 
           {results.charts && results.charts.length > 0 && (
             <TabsContent value="trends" className="space-y-4">
@@ -532,33 +557,37 @@ function RankingsTabContent({
       {Object.entries(queriesMap).map(([query, queryRankings]) => (
         <motion.div key={query} variants={itemVariants}>
           <div className="mb-3 sm:mb-4">
-            <h3 className="text-lg sm:text-xl font-bold break-words">&ldquo;{query}&rdquo;</h3>
+            <h3 className="text-lg sm:text-xl font-bold break-words">
+              &ldquo;{query}&rdquo;
+            </h3>
             <p className="text-xs sm:text-sm text-muted-foreground">
               Analysis performed on{" "}
               {new Date(queryRankings[0].analyzed_at).toLocaleString()}
             </p>
           </div>
 
-          <div className="relative overflow-x-auto rounded-md border border-accent">
-            <table className="w-full text-xs sm:text-sm text-left">
+          {/* Responsive Container: Table for md+ screens, Cards for smaller screens */}
+          <div className="relative overflow-hidden rounded-md border border-accent">
+            {/* Table for Medium screens and up */}
+            <table className="hidden w-full text-xs text-left md:table sm:text-sm">
               <thead className="text-xs uppercase bg-zinc-900/50">
                 <tr>
-                  <th scope="col" className="px-2 sm:px-6 py-2 sm:py-3">
+                  <th scope="col" className="px-6 py-3">
                     Entity
                   </th>
-                  <th scope="col" className="px-2 sm:px-6 py-2 sm:py-3">
+                  <th scope="col" className="px-6 py-3">
                     Type
                   </th>
-                  <th scope="col" className="px-2 sm:px-6 py-2 sm:py-3">
+                  <th scope="col" className="px-6 py-3">
                     Rank
                   </th>
-                  <th scope="col" className="px-2 sm:px-6 py-2 sm:py-3">
+                  <th scope="col" className="px-6 py-3">
                     Score
                   </th>
-                  <th scope="col" className="px-2 sm:px-6 py-2 sm:py-3">
+                  <th scope="col" className="px-6 py-3">
                     Model
                   </th>
-                  <th scope="col" className="px-2 sm:px-6 py-2 sm:py-3">
+                  <th scope="col" className="px-6 py-3">
                     Reasoning
                   </th>
                 </tr>
@@ -569,29 +598,33 @@ function RankingsTabContent({
                     .sort((a, b) => (a.rank || 99) - (b.rank || 99))
                     .map((ranking, idx) => (
                       <motion.tr
-                        key={idx}
+                        key={`${ranking.id}-desktop-${idx}`}
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: idx * 0.05 }}
                         className="border-b border-accent hover:bg-zinc-800/20"
                       >
-                        <td className="px-2 sm:px-6 py-3 sm:py-4 font-medium text-white">
+                        <td className="px-6 py-4 font-medium text-white">
                           {getEntityName(ranking.entity_id)}
                         </td>
-                        <td className="px-2 sm:px-6 py-3 sm:py-4">
+                        <td className="px-6 py-4">
                           {ranking.entity_type === "brand"
                             ? "Brand"
                             : "Competitor"}
                         </td>
-                        <td className="px-2 sm:px-6 py-3 sm:py-4">{ranking.rank ?? "N/A"}</td>
-                        <td className="px-2 sm:px-6 py-3 sm:py-4">{ranking.score}</td>
-                        <td className="px-2 sm:px-6 py-3 sm:py-4">
+                        <td className="px-6 py-4">
+                          {ranking.rank ?? "N/A"}
+                        </td>
+                        <td className="px-6 py-4">
+                          {ranking.score}
+                        </td>
+                        <td className="px-6 py-4">
                           <Badge className="bg-blue-500/20 text-blue-200 border-blue-500/30 text-xs whitespace-nowrap">
                             {ranking.llm_name}
                           </Badge>
                         </td>
-                        <td className="px-2 sm:px-6 py-3 sm:py-4 max-w-[200px] sm:max-w-md">
-                          <div className="line-clamp-3 sm:line-clamp-none text-xs sm:text-sm">
+                        <td className="px-6 py-4 max-w-md">
+                          <div className="text-sm">
                             {ranking.reasoning || "N/A"}
                           </div>
                         </td>
@@ -600,9 +633,145 @@ function RankingsTabContent({
                 </AnimatePresence>
               </tbody>
             </table>
+
+            {/* Cards for Small screens */}
+            <div className="block md:hidden">
+              <AnimatePresence>
+                {queryRankings
+                  .sort((a, b) => (a.rank || 99) - (b.rank || 99))
+                  .map((ranking, idx) => (
+                    <motion.div
+                      key={`${ranking.id}-mobile-${idx}`}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: idx * 0.05 }}
+                      className="p-4 border-b border-accent last:border-b-0 bg-zinc-800/10 hover:bg-zinc-800/30"
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <span className="font-medium text-white text-sm">
+                          {getEntityName(ranking.entity_id)}
+                        </span>
+                        <Badge className="bg-blue-500/20 text-blue-200 border-blue-500/30 text-xs whitespace-nowrap ml-2">
+                          {ranking.llm_name}
+                        </Badge>
+                      </div>
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs mb-2">
+                        <div>
+                          <span className="text-muted-foreground">Rank: </span>
+                          <span>{ranking.rank ?? "N/A"}</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Score: </span>
+                          <span>{ranking.score}</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Type: </span>
+                          <span>{ranking.entity_type === "brand" ? "Brand" : "Competitor"}</span>
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Reasoning:</p>
+                        <p className="text-xs text-white/90 line-clamp-3">
+                          {ranking.reasoning || "N/A"}
+                        </p>
+                      </div>
+                    </motion.div>
+                  ))}
+              </AnimatePresence>
+            </div>
           </div>
         </motion.div>
       ))}
+    </motion.div>
+  );
+}
+
+// Summary tab content
+function SummaryTabContent({ item }: { item: Summary | null }) {
+  if (!item) {
+    return <p>No summary data available.</p>;
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="w-full space-y-6 pb-8"
+    >
+      <motion.div
+        key={item.id}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{
+          type: "spring",
+          damping: 12,
+          stiffness: 100,
+          delay: 0.15,
+        }}
+      >
+        <div className="group relative overflow-auto rounded-xl transition-all hover:shadow-lg dark:border-gray-800">
+          <div className="p-4">
+            <div className="flex md:flex-row flex-col md:items-center mb-14 gap-3">
+              <p className="text-xl font-semibold">&quot;{item.query}&quot;</p>
+              <div className="flex">
+                {item.model?.toLowerCase().includes("gpt") && (
+                  <OpenAI.Combine className="h-5 w-5" />
+                )}
+                {item.model?.toLowerCase().includes("claude") && (
+                  <Claude.Combine className="h-5 w-5" />
+                )}
+                {item.model?.toLowerCase().includes("gemini") && (
+                  <Gemini.Combine className="h-5 w-5" />
+                )}
+                {item.model?.toLowerCase().includes("perplexity") && (
+                  <Perplexity.Combine className="h-5 w-5" />
+                )}
+              </div>
+            </div>
+
+            <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap">
+              <ReactMarkdown>{item.summary}</ReactMarkdown>
+            </div>
+
+            {item.reasoning &&
+              Array.isArray(item.reasoning) &&
+              item.reasoning.length > 0 && (
+                <div className="mt-6 space-y-2">
+                  <h4 className="text-sm font-medium text-muted-foreground">
+                    Citations
+                  </h4>
+                  <div className="flex flex-wrap gap-2">
+                    {item.reasoning.map((citation, idx) => (
+                      <a
+                        key={idx}
+                        href={citation}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center rounded-md bg-secondary px-2.5 py-0.5 text-xs font-medium text-secondary-foreground transition-colors hover:bg-secondary/80"
+                      >
+                        Source {idx + 1}
+                        <svg
+                          className="ml-1 h-3 w-3"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                          />
+                        </svg>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+          </div>
+        </div>
+      </motion.div>
     </motion.div>
   );
 }
@@ -626,26 +795,30 @@ function SocialInsightsTabContent({
       initial="hidden"
       animate="visible"
     >
-      <div className="relative overflow-x-auto rounded-md border border-accent">
-        <table className="w-full text-xs sm:text-sm text-left">
+      <div className="relative overflow-hidden rounded-md border border-accent">
+        {/* Table for Medium screens and up */}
+        <table className="hidden w-full text-xs text-left md:table sm:text-sm">
           <thead className="text-xs uppercase bg-zinc-900/50">
             <tr>
-              <th scope="col" className="px-2 sm:px-6 py-2 sm:py-3">
+              <th scope="col" className="px-6 py-3">
                 Entity
               </th>
-              <th scope="col" className="px-2 sm:px-6 py-2 sm:py-3">
+              <th scope="col" className="px-6 py-3">
                 Keyword
               </th>
-              <th scope="col" className="px-2 sm:px-6 py-2 sm:py-3">
+              <th scope="col" className="px-6 py-3">
                 Platform
               </th>
-              <th scope="col" className="px-2 sm:px-6 py-2 sm:py-3">
+              <th scope="col" className="px-6 py-3">
                 Mentions
               </th>
-              <th scope="col" className="px-2 sm:px-6 py-2 sm:py-3">
+              <th scope="col" className="px-6 py-3">
                 Sentiment
               </th>
-              <th scope="col" className="px-2 sm:px-6 py-2 sm:py-3 hidden sm:table-cell">
+              <th
+                scope="col"
+                className="px-6 py-3"
+              >
                 Date Collected
               </th>
             </tr>
@@ -653,15 +826,15 @@ function SocialInsightsTabContent({
           <tbody>
             {insights.map((insight, idx) => (
               <motion.tr
-                key={idx}
+                key={`${insight.id}-desktop-${idx}`}
                 variants={itemVariants}
                 custom={idx}
                 className="border-b border-accent hover:bg-zinc-800/20"
               >
-                <td className="px-2 sm:px-6 py-3 sm:py-4 font-medium text-white">
+                <td className="px-6 py-4 font-medium text-white">
                   {getEntityName(insight.entity_id)}
                 </td>
-                <td className="px-2 sm:px-6 py-3 sm:py-4">
+                <td className="px-6 py-4">
                   {insight.keyword ? (
                     <Badge className="bg-zinc-700 text-zinc-300 text-xs">
                       #{insight.keyword}
@@ -670,9 +843,9 @@ function SocialInsightsTabContent({
                     "N/A"
                   )}
                 </td>
-                <td className="px-2 sm:px-6 py-3 sm:py-4">{insight.platform}</td>
-                <td className="px-2 sm:px-6 py-3 sm:py-4">{insight.mention_count}</td>
-                <td className="px-2 sm:px-6 py-3 sm:py-4">
+                <td className="px-6 py-4">{insight.platform}</td>
+                <td className="px-6 py-4">{insight.mention_count}</td>
+                <td className="px-6 py-4">
                   <Badge
                     variant={
                       insight.sentiment === "positive"
@@ -681,24 +854,70 @@ function SocialInsightsTabContent({
                         ? "destructive"
                         : "outline"
                     }
-                    className={`text-xs ${
-                      insight.sentiment === "positive"
-                        ? "bg-green-500/20 text-green-200 border-green-500/30"
-                        : insight.sentiment === "negative"
-                        ? "bg-red-500/20 text-red-200 border-red-500/30"
-                        : "bg-zinc-500/20 text-zinc-200 border-zinc-500/30"
-                    }`}
+                    className={`text-xs ${insight.sentiment === "positive" ? "bg-green-500/20 text-green-200 border-green-500/30" : insight.sentiment === "negative" ? "bg-red-500/20 text-red-200 border-red-500/30" : "bg-zinc-500/20 text-zinc-200 border-zinc-500/30"}`}
                   >
                     {insight.sentiment || "Neutral"}
                   </Badge>
                 </td>
-                <td className="px-2 sm:px-6 py-3 sm:py-4 hidden sm:table-cell">
+                <td className="px-6 py-4">
                   {new Date(insight.data_fetched_at).toLocaleString()}
                 </td>
               </motion.tr>
             ))}
           </tbody>
         </table>
+
+        {/* Cards for Small screens */}
+        <div className="block md:hidden">
+          <AnimatePresence>
+            {insights.map((insight, idx) => (
+              <motion.div
+                key={`${insight.id}-mobile-${idx}`}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: idx * 0.05 }}
+                className="p-4 border-b border-accent last:border-b-0 bg-zinc-800/10 hover:bg-zinc-800/30"
+              >
+                <div className="flex justify-between items-center mb-2">
+                  <span className="font-medium text-white text-sm">
+                    {getEntityName(insight.entity_id)}
+                  </span>
+                  <Badge
+                    variant={
+                      insight.sentiment === "positive" ? "default" : insight.sentiment === "negative" ? "destructive" : "outline"
+                    }
+                    className={`text-xs ml-2 ${insight.sentiment === "positive" ? "bg-green-500/20 text-green-200 border-green-500/30" : insight.sentiment === "negative" ? "bg-red-500/20 text-red-200 border-red-500/30" : "bg-zinc-500/20 text-zinc-200 border-zinc-500/30"}`}
+                  >
+                    {insight.sentiment || "Neutral"}
+                  </Badge>
+                </div>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs mb-2">
+                  <div>
+                    <span className="text-muted-foreground">Platform: </span>
+                    <span>{insight.platform}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Mentions: </span>
+                    <span>{insight.mention_count}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Keyword: </span>
+                    {insight.keyword ? (
+                      <Badge className="bg-zinc-700 text-zinc-300 text-[10px] px-1 py-0">
+                        #{insight.keyword}
+                      </Badge>
+                    ) : (
+                      "N/A"
+                    )}
+                  </div>
+                </div>
+                <p className="text-[10px] text-muted-foreground">
+                  Collected: {new Date(insight.data_fetched_at).toLocaleDateString()}
+                </p>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </div>
       </div>
     </motion.div>
   );
@@ -745,14 +964,18 @@ function TrendsTabContent({ charts }: { charts: ChartData[] }) {
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={chart.trend_points}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                        <XAxis dataKey="date" stroke="#9CA3AF" tick={{ fontSize: 10 }} />
+                        <XAxis
+                          dataKey="date"
+                          stroke="#9CA3AF"
+                          tick={{ fontSize: 10 }}
+                        />
                         <YAxis stroke="#9CA3AF" tick={{ fontSize: 10 }} />
                         <Tooltip
                           contentStyle={{
                             backgroundColor: "#1F2937",
                             borderColor: "#374151",
                             color: "#E5E7EB",
-                            fontSize: "12px"
+                            fontSize: "12px",
                           }}
                         />
                         <Line

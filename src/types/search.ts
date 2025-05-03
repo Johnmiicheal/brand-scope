@@ -56,15 +56,13 @@ export const chartDataSchema = z.object({
   trend_points: z.array(z.object({ date: z.string(), value: z.number() })),
 });
 
-export interface Recommendations {
+export interface Summary {
   id: string
-  brand_id: string
-  mode_id: string
+  model: string
+  summary: string
   query: string
-  type: string
-  suggestion: string
+  mode_id: string
   reasoning: string
-  priority: number
   created_at: string
 }
 
@@ -87,5 +85,5 @@ export interface SearchResults {
   social_insights?: SocialInsight[];
   charts?: ChartData[];
   comparisons?: CompetitorComparison[];
-  recommendations?: Recommendations
+  summary?: Summary[]
 } 
