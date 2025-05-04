@@ -28,7 +28,7 @@ interface SerpAPIResponse {
 }
 
 // Create a search record in the database and return the ID
-export async function createSearchRecord(
+async function createSearchRecord(
   query: string, 
   supabase: SupabaseClient, 
   engine: string = 'google', 
@@ -37,16 +37,16 @@ export async function createSearchRecord(
   location?: string,
   userId?: string
 ): Promise<string> {
-  // Make sure engine is properly set, including support for "all" engine type
+  // Make sure engine is properly set, including support for "google" engine type
   const searchData: SearchRecordData = { 
     query, 
-    engine: engine || 'all' // Default to 'all' if no engine is specified
+    engine: engine || 'google' // Default to 'google' if no engine is specified
   };
   
-  // IMPORTANT: Preserve the 'all' engine value when it's explicitly passed
-  // This ensures that scheduled queries with engine='all' maintain their value
-  if (engine === 'all') {
-    console.log('Preserving "all" engine type for proper subfilter functionality');
+  // IMPORTANT: Preserve the 'google' engine value when it's explicitly passed
+  // This ensures that scheduled queries with engine='google' maintain their value
+  if (engine === 'google') {
+    console.log('Preserving "google" engine type for proper subfilter functionality');
   }
   
   // Add additional fields if provided
@@ -80,7 +80,7 @@ export async function createSearchRecord(
 }
 
 // Perform the actual Google search using SerpAPI
-export async function performGoogleSearch(
+async function performGoogleSearch(
   query: string, 
   apiKey: string, 
   engine: string = 'google', 
@@ -139,7 +139,7 @@ export async function performGoogleSearch(
 }
 
 // Extract AI overview text from the search data
-export function extractAiOverviewText(data: SerpAPIResponse): string {
+function extractAiOverviewText(data: SerpAPIResponse): string {
   // First try to get data from ai_overview structure
   if (data.ai_overview?.text_blocks) {
     return data.ai_overview.text_blocks
@@ -155,7 +155,7 @@ export function extractAiOverviewText(data: SerpAPIResponse): string {
       .join('\n\n');
   }
   
-  // Fallback to answer_box or knowledge_graph if ai_overview is not available
+  // Fgoogleback to answer_box or knowledge_graph if ai_overview is not available
   if (data.answer_box?.snippet) {
     return data.answer_box.snippet;
   } else if (data.knowledge_graph?.description) {
