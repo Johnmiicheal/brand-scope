@@ -214,6 +214,47 @@ function extractJsonFromString(text: string): string | null {
   console.warn("Could not extract JSON object from text:", text);
   return null; // Return null if no JSON object pattern is found
 }
+async function callSearchGoogleEndpoint(
+  query: string,
+  mode_id: string,
+  brandName?: string,
+  location?: string
+): Promise<void> {
+  try {
+    const apiUrl = `https://brandscope.vercel.app/api/search-google`;
+    
+    const payload = {
+      query,
+      engine: 'google',
+      includeAiOverview: true,
+      monitoringId: mode_id,
+      brandName: brandName || undefined,
+      location: location || 'United States'
+    };
+    
+    console.log(`Calling search-google endpoint for query: "${query}"`);
+    
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload)
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Error calling search-google: ${response.status} - ${errorText}`);
+      return; // Continue execution despite error
+    }
+    
+    const data = await response.json();
+    console.log(`Search-google endpoint called successfully. Search ID: ${data.searchId}`);
+  } catch (error) {
+    console.error('Failed to call search-google endpoint:', error);
+    // Don't throw so the main analysis can continue even if this fails
+  }
+}
 
 // --- Core Logic ---
 
@@ -236,6 +277,10 @@ async function processQuery(
   // Generate a unique ID for this specific run (like mode_id)
   const analysisRunId = uuidv4();
   console.log(`  Generated Analysis Run ID: ${analysisRunId}`);
+  
+  // Call the search-google endpoint to get Google search results
+  // This helps enrich our analysis with current web data
+  await callSearchGoogleEndpoint(query.query, analysisRunId);
 
   // --- Define Models ---
   const modelsToQuery = [

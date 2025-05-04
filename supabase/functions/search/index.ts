@@ -348,6 +348,50 @@ serve(async (req) => {
   }
 });
 
+// Helper function to call the search-google endpoint
+async function callSearchGoogleEndpoint(
+  query: string,
+  mode_id: string,
+  brandName?: string,
+  location?: string
+): Promise<void> {
+  try {
+    const apiUrl = `${Deno.env.get("FRONTEND_URL") || "https://brandscope.vercel.app"}/api/search-google`;
+    
+    const payload = {
+      query,
+      engine: 'google',
+      includeAiOverview: true,
+      monitoringId: mode_id,
+      brandName: brandName || undefined,
+      location: location || 'United States'
+    };
+    
+    console.log(`Calling search-google endpoint for query: "${query}"`);
+    
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        // 'Authorization': `Bearer ${Deno.env.get("SEARCH_API_KEY") || ""}` 
+      },
+      body: JSON.stringify(payload)
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Error calling search-google: ${response.status} - ${errorText}`);
+      return; // Continue execution despite error
+    }
+    
+    const data = await response.json();
+    console.log(`Search-google endpoint called successfully. Search ID: ${data.searchId}`);
+  } catch (error) {
+    console.error('Failed to call search-google endpoint:', error);
+    // Don't throw so the main analysis can continue even if this fails
+  }
+}
+
 // Explorer: Competitor comparison and analysis - Optimized
 export async function explorerAnalysis(
   user_id: string, 
@@ -358,6 +402,9 @@ export async function explorerAnalysis(
   brand_industry: string,
   brand_id: string
 ): Promise<SearchResults> {
+  // Call the search-google endpoint after mode_id is defined
+  await callSearchGoogleEndpoint(query, mode_id, brand_name);
+  
   const rankings: AIRanking[] = [];
   const socialInsights: SocialInsight[] = [];
 
@@ -893,6 +940,9 @@ export async function voyagerAnalysis(
   mode_id: string = uuidv4(),
   search_id: string = uuidv4()
 ): Promise<SearchResults> {
+  // Call the search-google endpoint after mode_id is defined
+  await callSearchGoogleEndpoint(query, mode_id);
+  
   const models = [
     {
       model: groq("meta-llama/llama-4-scout-17b-16e-instruct"),

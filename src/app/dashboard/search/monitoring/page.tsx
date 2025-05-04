@@ -361,7 +361,7 @@ export default function ScheduledQueryDetailPage() {
                 </Badge>
               </p>
             </div>
-            <div>
+          <div>
               <p className="text-muted-foreground">Next Run</p>
               <p>{formatRelativeDate(firstResult.next_analysis_at)}</p>
             </div>
@@ -403,8 +403,8 @@ export default function ScheduledQueryDetailPage() {
                 <SelectContent className="p-1">
                   {modelsInRun.map((model) => (
                     <SelectItem key={model} value={model}>
-                      {model}
-                    </SelectItem>
+                        {model}
+                      </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -439,7 +439,7 @@ export default function ScheduledQueryDetailPage() {
           </Card>
         )}
       </motion.div>
-    </div>
+        </div>
   );
 }
 
@@ -477,81 +477,81 @@ function AnalysisRunDetailsContent({
     .join(", ");
 
   return (
-    <Tabs defaultValue="rankings" className="w-full">
-      <div className="flex flex-col sm:flex-row w-full justify-between items-start sm:items-center gap-3 sm:gap-0">
-        <TabsList className="mb-4 bg-transparent overflow-x-auto w-full sm:w-auto pb-1 flex justify-start">
-          <TabsTrigger
-            value="rankings"
-            className="data-[state=active]:bg-zinc-700 cursor-pointer whitespace-nowrap"
-          >
+        <Tabs defaultValue="rankings" className="w-full">
+          <div className="flex flex-col sm:flex-row w-full justify-between items-start sm:items-center gap-3 sm:gap-0">
+            <TabsList className="mb-4 bg-transparent overflow-x-auto w-full sm:w-auto pb-1 flex justify-start">
+              <TabsTrigger
+                value="rankings"
+                className="data-[state=active]:bg-zinc-700 cursor-pointer whitespace-nowrap"
+              >
             <TbTableSpark className="w-4 h-4 mr-1 hidden sm:inline" />
             AI Ranking
-          </TabsTrigger>
+              </TabsTrigger>
 
           {modelSummary && (
-            <TabsTrigger
+                    <TabsTrigger
               value="summary"
-              className="data-[state=active]:bg-zinc-700 cursor-pointer whitespace-nowrap"
-            >
+                      className="data-[state=active]:bg-zinc-700 cursor-pointer whitespace-nowrap"
+                    >
               <TbSparkles className="w-4 h-4 mr-1 hidden sm:inline" />
               AI Response
-            </TabsTrigger>
-          )}
-        </TabsList>
+                </TabsTrigger>
+              )}
+            </TabsList>
 
-        <Sheet>
+              <Sheet>
           {modelSummary && (
-            <SheetTrigger asChild>
-              <div className="bg-zinc-900 border text-muted-foreground inline-flex h-8 w-fit items-center justify-center rounded-lg py-1 px-3 text-xs gap-2 cursor-pointer">
-                <div className="flex -space-x-2 overflow-hidden p-1">
+                <SheetTrigger asChild>
+                  <div className="bg-zinc-900 border text-muted-foreground inline-flex h-8 w-fit items-center justify-center rounded-lg py-1 px-3 text-xs gap-2 cursor-pointer">
+                    <div className="flex -space-x-2 overflow-hidden p-1">
                   {citations.slice(0, 4).map(
-                    (
-                      iconUrl,
-                      index // Show max 4 icons
-                    ) => (
-                      <img
-                        key={index}
-                        className="inline-block h-5 w-5 rounded-full ring-2 ring-white dark:ring-gray-800 bg-zinc-900"
+                          (
+                            iconUrl,
+                            index // Show max 4 icons
+                          ) => (
+                            <img
+                              key={index}
+                              className="inline-block h-5 w-5 rounded-full ring-2 ring-white dark:ring-gray-800 bg-zinc-900"
                         src={iconUrl?.favicon || ""}
-                        alt={`Favicon ${index + 1}`}
-                        // Add error handling for broken image links
-                        onError={(e) => {
-                          // Replace with a placeholder or hide the image on error
+                              alt={`Favicon ${index + 1}`}
+                              // Add error handling for broken image links
+                              onError={(e) => {
+                                // Replace with a placeholder or hide the image on error
                           const imgElement =
                             e.currentTarget as HTMLImageElement;
                           imgElement.src =
-                            "https://placehold.co/24x24/cccccc/ffffff?text=?";
+                                  "https://placehold.co/24x24/cccccc/ffffff?text=?";
                           imgElement.onerror = null; // Prevent infinite loop if placeholder fails
-                        }}
-                      />
-                    )
-                  )}
-                  {faviconUrls?.split(",").length > 4 && (
-                    <span className="flex items-center justify-center h-5 w-5 rounded-full bg-gray-200 text-xs font-medium text-gray-500 ring-2 ring-white dark:ring-gray-800 dark:bg-gray-700 dark:text-gray-400">
-                      +{faviconUrls?.split(",").length - 4}
-                    </span>
-                  )}
-                </div>
-                Sources
-              </div>
-            </SheetTrigger>
+                              }}
+                            />
+                          )
+                        )}
+                      {faviconUrls?.split(",").length > 4 && (
+                        <span className="flex items-center justify-center h-5 w-5 rounded-full bg-gray-200 text-xs font-medium text-gray-500 ring-2 ring-white dark:ring-gray-800 dark:bg-gray-700 dark:text-gray-400">
+                          +{faviconUrls?.split(",").length - 4}
+                        </span>
+                      )}
+                    </div>
+                    Sources
+                  </div>
+                </SheetTrigger>
           )}
-          <SheetContent className="sm:max-w-md">
-            <SheetHeader>
-              <SheetTitle className="text-2xl font-bold">
-                Citation Sources
-              </SheetTitle>
-              <SheetDescription className="text-white/60">
-                View citations used in our analysis.
-              </SheetDescription>
-            </SheetHeader>
-            <ScrollArea className="px-2 sm:px-4 h-[90%] w-full space-y-4">
+                <SheetContent className="sm:max-w-md">
+                  <SheetHeader>
+                    <SheetTitle className="text-2xl font-bold">
+                      Citation Sources
+                    </SheetTitle>
+                    <SheetDescription className="text-white/60">
+                      View citations used in our analysis.
+                    </SheetDescription>
+                  </SheetHeader>
+                  <ScrollArea className="px-2 sm:px-4 h-[90%] w-full space-y-4">
               {citations?.length === 0 ? (
-                <p className="text-gray-500 text-center">
-                  No insights available.
-                </p>
-              ) : (
-                <div className="space-y-4">
+                      <p className="text-gray-500 text-center">
+                        No insights available.
+                      </p>
+                    ) : (
+                      <div className="space-y-4">
                   {citations?.map((insight, index) => (
                     <div
                       key={index}
@@ -572,7 +572,7 @@ function AnalysisRunDetailsContent({
                       >
                         {insight?.text}
                       </p>
-                      <div className="flex gap-2 items-center mt-3">
+                            <div className="flex gap-2 items-center mt-3">
                         <img
                           src={insight?.favicon || ""}
                           alt={"favicon"}
@@ -581,24 +581,24 @@ function AnalysisRunDetailsContent({
                         <p className="text-xs">
                           {new URL(insight?.id).hostname || "No Hostname"}
                         </p>
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </ScrollArea>
-          </SheetContent>
-        </Sheet>
-      </div>
+                    )}
+                  </ScrollArea>
+                </SheetContent>
+              </Sheet>
+          </div>
 
-      <TabsContent value="rankings" className="space-y-4">
+          <TabsContent value="rankings" className="space-y-4">
         <RankingsTabContent rankings={modelResults} />
-      </TabsContent>
+          </TabsContent>
 
       <TabsContent value="summary" className="space-y-4">
         <SummaryTabContent item={modelSummary} />
-      </TabsContent>
-    </Tabs>
+            </TabsContent>
+        </Tabs>
   );
 }
 
@@ -638,78 +638,78 @@ function RankingsTabContent({
   return (
     <div>
       <div className="gap-6">
-        <motion.div
-          className="space-y-4 sm:space-y-6"
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-        >
+    <motion.div
+      className="space-y-4 sm:space-y-6"
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+    >
           {Object.entries(rankings).map(([query, queryRankings]) => (
-            <motion.div key={query} variants={itemVariants}>
+        <motion.div key={query} variants={itemVariants}>
               <div className="relative overflow-x-auto rounded-md border border-accent w-full">
-                <table className="w-full text-xs sm:text-sm text-left">
-                  <thead className="text-xs uppercase bg-zinc-900/50">
-                    <tr>
-                      <th scope="col" className="px-2 sm:px-6 py-2 sm:py-3">
+            <table className="w-full text-xs sm:text-sm text-left">
+              <thead className="text-xs uppercase bg-zinc-900/50">
+                <tr>
+                  <th scope="col" className="px-2 sm:px-6 py-2 sm:py-3">
                         Name
-                      </th>
-                      <th scope="col" className="px-2 sm:px-6 py-2 sm:py-3">
-                        Rank
-                      </th>
-                      <th scope="col" className="px-2 sm:px-6 py-2 sm:py-3">
-                        Score
-                      </th>
-                      <th scope="col" className="px-2 sm:px-6 py-2 sm:py-3">
-                        Model
-                      </th>
-                      <th scope="col" className="px-2 sm:px-6 py-2 sm:py-3">
-                        Reasoning
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <AnimatePresence>
+                  </th>
+                  <th scope="col" className="px-2 sm:px-6 py-2 sm:py-3">
+                    Rank
+                  </th>
+                  <th scope="col" className="px-2 sm:px-6 py-2 sm:py-3">
+                    Score
+                  </th>
+                  <th scope="col" className="px-2 sm:px-6 py-2 sm:py-3">
+                    Model
+                  </th>
+                  <th scope="col" className="px-2 sm:px-6 py-2 sm:py-3">
+                    Reasoning
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <AnimatePresence>
                       {queryRankings.data?.brands
-                        .sort((a, b) => (a.rank || 99) - (b.rank || 99))
-                        .map((ranking, idx) => (
-                          <motion.tr
-                            key={idx}
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: idx * 0.05 }}
-                            className="border-b border-accent hover:bg-zinc-800/20"
-                          >
-                            <td className="px-2 sm:px-6 py-3 sm:py-4 font-medium text-white">
+                    .sort((a, b) => (a.rank || 99) - (b.rank || 99))
+                    .map((ranking, idx) => (
+                      <motion.tr
+                        key={idx}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: idx * 0.05 }}
+                        className="border-b border-accent hover:bg-zinc-800/20"
+                      >
+                        <td className="px-2 sm:px-6 py-3 sm:py-4 font-medium text-white">
                               {ranking.name}
                             </td>
 
                             <td className="px-2 sm:px-6 py-3 sm:py-4">
                               {ranking.rank ?? "N/A"}
-                            </td>
-                            <td className="px-2 sm:px-6 py-3 sm:py-4">
+                        </td>
+                        <td className="px-2 sm:px-6 py-3 sm:py-4">
                               {ranking.score}
-                            </td>
-                            <td className="px-2 sm:px-6 py-3 sm:py-4">
-                              <Badge className="bg-blue-500/20 text-blue-200 border-blue-500/30 text-xs whitespace-nowrap">
+                        </td>
+                        <td className="px-2 sm:px-6 py-3 sm:py-4">
+                          <Badge className="bg-blue-500/20 text-blue-200 border-blue-500/30 text-xs whitespace-nowrap">
                                 {queryRankings.llm_name}
-                              </Badge>
-                            </td>
-                            <td className="px-2 sm:px-6 py-3 sm:py-4 max-w-[200px] sm:max-w-md">
-                              <div className="line-clamp-3 sm:line-clamp-none text-xs sm:text-sm">
-                                {ranking.reasoning || "N/A"}
-                              </div>
-                            </td>
-                          </motion.tr>
-                        ))}
-                    </AnimatePresence>
-                  </tbody>
-                </table>
-              </div>
-            </motion.div>
-          ))}
+                          </Badge>
+                        </td>
+                        <td className="px-2 sm:px-6 py-3 sm:py-4 max-w-[200px] sm:max-w-md">
+                          <div className="line-clamp-3 sm:line-clamp-none text-xs sm:text-sm">
+                            {ranking.reasoning || "N/A"}
+                          </div>
+                        </td>
+                      </motion.tr>
+                    ))}
+                </AnimatePresence>
+              </tbody>
+            </table>
+          </div>
         </motion.div>
+      ))}
+    </motion.div>
       </div>
-    </div>
+      </div>
   );
 }
 
@@ -758,7 +758,7 @@ function SummaryTabContent({
               <ReactMarkdown>{item.summary}</ReactMarkdown>
             </div>
           </div>
-        </div>
+      </div>
       </motion.div>
     </motion.div>
   );
