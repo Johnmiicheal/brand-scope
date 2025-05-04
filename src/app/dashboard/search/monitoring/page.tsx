@@ -605,7 +605,7 @@ function AnalysisRunDetailsContent({
 // --- AnalysisLoadingState Component ---
 function AnalysisLoadingState() {
   return (
-    <div className="mx-auto p-2 sm:p-4 bg-gradient-to-b from-background to-zinc-900 w-full h-full">
+    <div className="mx-auto p-2 sm:p-4 w-full h-full">
       <div className="rounded-lg p-3 sm:p-6 border border-accent">
         <div className="mb-4 sm:mb-6">
           <Skeleton className="h-8 sm:h-10 w-[180px] sm:w-[250px] mb-2 bg-zinc-800" />

@@ -899,7 +899,7 @@ export async function voyagerAnalysis(
       name: "Llama 4 Scout",
     },
     { model: groq("deepseek-r1-distill-llama-70b"), name: "DeepSeek R1" },
-    { model: groq("qwen-qwq-32b"), name: "Qwen QwQ 32B" },
+    { model: groq("mistral-saba-24b"), name: "Mistral Saba 24B" },
     { model: groq("gemma2-9b-it"), name: "Gemma 2 9B" },
   ];
 
@@ -946,7 +946,7 @@ export async function voyagerAnalysis(
     );
   }
 
-  const textGenerationResults = await generateTextForAllModels(textModels);
+  const textGenerationResults = await generateTextForAllModels(models);
 
   // 3. Store Summaries in Supabase
   const insertPromises = textGenerationResults
@@ -984,7 +984,7 @@ export async function voyagerAnalysis(
   const extractionPromises = textGenerationResults
     .filter((result) => result.success && result.text)
     .map(async ({ name, text }) => {
-      const modelConfig = textModels.find((m) => m.name === name);
+      const modelConfig = models.find((m) => m.name === name);
       if (!modelConfig) {
         console.error(
           `Cannot find model config for ${name} during extraction.`
@@ -1154,7 +1154,7 @@ export async function voyagerAnalysis(
               score: score,
               sentiment: sentiment, // Use checked sentiment
               reasoning: brand.reasoning || "",
-              mode: "Explorer",
+              mode: "Voyager",
         mode_id,
         analyzed_at: new Date().toISOString(),
             });

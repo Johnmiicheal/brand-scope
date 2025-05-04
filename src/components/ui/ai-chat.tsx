@@ -284,9 +284,9 @@ export function AIChatInterface() {
 
   const modes = [
     {
-      key: "DeepFocus",
+      key: "Explorer",
       caption:
-        "Advanced brand analysis with detailed reasoning and market insights",
+      "Enhanced brand analysis and insights from top AI search engines",
     },
     {
       key: "Voyager",
@@ -294,10 +294,10 @@ export function AIChatInterface() {
         "Comprehensive analysis with social sentiment tracking & market perception insights",
     },
     {
-      key: "Explorer",
+      key: "DeepFocus",
       caption:
-        "Enhanced brand analysis and insights with actionable strategies for visibility enhancement",
-    },
+        "Focused brand analysis with detailed reasoning and market insights",
+    }
   ];
 
 const formatTime = (totalSeconds: number): string => {
@@ -634,7 +634,7 @@ const formatTime = (totalSeconds: number): string => {
                 <div>
                   <h4 className="font-medium text-sm">DeepFocus Mode</h4>
                   <p className="text-sm text-neutral-400 mt-1">
-                    Uses Llama3 and Google Gemma 2 to analyze search prompts, providing detailed brand ranking and analysis. 
+                    Only performs brand analysis, it utilizes Llama3 and Google Gemma 2 to analyze search prompts, providing detailed brand ranking and analysis. 
                     Best for focused research on specific topics or competitors.
                   </p>
                 </div>
@@ -658,8 +658,8 @@ const formatTime = (totalSeconds: number): string => {
                 <div>
                   <h4 className="font-medium text-sm">Explorer Mode</h4>
                   <p className="text-sm text-neutral-400 mt-1">
-                    Our most comprehensive analysis using GPT 4o, Perplexity Sonar, Gemini 2.0 Flash, Claude 3.5, and DeepSeek R1.
-                    Provides tailored recommendations specific to your brand. <span className="text-yellow-400">Note: Requires you to have a brand created.</span>
+                    Our most comprehensive analysis using GPT 4o, Perplexity Sonar, Gemini 2.0 Flash and Claude 3.5
+                    Extracts brands insights from native AI search prompts
                   </p>
                 </div>
               </div>
