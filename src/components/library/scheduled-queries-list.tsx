@@ -37,7 +37,6 @@ type FilterOptions = {
 export type ScheduledQuery = {
   id: string;
   query: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   results: any | null; // Adjust based on how you store results
   last_analysis_at: string | null;
   next_analysis_at: string | null;

@@ -195,7 +195,10 @@ export default function AnalysisPage() {
   const isVoyagerMode = results?.mode === "Voyager";
   const isExplorerMode = results?.mode === "Explorer";
 
-  const safeParseJSON = (str: string | null, fallback: string | null = null) => {
+  const safeParseJSON = (
+    str: string | null,
+    fallback: string | null = null
+  ) => {
     try {
       // Check if str is a string and not empty
       if (typeof str === "string" && str.trim() !== "") {
@@ -331,35 +334,8 @@ export default function AnalysisPage() {
                 className="data-[state=active]:bg-zinc-700 cursor-pointer whitespace-nowrap"
               >
                 <TbSparkles className="w-4 h-4 mr-1 hidden sm:inline" />
-                AI Summary
+                AI Response
               </TabsTrigger>
-
-              {results.social_insights &&
-                results.social_insights.length > 0 && (
-                  <TabsTrigger
-                    value="social"
-                    className="data-[state=active]:bg-zinc-700 cursor-pointer whitespace-nowrap"
-                  >
-                    <TbAt className="w-4 h-4 mr-1 hidden sm:inline" />
-                    Social Insights
-                  </TabsTrigger>
-                )}
-              {results.charts && results.charts.length > 0 && (
-                <TabsTrigger
-                  value="trends"
-                  className="data-[state=active]:bg-zinc-700 whitespace-nowrap"
-                >
-                  Trends
-                </TabsTrigger>
-              )}
-              {results.comparisons && results.comparisons.length > 0 && (
-                <TabsTrigger
-                  value="competitors"
-                  className="data-[state=active]:bg-zinc-700 cursor-pointer whitespace-nowrap"
-                >
-                  Competitor Analysis
-                </TabsTrigger>
-              )}
             </TabsList>
 
             {(isExplorerMode || isVoyagerMode) && (
@@ -383,8 +359,10 @@ export default function AnalysisPage() {
                               // Add error handling for broken image links
                               onError={(e) => {
                                 // Replace with a placeholder or hide the image on error
-                                const imgElement = e.currentTarget as HTMLImageElement;
-                                imgElement.src = "https://placehold.co/24x24/cccccc/ffffff?text=?";
+                                const imgElement =
+                                  e.currentTarget as HTMLImageElement;
+                                imgElement.src =
+                                  "https://placehold.co/24x24/cccccc/ffffff?text=?";
                                 imgElement.onerror = null; // Prevent infinite loop if placeholder fails
                               }}
                             />
@@ -465,27 +443,6 @@ export default function AnalysisPage() {
           <TabsContent value="summary" className="space-y-4">
             <SummaryTabContent item={filteredSummary} />
           </TabsContent>
-
-          {results.social_insights && results.social_insights.length > 0 && (
-            <TabsContent value="social" className="space-y-4">
-              <SocialInsightsTabContent
-                insights={results.social_insights}
-                getEntityName={getEntityName}
-              />
-            </TabsContent>
-          )}
-
-          {results.charts && results.charts.length > 0 && (
-            <TabsContent value="trends" className="space-y-4">
-              <TrendsTabContent charts={results.charts} />
-            </TabsContent>
-          )}
-
-          {results.comparisons && results.comparisons.length > 0 && (
-            <TabsContent value="competitors" className="space-y-4">
-              <CompetitorsTabContent comparisons={results.comparisons} />
-            </TabsContent>
-          )}
         </Tabs>
       </motion.div>
     </div>
@@ -588,6 +545,9 @@ function RankingsTabContent({
                     Model
                   </th>
                   <th scope="col" className="px-6 py-3">
+                    Sentiment
+                  </th>
+                  <th scope="col" className="px-6 py-3">
                     Reasoning
                   </th>
                 </tr>
@@ -612,15 +572,31 @@ function RankingsTabContent({
                             ? "Brand"
                             : "Competitor"}
                         </td>
-                        <td className="px-6 py-4">
-                          {ranking.rank ?? "N/A"}
-                        </td>
-                        <td className="px-6 py-4">
-                          {ranking.score}
-                        </td>
+                        <td className="px-6 py-4">{ranking.rank ?? "N/A"}</td>
+                        <td className="px-6 py-4">{ranking.score}</td>
                         <td className="px-6 py-4">
                           <Badge className="bg-blue-500/20 text-blue-200 border-blue-500/30 text-xs whitespace-nowrap">
                             {ranking.llm_name}
+                          </Badge>
+                        </td>
+                        <td className="px-6 py-4">
+                          <Badge
+                            variant={
+                              ranking.sentiment === "positive"
+                                ? "default"
+                                : ranking.sentiment === "negative"
+                                ? "destructive"
+                                : "outline"
+                            }
+                            className={`text-xs ${
+                              ranking.sentiment === "positive"
+                                ? "bg-green-500/20 text-green-200 border-green-500/30"
+                                : ranking.sentiment === "negative"
+                                ? "bg-red-500/20 text-red-200 border-red-500/30"
+                                : "bg-zinc-500/20 text-zinc-200 border-zinc-500/30"
+                            }`}
+                          >
+                            {ranking.sentiment || "Neutral"}
                           </Badge>
                         </td>
                         <td className="px-6 py-4 max-w-md">
@@ -666,11 +642,31 @@ function RankingsTabContent({
                         </div>
                         <div>
                           <span className="text-muted-foreground">Type: </span>
-                          <span>{ranking.entity_type === "brand" ? "Brand" : "Competitor"}</span>
+                          <span>
+                            {ranking.entity_type === "brand"
+                              ? "Brand"
+                              : "Competitor"}
+                          </span>
                         </div>
+                        <div>
+                        <span
+                          className={`text-xs font-bold ${
+                            ranking.sentiment === "positive"
+                              ? "text-green-300"
+                              : ranking.sentiment === "negative"
+                              ? "text-red-300"
+                              : "text-zinc-300"
+                          }`}
+                        >
+                          {ranking.sentiment || "Neutral"}
+                        </span>
                       </div>
+                      </div>
+                     
                       <div>
-                        <p className="text-xs text-muted-foreground mb-1">Reasoning:</p>
+                        <p className="text-xs text-muted-foreground mb-1">
+                          Reasoning:
+                        </p>
                         <p className="text-xs text-white/90 line-clamp-3">
                           {ranking.reasoning || "N/A"}
                         </p>
@@ -815,10 +811,7 @@ function SocialInsightsTabContent({
               <th scope="col" className="px-6 py-3">
                 Sentiment
               </th>
-              <th
-                scope="col"
-                className="px-6 py-3"
-              >
+              <th scope="col" className="px-6 py-3">
                 Date Collected
               </th>
             </tr>
@@ -854,7 +847,13 @@ function SocialInsightsTabContent({
                         ? "destructive"
                         : "outline"
                     }
-                    className={`text-xs ${insight.sentiment === "positive" ? "bg-green-500/20 text-green-200 border-green-500/30" : insight.sentiment === "negative" ? "bg-red-500/20 text-red-200 border-red-500/30" : "bg-zinc-500/20 text-zinc-200 border-zinc-500/30"}`}
+                    className={`text-xs ${
+                      insight.sentiment === "positive"
+                        ? "bg-green-500/20 text-green-200 border-green-500/30"
+                        : insight.sentiment === "negative"
+                        ? "bg-red-500/20 text-red-200 border-red-500/30"
+                        : "bg-zinc-500/20 text-zinc-200 border-zinc-500/30"
+                    }`}
                   >
                     {insight.sentiment || "Neutral"}
                   </Badge>
@@ -884,9 +883,19 @@ function SocialInsightsTabContent({
                   </span>
                   <Badge
                     variant={
-                      insight.sentiment === "positive" ? "default" : insight.sentiment === "negative" ? "destructive" : "outline"
+                      insight.sentiment === "positive"
+                        ? "default"
+                        : insight.sentiment === "negative"
+                        ? "destructive"
+                        : "outline"
                     }
-                    className={`text-xs ml-2 ${insight.sentiment === "positive" ? "bg-green-500/20 text-green-200 border-green-500/30" : insight.sentiment === "negative" ? "bg-red-500/20 text-red-200 border-red-500/30" : "bg-zinc-500/20 text-zinc-200 border-zinc-500/30"}`}
+                    className={`text-xs ml-2 ${
+                      insight.sentiment === "positive"
+                        ? "bg-green-500/20 text-green-200 border-green-500/30"
+                        : insight.sentiment === "negative"
+                        ? "bg-red-500/20 text-red-200 border-red-500/30"
+                        : "bg-zinc-500/20 text-zinc-200 border-zinc-500/30"
+                    }`}
                   >
                     {insight.sentiment || "Neutral"}
                   </Badge>
@@ -912,7 +921,8 @@ function SocialInsightsTabContent({
                   </div>
                 </div>
                 <p className="text-[10px] text-muted-foreground">
-                  Collected: {new Date(insight.data_fetched_at).toLocaleDateString()}
+                  Collected:{" "}
+                  {new Date(insight.data_fetched_at).toLocaleDateString()}
                 </p>
               </motion.div>
             ))}

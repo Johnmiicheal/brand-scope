@@ -26,6 +26,7 @@ export const aiRankingSchema = z.object({
   rank: z.number().nullable(),
   score: z.number().default(0),
   reasoning: z.string().optional(),
+  sentiment: z.enum(['positive', 'negative', 'neutral']).nullable(),
   mode: z.enum(analysisModes),
   mode_id: z.string().uuid(),
   analyzed_at: z.string().datetime(),
@@ -83,7 +84,5 @@ export interface SearchResults {
   mode_id: string;
   ai_rankings: AIRanking[];
   social_insights?: SocialInsight[];
-  charts?: ChartData[];
-  comparisons?: CompetitorComparison[];
   summary?: Summary[]
 } 
