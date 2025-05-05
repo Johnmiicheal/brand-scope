@@ -111,3 +111,209 @@ export interface GoogleSearch {
   created_at?: string;
   mode_id?: string;
 }
+
+
+export interface GoogleSearchResult {
+  search_metadata: SearchMetadata;
+  search_parameters: SearchParameters;
+  search_information: SearchInformation;
+  knowledge_graph: KnowledgeGraph;
+  inline_videos: InlineVideo[];
+  inline_images: {
+    thumbnail: string;
+  }[];
+  related_questions: RelatedQuestion[];
+  ai_overview: AIOverview;
+  answer_box: AnswerBox;
+  organic_results: OrganicResult[];
+  perspectives: Perspective[];
+  top_stories_link: string;
+  top_stories_serpapi_link: string;
+  related_searches: RelatedSearch[];
+  discussions_and_forums: DiscussionForum[];
+  pagination: Pagination;
+}
+
+interface SearchMetadata {
+  id: string;
+  status: string;
+  json_endpoint: string;
+  created_at: string;
+  processed_at: string;
+  google_url: string;
+  raw_html_file: string;
+  total_time_taken: number;
+}
+
+interface SearchParameters {
+  engine: string;
+  q: string;
+  location_requested: string;
+  location_used: string;
+  google_domain: string;
+  hl: string;
+  gl: string;
+  device: string;
+}
+
+interface SearchInformation {
+  query_displayed: string;
+  total_results: number;
+  time_taken_displayed: number;
+  organic_results_state: string;
+}
+
+interface KnowledgeGraph {
+  entity_type: string;
+}
+
+interface InlineVideo {
+  position: number;
+  title: string;
+  link: string;
+  thumbnail: string;
+  channel: string;
+  duration: string;
+  platform: string;
+  key_moments?: KeyMoment[];
+}
+
+interface KeyMoment {
+  time: string;
+  title: string;
+  link: string;
+  thumbnail: string;
+}
+
+interface RelatedQuestion {
+  question: string;
+  snippet?: string;
+  title?: string;
+  date?: string;
+  link?: string;
+  displayed_link?: string;
+  source_logo?: string;
+  next_page_token?: string;
+  serpapi_link?: string;
+  list?: string[];
+}
+
+interface AIOverview {
+  text_blocks: TextBlock[];
+  references: Reference[];
+}
+
+interface TextBlock {
+  type: string;
+  snippet?: string;
+  snippet_highlighted_words?: string[];
+  reference_indexes?: number[];
+  list?: ListItem[];
+}
+
+interface ListItem {
+  title?: string;
+  snippet?: string;
+  reference_indexes?: number[];
+}
+
+interface Reference {
+  title: string;
+  link: string;
+  snippet?: string;
+  source: string;
+  index: number;
+}
+
+interface AnswerBox {
+  type: string;
+  title: string;
+  link: string;
+  displayed_link: string;
+  snippet: string;
+  snippet_highlighted_words: string[];
+  favicon: string;
+  source: string;
+  images: string[];
+}
+
+interface OrganicResult {
+  position: number;
+  title: string;
+  link: string;
+  redirect_link: string;
+  displayed_link: string;
+  favicon: string;
+  date?: string;
+  snippet: string;
+  snippet_highlighted_words: string[];
+  sitelinks?: Sitelinks;
+  source: string;
+}
+
+interface Sitelinks {
+  inline?: SitelinkItem[];
+  list?: SitelinkItem[];
+}
+
+interface SitelinkItem {
+  title: string;
+  link: string;
+  answer_count?: number;
+  date?: string;
+}
+
+interface Perspective {
+  author: string;
+  author_description: string;
+  source: string;
+  extensions?: string[];
+  thumbnails: string[];
+  title: string;
+  link: string;
+  date: string;
+}
+
+interface RelatedSearch {
+  block_position: number;
+  items?: RelatedSearchItem[];
+  query?: string;
+  link?: string;
+  serpapi_link?: string;
+}
+
+interface RelatedSearchItem {
+  name: string;
+  image: string;
+  link: string;
+  serpapi_link: string;
+}
+
+interface DiscussionForum {
+  title: string;
+  link: string;
+  date: string;
+  extensions: string[];
+  source: string;
+  answers: Answer[];
+}
+
+interface Answer {
+  snippet: string;
+  link: string;
+  extensions: string[];
+}
+
+interface Pagination {
+  current: number;
+  next: string;
+  other_pages: Record<string, string>;
+  serpapi_pagination: SerpapiPagination;
+}
+
+interface SerpapiPagination {
+  current: number;
+  next_link: string;
+  next: string;
+  other_pages: Record<string, string>;
+}

@@ -59,13 +59,13 @@ async function createSearchRecord(
   console.log(`Storing search with engine type: ${searchData.engine}`);
   
   try {
-    const { data: search, error: searchError } = await supabase
+  const { data: search, error: searchError } = await supabase
       .from("searches")
-      .insert([searchData])
-      .select()
-      .single();
+    .insert([searchData])
+    .select()
+    .single();
 
-    if (searchError) {
+  if (searchError) {
       console.error("Error storing search:", searchError);
       // Detailed error logging for debugging
       console.error("Error details:", JSON.stringify(searchError, null, 2));
@@ -75,9 +75,9 @@ async function createSearchRecord(
 
     if (!search || !search.id) {
       throw new Error("Search record created but no ID returned");
-    }
+  }
 
-    const searchId = search.id;
+  const searchId = search.id;
     console.log(
       "Created search with ID:",
       searchId,
@@ -86,8 +86,8 @@ async function createSearchRecord(
       "with engine:",
       searchData.engine
     );
-    
-    return searchId;
+  
+  return searchId;
   } catch (error) {
     console.error("Failed to create search record:", error);
     
@@ -148,24 +148,24 @@ async function performGoogleSearch(
   );
 
   try {
-    // Perform Google search using SerpAPI
+  // Perform Google search using SerpAPI
     const response = await fetch(`https://serpapi.com/search.json?${params}`, {
       headers: {
         "Content-Type": "application/json",
       },
     });
-
-    if (!response.ok) {
+  
+  if (!response.ok) {
       const errorText = await response.text();
       throw new Error(
         `SerpAPI request failed with status: ${response.status} - ${errorText}`
       );
-    }
-
+  }
+  
     const data: SerpAPIResponse = await response.json();
     console.log("Received Google search data successfully");
-
-    return data;
+  
+  return data;
   } catch (error) {
     console.error("Error performing search:", error);
     throw new Error(
@@ -194,14 +194,14 @@ function extractAiOverviewText(data: SerpAPIResponse): string {
       .filter(Boolean)
       .join("\n\n");
   }
-
+  
   // Fgoogleback to answer_box or knowledge_graph if ai_overview is not available
   if (data.answer_box?.snippet) {
     return data.answer_box.snippet;
   } else if (data.knowledge_graph?.description) {
     return data.knowledge_graph.description;
   }
-
+  
   return "";
 }
 
