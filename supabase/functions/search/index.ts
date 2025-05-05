@@ -357,6 +357,17 @@ async function callSearchGoogleEndpoint(
 ): Promise<void> {
   try {
     const apiUrl = `${Deno.env.get("FRONTEND_URL") || "https://brandscope.vercel.app"}/api/search-google`;
+    const internalApiKey = Deno.env.get("INTERNAL_API_KEY");
+    
+    // Log environment setup
+    console.log("Google Search API call setup:");
+    console.log("- Frontend URL:", Deno.env.get("FRONTEND_URL") || "https://brandscope.vercel.app");
+    console.log("- Internal API key exists:", !!internalApiKey);
+    
+    if (!internalApiKey) {
+      console.error('INTERNAL_API_KEY is missing in environment variables - required for search-google API calls');
+      return;
+    }
     
     const payload = {
       query,
@@ -367,25 +378,50 @@ async function callSearchGoogleEndpoint(
       location: location || 'United States'
     };
     
-    console.log(`Calling search-google endpoint for query: "${query}"`);
+    console.log(`Calling search-google endpoint for query: "${query}" with monitoring ID: ${mode_id}`);
     
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        // 'Authorization': `Bearer ${Deno.env.get("SEARCH_API_KEY") || ""}` 
-      },
-      body: JSON.stringify(payload)
-    });
+    // Make the request with a timeout to avoid hanging
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 20000); // 20 second timeout
     
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`Error calling search-google: ${response.status} - ${errorText}`);
-      return; // Continue execution despite error
+    try {
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${internalApiKey}`
+        },
+        body: JSON.stringify(payload),
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`Error calling search-google: ${response.status} - ${errorText}`);
+        console.error(`Request details: ${JSON.stringify({
+          url: apiUrl,
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer [REDACTED]'
+          },
+          body: JSON.stringify(payload)
+        })}`);
+        return; // Continue execution despite error
+      }
+      
+      const data = await response.json();
+      console.log(`Search-google endpoint called successfully. Search ID: ${data.searchId}`);
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
+      if (fetchError.name === 'AbortError') {
+        console.error('Search-google request timed out after 20 seconds');
+      } else {
+        console.error('Fetch error calling search-google:', fetchError);
+      }
     }
-    
-    const data = await response.json();
-    console.log(`Search-google endpoint called successfully. Search ID: ${data.searchId}`);
   } catch (error) {
     console.error('Failed to call search-google endpoint:', error);
     // Don't throw so the main analysis can continue even if this fails
