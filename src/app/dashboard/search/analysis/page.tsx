@@ -38,6 +38,7 @@ import { supabase } from "@/lib/supabase";
 import {
   TbAt,
   TbScanPosition,
+  TbSearch,
   TbSparkles,
   TbTableSpark,
   TbTextScan2,
@@ -57,6 +58,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Claude, Gemini, OpenAI, Perplexity } from "@lobehub/icons";
+import { GoogleResults } from "@/components/ui/google-results";
 
 // Type for brand data
 interface Brand {
@@ -336,6 +338,14 @@ export default function AnalysisPage() {
                 <TbSparkles className="w-4 h-4 mr-1 hidden sm:inline" />
                 AI Response
               </TabsTrigger>
+
+              <TabsTrigger
+                value="searches"
+                className="data-[state=active]:bg-zinc-700 cursor-pointer whitespace-nowrap"
+              >
+                <TbSearch className="w-4 h-4 mr-1 hidden sm:inline" />
+                Google Search
+              </TabsTrigger>
             </TabsList>
 
             {(isExplorerMode || isVoyagerMode) && (
@@ -442,6 +452,10 @@ export default function AnalysisPage() {
 
           <TabsContent value="summary" className="space-y-4">
             <SummaryTabContent item={filteredSummary} />
+          </TabsContent>
+
+          <TabsContent value="searches" className="space-y-4">
+            <GoogleResults googleResults={results?.search_results[0]?.results} />
           </TabsContent>
         </Tabs>
       </motion.div>

@@ -1,9 +1,6 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment */
-// @ts-nocheck
-
 import { createClient } from '@supabase/supabase-js';
 import { serverEnv } from '@/env/server';
-import { SearchResults, AIRanking, SocialInsight, AnalysisMode, Summary } from '@/types/search';
+import { SearchResults, AIRanking, SocialInsight, AnalysisMode, Summary, GoogleSearch, Search } from '@/types/search';
 
 
 // Initialize Supabase client
@@ -33,6 +30,8 @@ export async function getSearchResultsBySearchId(search_id: string): Promise<Sea
     mode_id: rankingsData[0].mode_id,
     ai_rankings: rankingsData as AIRanking[],
     social_insights: insightsData as SocialInsight[],
+    search_results: [],
+    searches: []
   };
 }
 
@@ -53,6 +52,8 @@ export async function getSearchResultsByModeId(mode_id: string): Promise<SearchR
     .eq('search_id', mode_id);
 
     const { data: summs } = await supabase.from('ai_summary').select('*').eq('mode_id', mode_id)
+    const { data: searches } = await supabase.from('searches').select('*').eq('monitoring_id', mode_id)
+    const { data: search_results } = await supabase.from('search_results').select('*').eq('mode_id', mode_id)
   
   return {
     search_id: rankingsData[0].id,
@@ -60,7 +61,9 @@ export async function getSearchResultsByModeId(mode_id: string): Promise<SearchR
     mode_id,
     ai_rankings: rankingsData as AIRanking[],
     social_insights: insightsData as SocialInsight[] || [],
-    summary: summs as Summary[]
+    summary: summs as Summary[],
+    search_results: search_results as GoogleSearch[],
+    searches: searches as Search[]
   };
 }
 
@@ -86,13 +89,17 @@ export async function getUserSearchResults(user_id: string): Promise<SearchResul
   
   // Create SearchResults for each mode group
   return Object.entries(modeGroups).map(([mode_id, rankings]): SearchResults => {
-    const firstRanking = rankings[0] as AIRanking;
+    // Ensure rankings is properly typed
+    const typedRankings = rankings as AIRanking[];
+    const firstRanking = typedRankings[0];
     return {
       search_id: firstRanking.id,
       mode: firstRanking.mode as AnalysisMode,
       mode_id,
       ai_rankings: rankings as AIRanking[],
       social_insights: [], // We would need to fetch these separately if needed
+      search_results: [],
+      searches: []
     };
   });
 } 

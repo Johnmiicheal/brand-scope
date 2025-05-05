@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { z } from 'zod';
 
 // Define analysis modes
@@ -85,4 +86,28 @@ export interface SearchResults {
   ai_rankings: AIRanking[];
   social_insights?: SocialInsight[];
   summary?: Summary[]
+  search_results: GoogleSearch[];
+  searches: Search[];
 } 
+
+export interface Search {
+  id: string;
+  user_id?: string;
+  query: string;
+  engine: string;
+  brand_name?: string;
+  monitoring_id?: string;
+  location?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface GoogleSearch {
+  id: string;
+  search_id?: string;
+  engine: string;
+  results: any; // jsonb type
+  ai_overview?: string;
+  created_at?: string;
+  mode_id?: string;
+}

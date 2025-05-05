@@ -35,28 +35,29 @@ async function createSearchRecord(
   location?: string,
   userId?: string
 ): Promise<string> {
-  // Make sure engine is properly set, including support for "google" engine type
-  const searchData: SearchRecordData = {
+  console.log("Creating search record with params:", {
     query,
+    engine,
+    brandName,
+    monitoringId,
+    location,
+    userId
+  });
+
+  // Make sure engine is properly set
+  const searchData: SearchRecordData = { 
+    query, 
     engine: engine || "google", // Default to 'google' if no engine is specified
   };
-
-  // IMPORTANT: Preserve the 'google' engine value when it's explicitly passed
-  // This ensures that scheduled queries with engine='google' maintain their value
-  if (engine === "google") {
-    console.log(
-      'Preserving "google" engine type for proper subfilter functionality'
-    );
-  }
-
-  // Add additional fields if provided
+  
+  // Add additional fields if provided, ensuring proper types
   if (brandName) searchData.brand_name = brandName;
   if (monitoringId) searchData.monitoring_id = monitoringId;
   if (location) searchData.location = location;
   if (userId) searchData.user_id = userId;
-
+  
   console.log(`Storing search with engine type: ${searchData.engine}`);
-
+  
   try {
     const { data: search, error: searchError } = await supabase
       .from("searches")
@@ -66,7 +67,14 @@ async function createSearchRecord(
 
     if (searchError) {
       console.error("Error storing search:", searchError);
-      throw searchError;
+      // Detailed error logging for debugging
+      console.error("Error details:", JSON.stringify(searchError, null, 2));
+      console.error("Attempted to save data:", JSON.stringify(searchData, null, 2));
+      throw new Error(`Database insert error: ${searchError.message}`);
+    }
+
+    if (!search || !search.id) {
+      throw new Error("Search record created but no ID returned");
     }
 
     const searchId = search.id;
@@ -78,15 +86,24 @@ async function createSearchRecord(
       "with engine:",
       searchData.engine
     );
-
+    
     return searchId;
   } catch (error) {
     console.error("Failed to create search record:", error);
-    throw new Error(
-      `Failed to create search record: ${
-        error instanceof Error ? error.message : String(error)
-      }`
-    );
+    
+    // Better error handling to prevent [object Object] errors
+    let errorMessage = "Unknown error";
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    } else if (typeof error === 'object' && error !== null) {
+      try {
+        errorMessage = JSON.stringify(error);
+      } catch {
+        errorMessage = String(error);
+      }
+    }
+    
+    throw new Error(`Failed to create search record: ${errorMessage}`);
   }
 }
 
@@ -96,7 +113,7 @@ async function performGoogleSearch(
   apiKey: string,
   engine: string = "google",
   includeAiOverview: boolean = true,
-  location?: string
+  location?: string,
 ): Promise<SerpAPIResponse> {
   // Validate inputs
   if (!query) throw new Error("Search query is required");
@@ -199,6 +216,7 @@ export async function POST(request: NextRequest) {
       includeAiOverview = true,
       brandName,
       monitoringId,
+      userId,
       location,
     } = body;
     
@@ -249,58 +267,14 @@ export async function POST(request: NextRequest) {
       console.log(`${key}: ${key === 'authorization' ? 'REDACTED' : value}`);
     });
     
-    let userId = undefined;
-    
-    // For monitoring requests, we'll allow them without auth
-    if (monitoringId) {
-      console.log("Monitoring ID provided, using as user identifier:", monitoringId);
-      userId = monitoringId;
-    } 
-    // Check if this is a server-to-server request with INTERNAL_API_KEY
-    else if (internalApiKey && authHeader === `Bearer ${internalApiKey}`) {
-      console.log("Valid internal API key used");
-      // For internal API calls, we don't need a specific user ID
-      userId = "internal-api-call";
-    } 
-    // Check for regular user authentication
-    else {
-      console.log("Attempting regular user authentication");
-      // For regular user requests, get the token from Authorization header
-      const token = authHeader?.replace("Bearer ", "");
-      
-      if (!token) {
-        console.log("No authentication token provided");
-        return NextResponse.json(
-          { error: "Authentication required" },
-          { status: 401 }
-        );
-      }
-      
-      try {
-        // Verify the token and get user data
-        const { data, error } = await supabase.auth.getUser(token);
-        
-        if (error || !data.user) {
-          console.error("Auth error:", error);
-          return NextResponse.json(
-            { error: "Invalid authentication token", details: error?.message },
-            { status: 401 }
-          );
-        }
-        
-        userId = data.user.id;
-        console.log("Authenticated user:", userId);
-      } catch (authError) {
-        console.error("Error processing authentication:", authError);
-        return NextResponse.json(
-          { error: "Authentication failed", details: authError instanceof Error ? authError.message : String(authError) },
-          { status: 401 }
-        );
-      }
+   
+    if (!userId) {
+      console.log("No authentication token provided");
+      return NextResponse.json(
+        { error: "Authentication required" },
+        { status: 401 }
+      );
     }
-
-    // If we get here, we should have either a userId or a monitoringId to track the request
-    console.log("Final user/monitoring ID for database:", userId || "None set");
 
     // Create a search record in the database
     const searchId = await createSearchRecord(
@@ -325,23 +299,42 @@ export async function POST(request: NextRequest) {
     // Extract AI overview text
     const aiOverviewText = extractAiOverviewText(searchData);
 
-    // Store search results in database
-    const { error: resultsError } = await supabase
-      .from("search_results")
-      .insert([
-        {
-          search_id: searchId,
-          engine: engine,
-          results: searchData,
-          ai_overview: aiOverviewText,
-        },
-      ]);
-
-    if (resultsError) {
-      console.error("Error storing search results:", resultsError);
-      // Continue despite the error to return search results to user
+    // Validate search results data conforms to schema
+    const searchResultData = {
+      search_id: searchId,
+      engine: engine || "google",
+      results: searchData,
+      ai_overview: aiOverviewText,
+      mode_id: monitoringId
+    };
+    
+    console.log("Storing search results with ID:", searchId);
+    
+    try {
+      // Store search results in database
+      const { error: resultsError } = await supabase
+        .from("search_results")
+        .insert([searchResultData]);
+      
+      if (resultsError) {
+        console.error("Error storing search results:", resultsError);
+        console.error("Error details:", JSON.stringify(resultsError, null, 2));
+        console.error("Attempted to save search results with schema:", {
+          search_id: typeof searchId,
+          engine: typeof searchResultData.engine,
+          results: "jsonb object",
+          ai_overview: typeof aiOverviewText
+        });
+        // Continue despite the error to return search results to user
+        console.warn("Continuing execution despite search results storage error");
+      } else {
+        console.log("Successfully stored search results for search ID:", searchId);
+      }
+    } catch (saveError) {
+      console.error("Exception occurred while storing search results:", saveError);
+      // Continue execution to return results to user
     }
-
+    
     // Return the search results and ID
     return NextResponse.json({
       searchId,

@@ -352,6 +352,7 @@ serve(async (req) => {
 async function callSearchGoogleEndpoint(
   query: string,
   mode_id: string,
+  user_id: string,
   brandName?: string,
   location?: string
 ): Promise<void> {
@@ -363,10 +364,18 @@ async function callSearchGoogleEndpoint(
     console.log("Google Search API call setup:");
     console.log("- Frontend URL:", Deno.env.get("FRONTEND_URL") || "https://brandscope.vercel.app");
     console.log("- Internal API key exists:", !!internalApiKey);
+    console.log("- Using mode_id as monitoring_id:", mode_id);
     
     if (!internalApiKey) {
       console.error('INTERNAL_API_KEY is missing in environment variables - required for search-google API calls');
       return;
+    }
+    
+    // Validate that mode_id is a valid UUID
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(mode_id)) {
+      console.error(`Invalid mode_id format: ${mode_id}. Expected a valid UUID.`);
+      // Continue with the call anyway, let the server decide how to handle it
     }
     
     const payload = {
@@ -374,11 +383,13 @@ async function callSearchGoogleEndpoint(
       engine: 'google',
       includeAiOverview: true,
       monitoringId: mode_id,
+      userId: user_id,
       brandName: brandName || undefined,
       location: location || 'United States'
     };
     
     console.log(`Calling search-google endpoint for query: "${query}" with monitoring ID: ${mode_id}`);
+    console.log("Search payload:", JSON.stringify(payload, null, 2));
     
     // Make the request with a timeout to avoid hanging
     const controller = new AbortController();
@@ -439,7 +450,7 @@ export async function explorerAnalysis(
   brand_id: string
 ): Promise<SearchResults> {
   // Call the search-google endpoint after mode_id is defined
-  await callSearchGoogleEndpoint(query, mode_id, brand_name);
+  await callSearchGoogleEndpoint(query, mode_id, user_id, brand_name);
   
   const rankings: AIRanking[] = [];
   const socialInsights: SocialInsight[] = [];
@@ -977,7 +988,7 @@ export async function voyagerAnalysis(
   search_id: string = uuidv4()
 ): Promise<SearchResults> {
   // Call the search-google endpoint after mode_id is defined
-  await callSearchGoogleEndpoint(query, mode_id);
+  await callSearchGoogleEndpoint(query, mode_id, user_id);
   
   const models = [
     {

@@ -217,6 +217,7 @@ function extractJsonFromString(text: string): string | null {
 async function callSearchGoogleEndpoint(
   query: string,
   mode_id: string,
+  user_id: string,
   brandName?: string,
   location?: string
 ): Promise<void> {
@@ -228,10 +229,18 @@ async function callSearchGoogleEndpoint(
     console.log("Search API call setup:");
     console.log("- Using URL:", apiUrl);
     console.log("- Internal API key exists:", !!internalApiKey);
+    console.log("- Using mode_id as monitoring_id:", mode_id);
     
     if (!internalApiKey) {
       console.error('INTERNAL_API_KEY is missing - required for server-to-server API calls');
       return;
+    }
+    
+    // Validate that mode_id is a valid UUID
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(mode_id)) {
+      console.error(`Invalid mode_id format: ${mode_id}. Expected a valid UUID.`);
+      // Continue with the call anyway, let the server decide how to handle it
     }
     
     const payload = {
@@ -239,11 +248,13 @@ async function callSearchGoogleEndpoint(
       engine: 'google',
       includeAiOverview: true,
       monitoringId: mode_id,
+      userId: user_id,
       brandName: brandName || undefined,
       location: location || 'United States'
     };
     
     console.log(`Calling search-google endpoint for query: "${query}" with monitoring ID: ${mode_id}`);
+    console.log("Search payload:", JSON.stringify(payload, null, 2));
     
     // Make the request with a timeout to avoid hanging
     const controller = new AbortController();
@@ -273,7 +284,7 @@ async function callSearchGoogleEndpoint(
             'Authorization': 'Bearer [REDACTED]'
           },
           body: JSON.stringify(payload)
-        })}`);
+        }, null, 2)}`);
         return; // Continue execution despite error
       }
       
@@ -302,7 +313,7 @@ async function callSearchGoogleEndpoint(
  * @param now - The current timestamp (ISO string) for this analysis run.
  */
 async function processQuery(
-  query: { id: string; query: string; frequency: string; mode?: string | null },
+  query: { id: string; query: string; frequency: string; mode?: string | null, user_id: string },
   now: string
 ): Promise<{ id: string; newAnalysisRun: z.infer<typeof AnalysisRunSchema> }> {
   console.log(
@@ -317,7 +328,7 @@ async function processQuery(
   
   // Call the search-google endpoint to get Google search results
   // This helps enrich our analysis with current web data
-  await callSearchGoogleEndpoint(query.query, analysisRunId);
+  await callSearchGoogleEndpoint(query.query, analysisRunId, query.user_id);
 
   // --- Define Models ---
   const modelsToQuery = [
@@ -711,7 +722,7 @@ export async function POST(req: Request) {
         mode: queryMode,
       } = newQueryData;
       const initialAnalysis = await processQuery(
-        { id, query: queryText, frequency: queryFreq, mode: queryMode },
+        { id, query: queryText, frequency: queryFreq, mode: queryMode, user_id: user_id },
         now
       );
       console.log(`Initial analysis complete for query ${newQueryData.id}`);
@@ -775,7 +786,7 @@ export async function GET(req: Request) {
   try {
     const { data: queries, error: fetchError } = await supabase
       .from("scheduled_queries")
-      .select("id, query, frequency, mode") // Fetch necessary fields
+      .select("id, query, frequency, mode, user_id") // Fetch necessary fields
       .lte("next_analysis_at", now) // Due for analysis
       .not("next_analysis_at", "is", null); // Ensure it has a scheduled time
 
