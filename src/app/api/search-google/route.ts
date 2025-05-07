@@ -3,6 +3,10 @@ import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { generateObject } from "ai";
+
+export const maxDuration = 60;
+
+
 // Define a type for search record data
 interface SearchRecordData {
   query: string;
