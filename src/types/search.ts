@@ -110,6 +110,7 @@ export interface GoogleSearch {
   ai_overview?: string;
   created_at?: string;
   mode_id?: string;
+  rankings: any;
 }
 
 

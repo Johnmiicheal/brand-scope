@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @next/next/no-img-element */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
@@ -440,6 +441,7 @@ export default function ScheduledQueryDetailPage() {
                 selectedModel={selectedModel}
                 citations={citations}
                 searchResults={scheduledQuery?.search_results[0]?.results}
+                rankings={scheduledQuery?.search_results[0]?.rankings}
               />
             </CardContent>
           </Card>
@@ -456,12 +458,14 @@ function AnalysisRunDetailsContent({
   selectedModel,
   citations,
   searchResults,
+  rankings,
 }: {
   modelResults: z.infer<typeof AnalysisRunSchema>["model_results"];
   modelSummary: z.infer<typeof AnalysisModelSummarySchema>;
   selectedModel: string | null;
   citations: z.infer<typeof CitationSchema>[] | null;
   searchResults: GoogleSearchResult;
+  rankings: any;
 }) {
   // Filter logic
   const filteredResults = useMemo(() => {
@@ -618,7 +622,7 @@ function AnalysisRunDetailsContent({
             </TabsContent>
 
             <TabsContent value="google" className="space-y-4">
-              <GoogleResults googleResults={searchResults} />
+              <GoogleResults googleResults={searchResults} rankings={rankings} />
             </TabsContent>
         </Tabs>
   );
