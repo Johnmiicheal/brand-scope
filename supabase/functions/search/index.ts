@@ -443,8 +443,8 @@ async function callSearchGoogleEndpoint(
 export async function explorerAnalysis(
   user_id: string, 
   query: string,
-  mode_id: string = uuidv4(),
-  search_id: string = uuidv4(),
+  mode_id: string,
+  search_id: string,
   brand_name: string,
   brand_industry: string,
   brand_id: string
@@ -984,8 +984,8 @@ serve(async (req) => {
 export async function voyagerAnalysis(
   user_id: string, 
   query: string,
-  mode_id: string = uuidv4(),
-  search_id: string = uuidv4()
+  mode_id: string,
+  search_id: string
 ): Promise<SearchResults> {
   // Call the search-google endpoint after mode_id is defined
   await callSearchGoogleEndpoint(query, mode_id, user_id);
