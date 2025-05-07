@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { format } from 'date-fns';
-import { MoreHorizontal, Plus, Search, ScrollText } from 'lucide-react';
+import { MoreHorizontal, Plus, Search, ScrollText, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/AuthContext';
@@ -19,9 +19,6 @@ interface SearchRecord {
   mode: string;
   query: string;
   analyzed_at: string;
-  entity_id: string;
-  entity_name: string;
-  llm_name: string;
   reasoning: string;
 }
 
@@ -31,6 +28,8 @@ export default function LibraryPage() {
   const [searches, setSearches] = useState<SearchRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   
   useEffect(() => {
     if (!isLoading && !user) {
@@ -48,9 +47,6 @@ export default function LibraryPage() {
             mode,
             query,
             analyzed_at,
-            entity_id,
-            entity_name,
-            llm_name,
             reasoning
           `)
           .eq('user_id', user.id)
@@ -71,9 +67,7 @@ export default function LibraryPage() {
   }, [router, user, isLoading]);
   
   // Group by query to get unique searches
-  const uniqueSearches = searches.length ? 
-    Array.from(new Map(searches.map(s => [s.mode_id, s])).values()) : 
-    [];
+  const uniqueSearches = searches;
     
   // Filter searches based on search term
   const filteredSearches = searchTerm.trim() === '' 
@@ -81,6 +75,30 @@ export default function LibraryPage() {
     : uniqueSearches.filter(search => 
         search.query.toLowerCase().includes(searchTerm.toLowerCase())
       );
+  
+  // Reset to first page when search term changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
+  
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredSearches.length / itemsPerPage);
+  const paginatedSearches = filteredSearches.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+  
+  const goToNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+  
+  const goToPreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
   
   // Animation variants for container
   const containerVariants = {
@@ -180,7 +198,7 @@ export default function LibraryPage() {
                 </p>
               </div>
             ) : (
-              filteredSearches.map((search, index) => (
+              paginatedSearches.map((search, index) => (
                 <motion.div 
                   key={search.mode_id}
                   variants={itemVariants}
@@ -221,6 +239,33 @@ export default function LibraryPage() {
               ))
             )}
           </motion.div>
+          
+          {/* Pagination Controls */}
+          {filteredSearches.length > 0 && totalPages > 1 && (
+            <div className="flex items-center justify-end gap-2 mt-6">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={goToPreviousPage}
+                disabled={currentPage === 1}
+                className="h-8 w-8 p-0 border-zinc-700"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <div className="text-sm text-zinc-400">
+                Page {currentPage} of {totalPages}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={goToNextPage}
+                disabled={currentPage === totalPages}
+                className="h-8 w-8 p-0 border-zinc-700"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
         </div>
         </TabsContent>
 
