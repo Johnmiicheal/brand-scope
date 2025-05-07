@@ -27,7 +27,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { formatDistanceToNow, parseISO, format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { TbSparkles } from "react-icons/tb";
+import { TbSearch, TbSparkles } from "react-icons/tb";
 import { TbTableSpark } from "react-icons/tb";
 import {
   Sheet,
@@ -39,6 +39,9 @@ import {
 } from "@/components/ui/sheet";
 import ReactMarkdown from "react-markdown";
 import { Claude, Gemini, OpenAI, Perplexity } from "@lobehub/icons";
+import { GoogleSearchResult, Search } from "@/types/search";
+import { GoogleSearch } from "@/types/search";
+import { GoogleResults } from "@/components/ui/google-results";
 
 // --- Zod Schemas ---
 const BrandResultSchema = z.object({
@@ -98,6 +101,8 @@ interface MonitoringResults {
   mode: string;
   mode_id: string;
   monitoring: Array<ScheduledQuery>;
+  searches: Array<Search>;
+  search_results: Array<GoogleSearch>;
 }
 
 // --- Helper Functions ---
@@ -434,6 +439,7 @@ export default function ScheduledQueryDetailPage() {
                 modelSummary={filteredModelSummary}
                 selectedModel={selectedModel}
                 citations={citations}
+                searchResults={scheduledQuery?.search_results[0]?.results}
               />
             </CardContent>
           </Card>
@@ -449,11 +455,13 @@ function AnalysisRunDetailsContent({
   modelSummary,
   selectedModel,
   citations,
+  searchResults,
 }: {
   modelResults: z.infer<typeof AnalysisRunSchema>["model_results"];
   modelSummary: z.infer<typeof AnalysisModelSummarySchema>;
   selectedModel: string | null;
   citations: z.infer<typeof CitationSchema>[] | null;
+  searchResults: GoogleSearchResult;
 }) {
   // Filter logic
   const filteredResults = useMemo(() => {
@@ -495,6 +503,16 @@ function AnalysisRunDetailsContent({
                     >
               <TbSparkles className="w-4 h-4 mr-1 hidden sm:inline" />
               AI Response
+                </TabsTrigger>
+              )}
+
+              {searchResults && (
+                <TabsTrigger
+                  value="google"
+                  className="data-[state=active]:bg-zinc-700 cursor-pointer whitespace-nowrap"
+                >
+                  <TbSearch className="w-4 h-4 mr-1 hidden sm:inline" />
+                  Google Search
                 </TabsTrigger>
               )}
             </TabsList>
@@ -597,6 +615,10 @@ function AnalysisRunDetailsContent({
 
       <TabsContent value="summary" className="space-y-4">
         <SummaryTabContent item={modelSummary} />
+            </TabsContent>
+
+            <TabsContent value="google" className="space-y-4">
+              <GoogleResults googleResults={searchResults} />
             </TabsContent>
         </Tabs>
   );

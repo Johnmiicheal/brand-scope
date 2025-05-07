@@ -1,4 +1,6 @@
 import { serverEnv } from "@/env/server";
+import { GoogleSearch } from "@/types/search";
+import { Search } from "@/types/search";
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 
@@ -11,6 +13,9 @@ async function getSearchResultsByModeId(mode_id: string) {
       .from('scheduled_queries')
       .select('*')
       .eq('mode_id', mode_id);
+
+      const { data: searches } = await supabase.from('searches').select('*').eq('monitoring_id', mode_id)
+      const { data: search_results } = await supabase.from('search_results').select('*').eq('mode_id', mode_id)
     
     if (monitoringError || !monitoringData || monitoringData.length === 0) return null;
     
@@ -18,8 +23,9 @@ async function getSearchResultsByModeId(mode_id: string) {
       search_id: monitoringData[0].id,
       mode: monitoringData[0].mode,
       mode_id,
-      monitoring: monitoringData
-
+      monitoring: monitoringData,
+      search_results: search_results as GoogleSearch[],
+      searches: searches as Search[]
     };
   }
 

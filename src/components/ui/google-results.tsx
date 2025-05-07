@@ -3,7 +3,7 @@
 
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ChevronRight, Clock, ExternalLink, Info, Search, Youtube, ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronRight, Clock, ExternalLink, Info, Search, Youtube, ChevronDown, ChevronUp, BarChart } from "lucide-react";
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -145,37 +145,15 @@ export function GoogleResults({ googleResults }: GoogleResultsProps) {
               <Search className="h-4 w-4 mr-2" />
               All
             </TabsTrigger>
-            {/* {hasImages && (
-              <TabsTrigger 
-                value="images" 
-                className="!bg-transparent hover:!bg-transparent data-[state=active]:!bg-transparent 
-                        data-[state=active]:!text-blue-500 data-[state=active]:!border-b-2 data-[state=active]:!border-b-blue-500
-                        !text-gray-600 !rounded-none !border-transparent !px-3 hover:!text-blue-600 transition-all duration-200"
-              >
-                <Image className="h-4 w-4 mr-2" />
-                Images
-              </TabsTrigger>
-            )}
-            {hasVideos && (
-              <TabsTrigger 
-                value="videos" 
-                className="!bg-transparent hover:!bg-transparent data-[state=active]:!bg-transparent 
-                        data-[state=active]:!text-blue-500 data-[state=active]:!border-b-2 data-[state=active]:!border-b-blue-500
-                        !text-gray-600 !rounded-none !border-transparent !px-3 hover:!text-blue-600 transition-all duration-200"
-              >
-                <Youtube className="h-4 w-4 mr-2" />
-                Videos
-              </TabsTrigger>
-            )}
             <TabsTrigger 
-              value="more" 
+              value="rankings" 
               className="!bg-transparent hover:!bg-transparent data-[state=active]:!bg-transparent 
                         data-[state=active]:!text-blue-500 data-[state=active]:!border-b-2 data-[state=active]:!border-b-blue-500
                         !text-gray-600 !rounded-none !border-transparent !px-3 hover:!text-blue-600 transition-all duration-200"
             >
-              <MoreHorizontal className="h-4 w-4 mr-2" />
-              More
-            </TabsTrigger> */}
+              <BarChart className="h-4 w-4 mr-2" />
+              Rankings
+            </TabsTrigger>
           </TabsList>
         </div>
 
@@ -190,7 +168,7 @@ export function GoogleResults({ googleResults }: GoogleResultsProps) {
             </div>
 
             {/* AI / Featured Snippet Answer Box */}
-            {(googleResults.ai_overview || googleResults.answer_box) && (
+            {(googleResults.ai_overview?.text_blocks?.length > 0 || googleResults.answer_box) ? (
               <div className="mb-6 border rounded-lg p-4 bg-background">
                 <div className="flex items-center mb-8 justify-between">
                     <div className="flex items-center gap-2">
@@ -287,6 +265,10 @@ export function GoogleResults({ googleResults }: GoogleResultsProps) {
                   </div>
                 )}
               </div>
+            ) : (
+                <div className="mb-6 border rounded-lg p-4 bg-background">
+                    <p className="text-lg text-white font-bold">No AI Overview</p>
+                </div>
             )}
 
             {/* Organic Results - Classic Google Style */}

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
-
+import { z } from "zod";
+import { createOpenRouter } from "@openrouter/ai-sdk-provider";
+import { generateObject } from "ai";
 // Define a type for search record data
 interface SearchRecordData {
   query: string;
@@ -24,6 +26,23 @@ interface SerpAPIResponse {
   organic_results?: Array<Record<string, unknown>>;
   error?: string;
 }
+
+const openRouterApiKey = process.env.OPENROUTER_API_KEY;
+const openrouter = createOpenRouter({ apiKey: openRouterApiKey });
+
+
+// Define the ranking schema for brand extraction
+const rankingSchema = z.object({
+  brands: z.array(
+    z.object({
+      name: z.string(),
+      rank: z.number().nullable(),
+      sentiment: z.string(),
+      score: z.number(),
+      reasoning: z.string(),
+    })
+  ),
+});
 
 // Create a search record in the database and return the ID
 async function createSearchRecord(
@@ -205,6 +224,61 @@ function extractAiOverviewText(data: SerpAPIResponse): string {
   return "";
 }
 
+// Function to analyze AI overview and extract brands
+async function analyzeAiOverview(aiOverviewText: string): Promise<string> {
+  try {
+    const extractionPrompt = `
+    Extract brands/companies/services from the text, rank them, score them out of 100 and rate their sentiment. 
+    Output should be EXACTLY in this JSON format:
+    {
+      "brands": [
+        {
+          "name": "Brand Name",
+          "rank": 1-10, // Two brands cannot have the same rank
+          "sentiment": "positive|negative|neutral",
+          "score": 1-100, 
+          "reasoning": "Key benefits or features in 1-2 lines"
+        }
+      ]
+    }
+
+    Rules:
+    1. ONLY output valid JSON object conforming to the schema.
+    2. Include ALL mentioned brands and order it the way it was provided in the text
+    3. Keep reasons factual and concise based *only* on the provided text
+    4. Use only positive/negative/neutral for sentiment
+    5. Default to positive if benefits are mentioned
+    6. Each brand must have exactly these 5 fields
+    7. Two brands cannot have the same rank and always start with 1, rank based on your analysis and the score you determined.
+
+    Text Analysis:
+    ---
+    ${aiOverviewText}
+    ---    
+    Respond ONLY with the valid JSON object.`;
+
+    const { object } = await generateObject({
+      model: openrouter("openai/gpt-4.1"),
+      output: 'no-schema',
+      prompt: extractionPrompt,
+      maxRetries: 2,
+      temperature: 0.0,
+    });
+
+    // Validate the response against our schema
+    const validation = rankingSchema.safeParse(object);
+    if (!validation.success) {
+      console.error("LLM response failed schema validation:", validation.error);
+      return JSON.stringify({ brands: [] });
+    }
+
+    return JSON.stringify(validation.data);
+  } catch (error) {
+    console.error("Error analyzing AI overview:", error);
+    return JSON.stringify({ brands: [] });
+  }
+}
+
 // Next.js App Router API handler
 export async function POST(request: NextRequest) {
   try {
@@ -299,6 +373,8 @@ export async function POST(request: NextRequest) {
     // Extract AI overview text
     const aiOverviewText = extractAiOverviewText(searchData);
 
+    
+
     // Validate search results data conforms to schema
     const searchResultData = {
       search_id: searchId,
@@ -311,10 +387,20 @@ export async function POST(request: NextRequest) {
     console.log("Storing search results with ID:", searchId);
     
     try {
-      // Store search results in database
+      // Analyze AI overview and extract brands
+      const brandAnalysis = await analyzeAiOverview(aiOverviewText);
+      
+      // Store search results in database with brand analysis
       const { error: resultsError } = await supabase
         .from("search_results")
-        .insert([searchResultData]);
+        .insert([{
+          search_id: searchId,
+          engine: engine || "google",
+          results: searchData,
+          ai_overview: aiOverviewText,
+          mode_id: monitoringId,
+          rankings: brandAnalysis // Add the brand analysis here
+        }]);
       
       if (resultsError) {
         console.error("Error storing search results:", resultsError);
@@ -323,9 +409,9 @@ export async function POST(request: NextRequest) {
           search_id: typeof searchId,
           engine: typeof searchResultData.engine,
           results: "jsonb object",
-          ai_overview: typeof aiOverviewText
+          ai_overview: typeof aiOverviewText,
+          rankings: "json string"
         });
-        // Continue despite the error to return search results to user
         console.warn("Continuing execution despite search results storage error");
       } else {
         console.log("Successfully stored search results for search ID:", searchId);
