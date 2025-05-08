@@ -67,7 +67,17 @@ export default function LibraryPage() {
   }, [router, user, isLoading]);
   
   // Group by query to get unique searches
-  const uniqueSearches = searches;
+  const uniqueSearches = searches.reduce((acc, search) => {
+    // Check if we already have this mode_id in our accumulator
+    const existingIndex = acc.findIndex(item => item.mode_id === search.mode_id);
+    
+    // If not found, add it to the accumulator
+    if (existingIndex === -1) {
+      acc.push(search);
+    }
+    
+    return acc;
+  }, [] as SearchRecord[]);
     
   // Filter searches based on search term
   const filteredSearches = searchTerm.trim() === '' 
