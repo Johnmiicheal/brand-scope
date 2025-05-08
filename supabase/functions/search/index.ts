@@ -149,6 +149,8 @@ const openrouter = createOpenRouter({
   apiKey: Deno.env.get("OPEN_ROUTER_API_KEY"),
 });
 
+const openRouterApiKey = Deno.env.get("OPEN_ROUTER_API_KEY");
+
 // Define analysis modes
 const analysisModes = ["DeepFocus", "Voyager", "Explorer"] as const;
 type AnalysisMode = (typeof analysisModes)[number];
@@ -457,6 +459,19 @@ export async function explorerAnalysis(
 
   // 1. Define Models for Text Generation
   const textModels = [
+    { modelId: "openai/gpt-4o-search-preview", name: "GPT 4o" },
+    {
+      modelId: "anthropic/claude-3.5-sonnet",
+      name: "Claude 3.5 Sonnet",
+    },
+    {
+      modelId: "google/gemini-2.0-flash-001",
+      name: "Gemini 2.0 Flash",
+    },
+    { modelId: "perplexity/sonar", name: "Perplexity Sonar" }, // Keep Perplexity here
+  ];
+
+  const objectModels = [
     { model: openrouter("openai/gpt-4o"), name: "GPT 4o" },
     {
       model: openrouter("anthropic/claude-3.5-sonnet"),
@@ -472,33 +487,24 @@ export async function explorerAnalysis(
   // 2. Generate Text Summaries for all models
   async function generateTextForAllModels(models) {
     return Promise.all(
-      models.map(async ({ model, name }) => {
+      models.map(async ({ modelId, name }) => {
         try {
-          const response = await generateText({
-            model,
-            prompt: query,
-            temperature: 0.1,
-          });
+          const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${openRouterApiKey}`,
+            },
+            body: JSON.stringify({
+              model: modelId,
+              messages: [{ role: 'user', content: query }],
+              temperature: 0.2,
+              max_retries: 2
+            })
+          }).then(res => res.json());
 
-          let text = response.text;
-          let citations = null;
-
-          // Only try to extract citations for Perplexity
-          if (name.toLowerCase().includes("perplexity")) {
-            const citationMatch = text.match(/Citations?:\\s*([\\s\\S]+)$/i);
-            if (citationMatch) {
-              try {
-                citations = JSON.parse(citationMatch[1]);
-                text = text.replace(citationMatch[0], "").trim();
-              } catch {
-                /* Ignore parse error */
-              }
-            }
-            if (!citations) {
-              const urlMatches = text.match(/https?:\/\/[^\\s)]+/g);
-              if (urlMatches) citations = urlMatches;
-            }
-          }
+          const text = response.choices[0].message.content;
+          const citations = response.choices[0].message.annotations || null;
 
           return { name, text, citations, success: true };
         } catch (error) {
@@ -547,7 +553,7 @@ export async function explorerAnalysis(
   const extractionPromises = textGenerationResults
     .filter((result) => result.success && result.text)
     .map(async ({ name, text }) => {
-      const modelConfig = textModels.find((m) => m.name === name);
+      const modelConfig = objectModels.find((m) => m.name === name);
       if (!modelConfig) {
         console.error(
           `Cannot find model config for ${name} during extraction.`

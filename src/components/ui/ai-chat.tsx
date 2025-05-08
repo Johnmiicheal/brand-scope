@@ -293,11 +293,6 @@ export function AIChatInterface() {
       caption:
         "Comprehensive analysis with social sentiment tracking & market perception insights",
     },
-    {
-      key: "DeepFocus",
-      caption:
-        "Focused brand analysis with detailed reasoning and market insights",
-    }
   ];
 
 const formatTime = (totalSeconds: number): string => {
@@ -330,7 +325,6 @@ const formatTime = (totalSeconds: number): string => {
                 className={cn(
                   "px-2 py-1 text-xs rounded-full",
                   mode === "Voyager" && "bg-orange-500/20 text-orange-400",
-                  mode === "DeepFocus" && "bg-purple-500/20 text-purple-400",
                   mode === "Explorer" && "bg-green-500/20 text-green-400"
                 )}
             >
@@ -628,19 +622,7 @@ const formatTime = (totalSeconds: number): string => {
             Search Mode Tips
           </h3>
           
-          <div className="space-y-4">
-            {mode === "DeepFocus" && (
-              <div className="flex items-start gap-3">
-                <div>
-                  <h4 className="font-medium text-sm">DeepFocus Mode</h4>
-                  <p className="text-sm text-neutral-400 mt-1">
-                    Only performs brand analysis, it utilizes Llama3 and Google Gemma 2 to analyze search prompts, providing detailed brand ranking and analysis. 
-                    Best for focused research on specific topics or competitors.
-                  </p>
-                </div>
-              </div>
-            )}
-            
+          <div className="space-y-4">            
             {mode === "Voyager" && (
               <div className="flex items-start gap-3">
                 <div>

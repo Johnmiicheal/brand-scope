@@ -331,7 +331,20 @@ async function processQuery(
   await callSearchGoogleEndpoint(query.query, analysisRunId, query.user_id);
 
   // --- Define Models ---
-  const modelsToQuery = [
+  const textModels = [
+    { modelId: "openai/gpt-4o-search-preview", name: "GPT 4o" },
+    {
+      modelId: "anthropic/claude-3.5-sonnet",
+      name: "Claude 3.5 Sonnet",
+    },
+    {
+      modelId: "google/gemini-2.0-flash-001",
+      name: "Gemini 2.0 Flash",
+    },
+    { modelId: "perplexity/sonar", name: "Perplexity Sonar" }, // Keep Perplexity here
+  ];
+
+  const objectModels = [
     { model: openrouter("openai/gpt-4o"), name: "GPT 4o" },
     {
       model: openrouter("anthropic/claude-3.5-sonnet"),
@@ -341,7 +354,7 @@ async function processQuery(
       model: openrouter("google/gemini-2.0-flash-001"),
       name: "Gemini 2.0 Flash",
     },
-    { model: openrouter("perplexity/sonar"), name: "Perplexity Sonar" },
+    { model: openrouter("perplexity/sonar"), name: "Perplexity Sonar" }, // Keep Perplexity here
   ];
 
   // --- Fetch Existing Results --- (Moved to the top)
@@ -373,39 +386,32 @@ async function processQuery(
 
   // --- 1. Generate Text ---
   console.log(
-    `  Starting text generation for ${modelsToQuery.length} models...`
+    `  Starting text generation for ${textModels.length} models...`
   );
 
   // Refactored text generation logic
-  const textPromises = modelsToQuery.map(async ({ model, name }) => {
+  const textPromises = textModels.map(async ({ modelId, name }) => {
     console.log(`    Generating text for ${name}...`);
     try {
-      const { text } = await generateText({
-        model,
-        prompt: query.query, // Use the correct prompt variable
-        temperature: 0.2,
-        maxRetries: 2,
-      });
+      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${openRouterApiKey}`,
+          'HTTP-Referer': process.env.VERCEL_URL || 'http://localhost:3000'
+        },
+        body: JSON.stringify({
+          model: modelId,
+          messages: [{ role: 'user', content: query.query }],
+          temperature: 0.2,
+          max_retries: 2
+        })
+      }).then(res => res.json());
       console.log(`    ${name} text generated.`);
+      console.log('Response', response)
       // Handle citations for Perplexity specifically if needed
-      let citations = null;
-      if (name.toLowerCase().includes("perplexity")) {
-        // Existing citation extraction logic...
-        const citationMatch = text.match(/Citations?:\\s*([\\s\\S]+)$/i);
-        if (citationMatch) {
-          try {
-            citations = JSON.parse(citationMatch[1]);
-            // text = text.replace(citationMatch[0], '').trim(); // Optional: remove citations from text
-          } catch {
-            /* Ignore parse error */
-          }
-        }
-        if (!citations) {
-          const urlMatches = text.match(/https?:\/\/[^\\s)]+/g);
-          if (urlMatches) citations = urlMatches;
-        }
-      }
-      return { name, text, citations, success: true, error: null };
+      const citations = response.choices[0].message.annotations || null;
+      return { name, text: response.choices[0].message.content, citations, success: true, error: null };
     } catch (error: any) {
       console.error(`    Error generating text for ${name}:`, error.message);
       return {
@@ -439,7 +445,7 @@ async function processQuery(
         };
       }
       console.log(`    Extracting structure from ${name}'s text...`);
-      const modelConfig = modelsToQuery.find((m) => m.name === name);
+      const modelConfig = objectModels.find((m) => m.name === name);
       if (!modelConfig) {
         return {
           llm_name: name,
@@ -610,7 +616,7 @@ async function processQuery(
       (r) => r.status === "rejected"
     ).length;
     console.log(
-      `  Successfully updated query ${query.id}. Success: ${successfulExtraction}/${modelsToQuery.length}. Failures: ${failedExtraction}.`
+      `  Successfully updated query ${query.id}. Success: ${successfulExtraction}/${objectModels.length}. Failures: ${failedExtraction}.`
     );
     return {
       id: query.id,

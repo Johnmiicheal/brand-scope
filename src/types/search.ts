@@ -2,7 +2,7 @@
 import { z } from 'zod';
 
 // Define analysis modes
-export const analysisModes = ['DeepFocus', 'Voyager', 'Explorer'] as const;
+export const analysisModes = ['Voyager', 'Explorer'] as const;
 export type AnalysisMode = typeof analysisModes[number];
 
 // Supported LLM models

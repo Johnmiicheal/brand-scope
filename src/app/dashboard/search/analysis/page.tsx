@@ -285,8 +285,6 @@ export default function AnalysisPage() {
                 className={`px-2 py-1 text-xs rounded-full ${
                   results.mode === "Voyager"
                     ? "bg-orange-500/20 text-orange-400"
-                    : results.mode === "DeepFocus"
-                    ? "bg-blue-500/20 text-blue-400"
                     : results.mode === "Explorer"
                     ? "bg-green-500/20 text-green-400"
                     : ""
@@ -698,6 +696,7 @@ function RankingsTabContent({
 
 // Summary tab content
 function SummaryTabContent({ item }: { item: Summary | null }) {
+  const parseReasoning = JSON.parse(item?.reasoning || "[]")
   if (!item) {
     return <p>No summary data available.</p>;
   }
@@ -719,7 +718,7 @@ function SummaryTabContent({ item }: { item: Summary | null }) {
           delay: 0.15,
         }}
       >
-        <div className="group relative overflow-auto rounded-xl transition-all hover:shadow-lg dark:border-gray-800">
+        <div className="group relative overflow-auto rounded-xl transition-all">
           <div className="p-4">
             <div className="flex md:flex-row flex-col md:items-center mb-14 gap-3">
               <p className="text-xl font-semibold">&quot;{item.query}&quot;</p>
@@ -743,23 +742,23 @@ function SummaryTabContent({ item }: { item: Summary | null }) {
               <ReactMarkdown>{item.summary}</ReactMarkdown>
             </div>
 
-            {item.reasoning &&
-              Array.isArray(item.reasoning) &&
-              item.reasoning.length > 0 && (
+            {parseReasoning &&
+              Array.isArray(parseReasoning) &&
+              parseReasoning.length > 0 && (
                 <div className="mt-6 space-y-2">
                   <h4 className="text-sm font-medium text-muted-foreground">
                     Citations
                   </h4>
                   <div className="flex flex-wrap gap-2">
-                    {item.reasoning.map((citation, idx) => (
+                    {parseReasoning.map((citation, idx) => (
                       <a
                         key={idx}
-                        href={citation}
+                        href={citation.url_citation.url}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center rounded-md bg-secondary px-2.5 py-0.5 text-xs font-medium text-secondary-foreground transition-colors hover:bg-secondary/80"
                       >
-                        Source {idx + 1}
+                        {citation.url_citation.title}
                         <svg
                           className="ml-1 h-3 w-3"
                           fill="none"
