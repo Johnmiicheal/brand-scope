@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { serverEnv } from '@/env/server';
-import { SearchResults, AIRanking, SocialInsight, AnalysisMode, Summary, GoogleSearch, Search } from '@/types/search';
+import { SearchResults, AIRanking, AnalysisMode, Summary, GoogleSearch, Search } from '@/types/search';
 
 
 // Initialize Supabase client
@@ -15,21 +15,12 @@ export async function getSearchResultsBySearchId(search_id: string): Promise<Sea
     .eq('id', search_id);
   
   if (rankingsError || !rankingsData || rankingsData.length === 0) return null;
-  
-  // Get social insights if any
-  const { data: insightsData, error: insightsError } = await supabase
-    .from('social_insights')
-    .select('*')
-    .eq('search_id', search_id);
-  
-  if (insightsError) throw new Error(`Failed to fetch social insights: ${insightsError.message}`);
-  
+
   return {
     search_id,
     mode: rankingsData[0].mode,
     mode_id: rankingsData[0].mode_id,
     ai_rankings: rankingsData as AIRanking[],
-    social_insights: insightsData as SocialInsight[],
     search_results: [],
     searches: []
   };
@@ -45,11 +36,6 @@ export async function getSearchResultsByModeId(mode_id: string): Promise<SearchR
   
   if (rankingsError || !rankingsData || rankingsData.length === 0) return null;
   
-  // Get social insights if any
-  const { data: insightsData } = await supabase
-    .from('social_insights')
-    .select('*')
-    .eq('search_id', mode_id);
 
     const { data: summs } = await supabase.from('ai_summary').select('*').eq('mode_id', mode_id)
     const { data: searches } = await supabase.from('searches').select('*').eq('monitoring_id', mode_id)
@@ -60,7 +46,6 @@ export async function getSearchResultsByModeId(mode_id: string): Promise<SearchR
     mode: rankingsData[0].mode,
     mode_id,
     ai_rankings: rankingsData as AIRanking[],
-    social_insights: insightsData as SocialInsight[] || [],
     summary: summs as Summary[],
     search_results: search_results as GoogleSearch[],
     searches: searches as Search[]
@@ -97,7 +82,6 @@ export async function getUserSearchResults(user_id: string): Promise<SearchResul
       mode: firstRanking.mode as AnalysisMode,
       mode_id,
       ai_rankings: rankings as AIRanking[],
-      social_insights: [], // We would need to fetch these separately if needed
       search_results: [],
       searches: []
     };

@@ -13,7 +13,6 @@ import {
   extractReasoningMiddleware,
   experimental_wrapLanguageModel as wrapLanguageModel,
 } from "https://esm.sh/ai@latest";
-import Exa from "https://esm.sh/exa-js@latest";
 import { createOpenRouter } from "https://esm.sh/@openrouter/ai-sdk-provider@latest";
 
 interface AIRanking {
@@ -40,20 +39,6 @@ interface CompetitorComparison {
   analysis: string;
 }
 
-interface SocialInsight {
-  id: string;
-  entity_id: string;
-  entity_name: string;
-  entity_type: string;
-  user_id: string;
-  search_id: string;
-  platform: string;
-  keyword: string;
-  mention_count: number;
-  sentiment: string;
-  data_fetched_at: string;
-  links?: Array<string>;
-}
 
 interface Recommendations {
   id: string;
@@ -77,7 +62,6 @@ interface SearchResults {
   mode: string;
   mode_id: string;
   ai_rankings: AIRanking[];
-  social_insights?: SocialInsight[];
 }
 
 interface Brand {
@@ -262,9 +246,7 @@ serve(async (req) => {
     // Run mode-specific analysis
     let results;
     try {
-      if (mode === "DeepFocus") {
-        results = await deepFocusAnalysis(user_id, query, mode_id, search_id);
-      } else if (mode === "Voyager") {
+      if (mode === "Voyager") {
         results = await voyagerAnalysis(user_id, query, mode_id, search_id);
       } else if (mode === "Explorer") {
         results = await explorerAnalysis(
@@ -761,130 +743,12 @@ export async function explorerAnalysis(
     finalRankings.push({ ...ranking, entity_id: entityId });
   }
 
-  // Initialize Exa client (moved here as it's needed for social insights)
-  const exa = new Exa(Deno.env.get("EXA_API_KEY") || "");
-
-  // Process social data for each unique brand... (rest of the function remains similar)
-  // ... (Keep the existing socialPromises loop and processing logic) ...
-  // ... using `Array.from(uniqueBrands)` and `brandEntityMap` ...
-
-  // Make sure to use `finalRankings` instead of `rankings` from now on
-
-  const socialPromises: Promise<{
-    brandName: string;
-    entityId: string; // Add entityId here
-    sentiment?: string;
-    mentions?: number;
-    sources?: any;
-    xResults?: any;
-    error?: Error;
-  }>[] = [];
-
-  // Use Array.from to convert Set to Array
-  for (const brandName of Array.from(uniqueBrands).slice(0, 4)) {
-    socialPromises.push(
-      (async () => {
-        const entityId = brandEntityMap.get(brandName); // Get the consistent entityId
-        try {
-          const searchQuery = `${brandName} ${query}`;
-          const [xResults, sources] = await Promise.all([
-            exa.searchAndContents(searchQuery, {
-              type: "keyword",
-              numResults: 2,
-              includeDomains: ["x.com", "reddit.com"],
-              text: true,
-            }),
-            exa.searchAndContents(query, {
-              text: true,
-              type: "keyword",
-              summary: true,
-              numResults: 10,
-            }),
-          ]);
-
-          const brandMentions = sources.results.reduce((count, result) => {
-            const text = result.text || "";
-            const summary = result.summary || "";
-            return (
-              count +
-              (text.includes(brandName) ? 1 : 0) +
-              (summary.includes(brandName) ? 1 : 0)
-            );
-          }, 0);
-
-          const posts = xResults.results.map((r) => r.text).join("\\n");
-          const sentiment = await analyzeSentiment(posts);
-          
-          return {
-            brandName,
-            entityId, // Return entityId
-            sentiment,
-            mentions: brandMentions,
-            sources: sources.results,
-            xResults,
-          };
-        } catch (error) {
-          console.error(
-            `Error processing social data for ${brandName}:`,
-            error
-          );
-          return {
-            brandName,
-            entityId, // Return entityId even on error
-            error,
-          };
-        }
-      })()
-    );
-  }
-
-  // Process all social data results
-  const socialResults = await Promise.all(socialPromises);
-  
-  // Create final data structures from results
-  for (const result of socialResults) {
-    if (result.error) {
-      socialInsights.push({
-        id: uuidv4(),
-        entity_id: result.entityId, // Use consistent entityId
-        entity_name: result.brandName,
-        entity_type: "brand",
-        user_id,
-        search_id: mode_id, // Use mode_id consistently
-        platform: "X",
-        keyword: query,
-        mention_count: 0,
-        sentiment: "neutral",
-        data_fetched_at: new Date().toISOString(),
-        links: [""],
-      });
-    } else {
-      socialInsights.push({
-        id: uuidv4(),
-        entity_id: result.entityId, // Use consistent entityId
-        entity_name: result.brandName,
-        entity_type: "brand",
-        user_id,
-        search_id: mode_id, // Use mode_id consistently
-        platform: "X",
-        keyword: query,
-        mention_count: result.mentions || 0,
-        sentiment: result.sentiment || "neutral",
-        data_fetched_at: new Date().toISOString(),
-        links: result.sources
-          ? result.sources.map((s) => JSON.stringify(s))
-          : [""], // Stringify sources
-      });
-    }
-  }
-
   // 6. Return results
   return {
     search_id,
     mode: "Explorer",
     mode_id,
     ai_rankings: finalRankings, // Use the rankings derived from text extraction
-    social_insights: socialInsights,
   };
 }
 
@@ -1295,162 +1159,12 @@ export async function voyagerAnalysis(
     finalRankings.push({ ...ranking, entity_id: entityId });
   }
 
-  // Initialize Exa client (moved here as it's needed for social insights)
-  const exa = new Exa(Deno.env.get("EXA_API_KEY") || "");
-
-  // Process social data for each unique brand... (rest of the function remains similar)
-  // ... (Keep the existing socialPromises loop and processing logic) ...
-  // ... using `Array.from(uniqueBrands)` and `brandEntityMap` ...
-
-  // Make sure to use `finalRankings` instead of `rankings` from now on
-
-  const socialPromises: Promise<{
-    brandName: string;
-    entityId: string; // Add entityId here
-    sentiment?: string;
-    mentions?: number;
-    sources?: any;
-    xResults?: any;
-    error?: Error;
-  }>[] = [];
-
-  // Use Array.from to convert Set to Array
-  for (const brandName of Array.from(uniqueBrands).slice(0, 4)) {
-    socialPromises.push(
-      (async () => {
-        const entityId = brandEntityMap.get(brandName); // Get the consistent entityId
-        try {
-          const searchQuery = `${brandName} ${query}`;
-          const [xResults, sources] = await Promise.all([
-            exa.searchAndContents(searchQuery, {
-              type: "keyword",
-              numResults: 2,
-              includeDomains: ["x.com", "reddit.com"],
-              text: true,
-            }),
-            exa.searchAndContents(query, {
-              text: true,
-              type: "keyword",
-              summary: true,
-              numResults: 10,
-            }),
-          ]);
-
-          const brandMentions = sources.results.reduce((count, result) => {
-            const text = result.text || "";
-            const summary = result.summary || "";
-            return (
-              count +
-              (text.includes(brandName) ? 1 : 0) +
-              (summary.includes(brandName) ? 1 : 0)
-            );
-          }, 0);
-
-          const posts = xResults.results.map((r) => r.text).join("\\n");
-          const sentiment = await analyzeSentiment(posts);
-          
-          return {
-            brandName,
-            entityId, // Return entityId
-            sentiment,
-            mentions: brandMentions,
-            sources: sources.results,
-            xResults,
-          };
-        } catch (error) {
-          console.error(
-            `Error processing social data for ${brandName}:`,
-            error
-          );
-          return {
-            brandName,
-            entityId, // Return entityId even on error
-            error,
-          };
-        }
-      })()
-    );
-  }
-
-  // Process all social data results
-  const socialResults = await Promise.all(socialPromises);
-  
-  // Create final data structures from results
-  for (const result of socialResults) {
-    if (result.error) {
-      socialInsights.push({
-        id: uuidv4(),
-        entity_id: result.entityId, // Use consistent entityId
-        entity_name: result.brandName,
-        entity_type: "brand",
-        user_id,
-        search_id: mode_id, // Use mode_id consistently
-        platform: "X",
-        keyword: query,
-        mention_count: 0,
-        sentiment: "neutral",
-        data_fetched_at: new Date().toISOString(),
-        links: [""],
-      });
-    } else {
-      socialInsights.push({
-        id: uuidv4(),
-        entity_id: result.entityId, // Use consistent entityId
-        entity_name: result.brandName,
-        entity_type: "brand",
-        user_id,
-        search_id: mode_id, // Use mode_id consistently
-        platform: "X",
-        keyword: query,
-        mention_count: result.mentions || 0,
-        sentiment: result.sentiment || "neutral",
-        data_fetched_at: new Date().toISOString(),
-        links: result.sources
-          ? result.sources.map((s) => JSON.stringify(s))
-          : [""], // Stringify sources
-      });
-    }
-  }
-
   return {
     search_id,
     mode: "Voyager",
     mode_id,
     ai_rankings: rankings,
-    social_insights: socialInsights,
   };
-}
-
-// Helper function to analyze sentiment
-async function analyzeSentiment(
-  text: string
-): Promise<"positive" | "negative" | "neutral"> {
-  // Truncate text to approximately 2000 tokens (about 1500 words)
-  const MAX_CHARS = 2000;
-  const truncatedText =
-    text.length > MAX_CHARS ? text.substring(0, MAX_CHARS) + "..." : text;
-  
-  try {
-    const { object } = await generateObject({
-      model: groq("llama3-70b-8192"),
-      schema: z.object({
-        sentiment: z.enum(["positive", "negative", "neutral"]),
-      }),
-      prompt: `Analyze the sentiment of the following text and respond with ONLY one of these exact words: "positive", "negative", or "neutral".      
-        Text to analyze: "${truncatedText}"
-
-        Your response should follow this format exactly:
-        {"sentiment": "positive"} or {"sentiment": "negative"} or {"sentiment": "neutral"}`,
-      temperature: 0.1,
-      max_retries: 3,
-    });
-    
-    return object.sentiment;
-  } catch (error) {
-    console.error("Error analyzing sentiment:", error);
-    // Default to neutral if analysis fails
-    return "neutral";
-  }
 }
 
 // Helper function to generate trend points from search results
@@ -1509,166 +1223,6 @@ serve(async (req) => {
   }
 });
 
-// DeepFocus: Analysis with gemma2 and llama-3.3 - Optimized
-export async function deepFocusAnalysis(
-  user_id: string, 
-  query: string, 
-  mode_id: string = uuidv4(),
-  search_id: string = uuidv4()
-): Promise<SearchResults> {
-  const models = [
-    { model: groq("gemma2-9b-it"), name: "Gemma 2 9B" },
-    { model: groq("llama-3.3-70b-versatile"), name: "Llama 3.3 70B" },
-  ];
-
-  const rankings: AIRanking[] = [];
-
-  try {
-    const formattedPrompt = BRAND_RANKING_PROMPT.replace("{query}", query);
-    const responseSchema = z.object({ 
-      brands: z.array(
-        z.object({
-        name: z.string(),
-        rank: z.number().nullable(),
-        score: z.number(),
-          reasoning: z.string(),
-    })
-      ),
-    });
-
-    // Run all model queries in parallel
-    const modelPromises = models.map(({ model, name }) => 
-      generateObject({
-        model,
-        schema: responseSchema,
-        prompt: formattedPrompt,
-      }).then((response) => ({ response, name }))
-    );
-
-    // Wait for all model responses
-    const modelResults = await Promise.all(modelPromises);
-    
-    // Process results
-    for (const { response, name } of modelResults) {
-      for (const brand of response.object.brands) {
-        rankings.push({
-          id: uuidv4(),
-          entity_id: uuidv4(),
-          entity_name: brand.name,
-          entity_type: "brand",
-          user_id,
-          llm_name: name,
-          query,
-          rank: brand.rank,
-          score: brand.score,
-          reasoning: brand.reasoning,
-          mode: "DeepFocus",
-          mode_id,
-          analyzed_at: new Date().toISOString(),
-        });
-      }
-    }
-    
-    return {
-      search_id,
-      mode: "DeepFocus",
-      mode_id,
-      ai_rankings: rankings,
-    };
-  } catch (error) {
-    console.error("Error in deepFocusAnalysis:", error);
-    throw error;
-  }
-}
-
-// Function to generate top brands in an industry
-export async function generateTopBrands(industry: string): Promise<Brand[]> {
-  try {
-    const model = groq("llama-3.3-70b-versatile");
-    const prompt =
-      BRAND_GENERATION_PROMPT.replace("{industry}", industry) +
-      "\n\nThe response should be a valid JSON array of objects, with each object having 'name' and 'description' fields.";
-    
-    const { object } = await generateObject({
-      model,
-      schema: z.array(
-        z.object({
-        name: z.string(),
-          description: z.string(),
-        })
-      ),
-      prompt,
-      max_retries: 3,
-      temperature: 0.1,
-    });
-    
-    return object;
-  } catch (error) {
-    console.error("Error in generateTopBrands:", error);
-    throw error;
-  }
-}
-
-// Edge Function handler for direct invocation
-
-serve(async (req) => {
-  const headers = new Headers({
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers":
-      "authorization, x-client-info, apikey, content-type",
-  });
-
-  try {
-    // Handle CORS preflight
-    if (req.method === "OPTIONS") {
-      return new Response(null, { headers });
-    }
-
-    // Only allow POST requests
-    if (req.method !== "POST") {
-      return new Response(JSON.stringify({ error: "Method not allowed" }), {
-        status: 405,
-        headers,
-      });
-    }
-
-    const { pathname } = new URL(req.url);
-    
-    // Handle generateTopBrands endpoint
-    if (pathname.endsWith("/generate-brands")) {
-      const { industry } = await req.json();
-      if (!industry) {
-        return new Response(
-          JSON.stringify({ error: "Industry parameter is required" }),
-          { status: 400, headers }
-        );
-      }
-      
-      const brands = await generateTopBrands(industry);
-      return new Response(JSON.stringify(brands), { headers });
-}
-
-    // Handle deepFocusAnalysis endpoint
-    const { user_id, query } = await req.json();
-    
-    if (!user_id || !query) {
-      return new Response(
-        JSON.stringify({ error: "user_id and query are required" }),
-        { status: 400, headers }
-      );
-    }
-
-    const results = await deepFocusAnalysis(user_id, query);
-    
-    return new Response(JSON.stringify(results), { headers });
-  } catch (error) {
-    console.error("Error in deepFocusAnalysis edge function:", error);
-    return new Response(JSON.stringify({ error: "Internal server error" }), {
-      status: 500,
-      headers,
-    });
-  }
-});
 
 // Initialize Supabase client
 const supabase = createClient(
@@ -1759,39 +1313,6 @@ export async function saveToSupabase(
       console.warn("No valid AI rankings to save after brand check/creation.");
     }
 
-    // Save social insights (ensure entity_ids match the ones used in rankings)
-    if (results.social_insights && results.social_insights.length > 0) {
-      // Filter insights to match valid brand IDs
-      const validSocialInsights = results.social_insights.filter((insight) =>
-        brandIds.includes(insight.entity_id)
-      );
-
-      if (validSocialInsights.length > 0) {
-        console.log("Saving Social Insights:", validSocialInsights.length);
-      const { error: socialError } = await supabase
-          .from("social_insights")
-          .insert(validSocialInsights);
-      
-      if (socialError) {
-          console.error(`Social Insights save failed: ${socialError.message}`);
-          // Don't necessarily throw
-        }
-      } else {
-        console.warn("No valid social insights to save after brand check.");
-      }
-    }
-
-    // Recommendations saving logic (if applicable for the mode) remains the same
-    if (results.recommendations && results.recommendations.suggestion) {
-      const { error: recommendationsError } = await supabase
-        .from("recommendations")
-        .insert(results.recommendations); // Assuming recommendations schema is correct
-
-      if (recommendationsError) {
-        console.error("Recommendations save failed:", recommendationsError);
-        // Don't necessarily throw
-      }
-    }
   } catch (error) {
     console.error("Error in saveToSupabase:", error);
     // Decide if this function should throw or just log errors
@@ -1814,24 +1335,12 @@ export async function getSearchResultsBySearchId(
       return null;
     }
     
-    // Get social insights if any
-    const { data: insightsData, error: insightsError } = await supabase
-      .from("social_insights")
-      .select("*")
-      .eq("search_id", search_id);
-    
-    if (insightsError) {
-      throw new Error(
-        `Failed to fetch social insights: ${insightsError.message}`
-      );
-    }
     
     return {
       search_id,
       mode: rankingsData[0].mode,
       mode_id: rankingsData[0].mode_id,
       ai_rankings: rankingsData as AIRanking[],
-      social_insights: insightsData as SocialInsight[],
     };
   } catch (error) {
     console.error("Error in getSearchResultsBySearchId:", error);

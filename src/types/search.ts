@@ -84,7 +84,6 @@ export interface SearchResults {
   mode: AnalysisMode;
   mode_id: string;
   ai_rankings: AIRanking[];
-  social_insights?: SocialInsight[];
   summary?: Summary[]
   search_results: GoogleSearch[];
   searches: Search[];

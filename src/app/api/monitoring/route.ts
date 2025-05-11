@@ -29,6 +29,23 @@ async function getSearchResultsByModeId(mode_id: string) {
     };
   }
 
+  async function getSearchResultsByUserId(user_id: string) {
+    // Get all monitoring searches for a user
+    const { data: monitoringData, error: monitoringError } = await supabase
+      .from('scheduled_queries')
+      .select('*')
+      .eq('user_id', user_id)
+      .order('last_analysis_at', { ascending: false });
+
+    if (monitoringError || !monitoringData || monitoringData.length === 0) return null;
+    
+    return {
+      search_id: monitoringData[0].id,
+      mode: monitoringData[0].mode,
+      monitoring: monitoringData,
+    };
+  }
+
 // Endpoint to fetch search results
 export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
@@ -43,6 +60,8 @@ export async function GET(req: Request) {
       let results;
       if (mode_id) {
         results = await getSearchResultsByModeId(mode_id);
+      } else if (user_id) {
+        results = await getSearchResultsByUserId(user_id);
       }
       
       if (!results) {

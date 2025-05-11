@@ -10,18 +10,19 @@ import { motion } from "framer-motion"
 import * as d3 from "d3"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 
-interface Competitor {
-  name: string
-  website: string
-  ranking_diff: number
+interface Brand{
+  name: string, 
+  rank: number,
+  score: number,
+  reasoning: string,
 }
 
 interface CompetitorNetworkProps {
-  competitors: Competitor[]
+  brands: Brand[]
   detailed?: boolean
 }
 
-export function CompetitorNetwork({ competitors, detailed = false }: CompetitorNetworkProps) {
+export function CompetitorNetwork({ brands, detailed = true }: CompetitorNetworkProps) {
   const svgRef = useRef<SVGSVGElement>(null)
 
   useEffect(() => {
@@ -49,20 +50,20 @@ export function CompetitorNetwork({ competitors, detailed = false }: CompetitorN
 
     // Create nodes data
     const nodes = [
-      { id: "My Brand", group: 0, radius: 40 },
-      ...competitors.map((comp, i) => ({
+      { id: "Center", group: 0, radius: 40 },
+      ...brands.map((comp, i) => ({
         id: comp.name,
         group: 1,
-        radius: 30 + Math.abs(comp.ranking_diff) * 3,
+        radius: 30 + Math.abs(comp.rank) * 3,
         data: comp,
       })),
     ]
 
     // Create links data
-    const links = competitors.map((comp) => ({
-      source: "My Brand",
+    const links = brands.map((comp) => ({
+      source: "Center",
       target: comp.name,
-      value: Math.abs(comp.ranking_diff) + 1,
+      value: Math.abs(comp.rank) + 1,
     }))
 
     // Create simulation
@@ -128,21 +129,21 @@ export function CompetitorNetwork({ competitors, detailed = false }: CompetitorN
         if (d.group !== 0) {
           // Highlight connected link
           link
-            .filter((l: any) => l.source.id === "My Brand" && l.target.id === d.id)
+            .filter((l: any) => l.source.id === "Center" && l.target.id === d.id)
             .transition()
             .duration(200)
             .attr("stroke", "hsl(var(--brand-primary))")
             .attr("stroke-opacity", 0.8)
             .attr("stroke-width", (l) => Math.sqrt(l.value) + 1)
 
-          // Show tooltip for competitors
+          // Show tooltip for brands
           tooltip.transition().duration(200).style("opacity", 1)
 
           tooltip
             .html(`
             <div>
               <div class="font-medium">${d.id}</div>
-              <div>Ranking difference: ${d.data.ranking_diff > 0 ? "+" : ""}${d.data.ranking_diff}</div>
+              <div>Ranking difference: ${d.data.rank > 0 ? "+" : ""}${d.data.rank}</div>
               <div class="text-xs mt-1 text-muted-foreground">Click for more details</div>
             </div>
           `)
@@ -174,7 +175,7 @@ export function CompetitorNetwork({ competitors, detailed = false }: CompetitorN
       .attr("fill", (d: any) =>
         d.group === 0
           ? "url(#mainGradient)"
-          : d.data?.ranking_diff > 0
+          : d.data?.rank > 0
             ? "hsl(var(--status-positive))"
             : "hsl(var(--status-negative))",
       )
@@ -192,15 +193,15 @@ export function CompetitorNetwork({ competitors, detailed = false }: CompetitorN
       .attr("font-size", (d: any) => (d.group === 0 ? "14px" : "12px"))
       .attr("font-weight", (d: any) => (d.group === 0 ? "bold" : "normal"))
 
-    // Add ranking difference indicators for competitors
+    // Add ranking difference indicators for brands
     node
       .filter((d: any) => d.group === 1)
       .append("text")
-      .text((d: any) => (d.data.ranking_diff > 0 ? `+${d.data.ranking_diff}` : d.data.ranking_diff))
+      .text((d: any) => (d.data.rank > 0 ? `+${d.data.rank}` : d.data.rank))
       .attr("text-anchor", "middle")
       .attr("dy", "-1.5em")
       .attr("fill", (d: any) =>
-        d.data.ranking_diff > 0 ? "hsl(var(--status-positive))" : "hsl(var(--status-negative))",
+        d.data.rank > 0 ? "hsl(var(--status-positive))" : "hsl(var(--status-negative))",
       )
       .attr("font-size", "12px")
       .attr("font-weight", "bold")
@@ -238,16 +239,16 @@ export function CompetitorNetwork({ competitors, detailed = false }: CompetitorN
       simulation.stop()
       tooltip.remove()
     }
-  }, [competitors, detailed])
+  }, [brands, detailed])
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5, delay: 0.3 }}>
-      <Card className="pb-0 overflow-hidden bg-background">
+      <Card className="pb-0 overflow-hidden bg-background h-full">
         <CardHeader className="pb-2">
-          <CardTitle>Competitor Network</CardTitle>
+          <CardTitle>Brand Network</CardTitle>
         </CardHeader>
         <CardContent className="h-full">
-          <div className="h-[350px]">
+          <div className="h-[452px]">
             <svg ref={svgRef} width="100%" height="100%" />
           </div>
         </CardContent>

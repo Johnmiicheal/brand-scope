@@ -5,21 +5,16 @@ import { generateObject, generateText } from "ai";
 import { z } from "zod";
 import { v4 as uuidv4 } from "uuid";
 import { NextResponse } from "next/server";
-import Exa from "exa-js";
 
 // --- Supabase and AI Clients ---
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY;
 const openRouterApiKey = process.env.OPENROUTER_API_KEY;
-const groqApiKey = process.env.GROQ_API_KEY; // Assuming you have GROQ key
-const exaApiKey = process.env.EXA_API_KEY; // Assuming you have GROQ key
 
 if (
   !supabaseUrl ||
   !supabaseServiceKey ||
-  !openRouterApiKey ||
-  !groqApiKey ||
-  !exaApiKey
+  !openRouterApiKey
 ) {
   console.error("Missing environment variables!");
   // Handle missing variables appropriately in production (e.g., throw error, exit)
@@ -32,7 +27,6 @@ export const maxDuration = 60;
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 const openrouter = createOpenRouter({ apiKey: openRouterApiKey });
-const exa = new Exa(exaApiKey);
 
 // --- Zod Schemas ---
 
@@ -75,26 +69,13 @@ const AnalysisRunSchema = z.object({
       })
     )
     .describe("Results from each language model for this analysis run."),
-  model_citations: z
-    .array(
-      z.object({
-        id: z.string(),
-        title: z.string(),
-        url: z.string(),
-        publishedDate: z.string().optional(),
-        author: z.string().optional(),
-        text: z.string().optional(),
-        image: z.string().optional(),
-        favicon: z.string().optional(),
-      })
-    )
-    .describe("Citations from each language model for this analysis run."),
     model_summary: z
     .array(
       z.object({
         model: z.string(),
         summary: z.string(),
-        query: z.string()
+        query: z.string(),
+        reasoning: z.string(),
       })
     )
     .describe("Summary from each language model for this analysis run."),
@@ -337,10 +318,15 @@ async function processQuery(
       modelId: "anthropic/claude-3.5-sonnet",
       name: "Claude 3.5 Sonnet",
     },
+    // {
+    //   modelId: "deepseek/deepseek-r1:free",
+    //   name: "DeepSeek R1",
+    // },
     {
       modelId: "google/gemini-2.0-flash-001",
       name: "Gemini 2.0 Flash",
     },
+    // { modelId: "meta-llama/llama-3.3-70b-instruct", name: "Llama 3.3 70B Instruct" },
     { modelId: "perplexity/sonar", name: "Perplexity Sonar" }, // Keep Perplexity here
   ];
 
@@ -430,6 +416,7 @@ async function processQuery(
     model: result.name,
     summary: result.text || "",
     query: query.query,
+    reasoning: result.citations || [],
   }));
 
   // --- 2. Extract Structured Data from Generated Text ---
@@ -532,45 +519,11 @@ async function processQuery(
   const finalModelResultsForDB = await Promise.all(extractionPromises);
   console.log(`  Finished extraction attempts.`);
 
-  // --- 3. Fetch Citations from Exa ---
-  let citationsData: any[] = []; // Default to empty array
-  try {
-    console.log(`  Fetching citations from Exa for query: "${query.query}"...`);
-    const exaResults = await exa.searchAndContents(query.query, {
-      type: "keyword",
-      numResults: 15, // Fetch 15 potential citations
-      summary: true,
-    });
-
-    // Map Exa results to the expected citation schema
-    if (exaResults && exaResults.results) {
-      citationsData = exaResults.results.map((cita) => ({
-        id: cita.id,
-        title: cita.title,
-        url: cita.url,
-        publishedDate: cita.publishedDate,
-        author: cita.author,
-        text: cita.summary,
-        image: cita.image,
-        favicon: cita.favicon,
-      }));
-      console.log(`    Fetched ${citationsData.length} citations from Exa.`);
-    } else {
-      console.warn(
-        `    No citation results returned from Exa for query: "${query.query}"`
-      );
-    }
-  } catch (exaError: any) {
-    console.error(`  Error fetching citations from Exa:`, exaError.message);
-    // Optionally add an error placeholder to citations if needed
-    // citationsData = [{ id: uuidv4(), title: 'Error fetching citations', url: '#', error: exaError.message }];
-  }
 
   // --- Prepare New Analysis Run Object (Matches existing DB Schema) ---
   const newAnalysisRun: z.infer<typeof AnalysisRunSchema> = {
     analysis_date: now,
     model_results: finalModelResultsForDB, // Contains results conforming to the schema
-    model_citations: citationsData, // Assign the fetched & formatted citations
     model_summary: ai_summary,
   };
 

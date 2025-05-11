@@ -66,6 +66,15 @@ interface Brand {
   name: string;
 }
 
+// Type for citation data
+interface Citation {
+  url_citation: {
+    url: string;
+    title: string;
+    snippet: string;
+  };
+}
+
 export default function AnalysisPage() {
   const searchParams = useSearchParams();
   const searchId = searchParams.get("search_id");
@@ -217,16 +226,9 @@ export default function AnalysisPage() {
     }
   };
 
-  const firstLevelLinks = (results?.social_insights || [])
-    .map(
-      (item) =>
-        (item?.links || [])
-          .map((link) => safeParseJSON(link, link))
-          .filter((link) => link !== "" && link != null) // Exclude empty strings and null
-    )
-    .flat();
-
-  const sourcesLinks = firstLevelLinks.slice(0, 15);
+  const citations = results?.summary?.map((s) => s.reasoning).filter(Boolean);
+  const citationsLinks = citations?.flatMap((c) => JSON.parse(c));
+  // console.log(citationsLinks)
 
   if (loading) {
     return <AnalysisLoadingState />;
@@ -261,11 +263,6 @@ export default function AnalysisPage() {
       </div>
     );
   }
-
-  const faviconUrls = sourcesLinks
-    .map((link) => link?.favicon || null)
-    .filter((favicon) => favicon !== null)
-    .join(", ");
 
   return (
     <div className="mx-auto p-2 sm:p-4 w-full h-full">
@@ -338,107 +335,21 @@ export default function AnalysisPage() {
               </TabsTrigger>
 
               <TabsTrigger
+                value="citations"
+                className="data-[state=active]:bg-zinc-700 cursor-pointer whitespace-nowrap"
+              >
+                <TbScanPosition className="w-4 h-4 mr-1 hidden sm:inline" />
+                Citations
+              </TabsTrigger>
+
+              <TabsTrigger
                 value="searches"
                 className="data-[state=active]:bg-zinc-700 cursor-pointer whitespace-nowrap"
               >
                 <TbSearch className="w-4 h-4 mr-1 hidden sm:inline" />
-                Google Search
+                AI Overviews
               </TabsTrigger>
             </TabsList>
-
-            {(isExplorerMode || isVoyagerMode) && (
-              <Sheet>
-                <SheetTrigger asChild>
-                  <div className="bg-zinc-900 border text-muted-foreground inline-flex h-8 w-fit items-center justify-center rounded-lg py-1 px-3 text-xs gap-2 cursor-pointer">
-                    <div className="flex -space-x-2 overflow-hidden p-1">
-                      {faviconUrls
-                        ?.split(",")
-                        .slice(0, 4)
-                        .map(
-                          (
-                            iconUrl,
-                            index // Show max 4 icons
-                          ) => (
-                            <img
-                              key={index}
-                              className="inline-block h-5 w-5 rounded-full ring-2 ring-white dark:ring-gray-800 bg-zinc-900"
-                              src={iconUrl}
-                              alt={`Favicon ${index + 1}`}
-                              // Add error handling for broken image links
-                              onError={(e) => {
-                                // Replace with a placeholder or hide the image on error
-                                const imgElement =
-                                  e.currentTarget as HTMLImageElement;
-                                imgElement.src =
-                                  "https://placehold.co/24x24/cccccc/ffffff?text=?";
-                                imgElement.onerror = null; // Prevent infinite loop if placeholder fails
-                              }}
-                            />
-                          )
-                        )}
-                      {faviconUrls?.split(",").length > 4 && (
-                        <span className="flex items-center justify-center h-5 w-5 rounded-full bg-gray-200 text-xs font-medium text-gray-500 ring-2 ring-white dark:ring-gray-800 dark:bg-gray-700 dark:text-gray-400">
-                          +{faviconUrls?.split(",").length - 4}
-                        </span>
-                      )}
-                    </div>
-                    Sources
-                  </div>
-                </SheetTrigger>
-                <SheetContent className="sm:max-w-md">
-                  <SheetHeader>
-                    <SheetTitle className="text-2xl font-bold">
-                      Citation Sources
-                    </SheetTitle>
-                    <SheetDescription className="text-white/60">
-                      View citations used in our analysis.
-                    </SheetDescription>
-                  </SheetHeader>
-                  <ScrollArea className="px-2 sm:px-4 h-[90%] w-full space-y-4">
-                    {sourcesLinks?.length === 0 ? (
-                      <p className="text-gray-500 text-center">
-                        No insights available.
-                      </p>
-                    ) : (
-                      <div className="space-y-4">
-                        {sourcesLinks?.map((insight, index) => (
-                          <div
-                            key={index}
-                            className="w-full cursor-pointer group hover:bg-neutral-800 rounded-md p-3"
-                            onClick={() => window.open(insight.url, "_blank")}
-                          >
-                            <p className="text-white/80 font-semibold text-sm sm:text-base">
-                              {insight?.title}
-                            </p>
-                            <p
-                              className="text-white/60 font-regular text-xs sm:text-sm"
-                              style={{
-                                WebkitLineClamp: "3",
-                                WebkitBoxOrient: "vertical",
-                                overflow: "hidden",
-                                display: "-webkit-box",
-                              }}
-                            >
-                              {insight?.summary}
-                            </p>
-                            <div className="flex gap-2 items-center mt-3">
-                              <img
-                                src={insight?.favicon}
-                                alt={"favicon"}
-                                className="rounded-md w-4 h-4 sm:w-5 sm:h-5"
-                              />
-                              <p className="text-xs">
-                                {new URL(insight?.id).hostname || "No Hostname"}
-                              </p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </ScrollArea>
-                </SheetContent>
-              </Sheet>
-            )}
           </div>
 
           <TabsContent value="rankings" className="space-y-4">
@@ -450,6 +361,10 @@ export default function AnalysisPage() {
 
           <TabsContent value="summary" className="space-y-4">
             <SummaryTabContent item={filteredSummary} />
+          </TabsContent>
+
+          <TabsContent value="citations" className="space-y-4">
+            <CitationsTabContent citations={citationsLinks} />
           </TabsContent>
 
           <TabsContent value="searches" className="space-y-4">
@@ -785,168 +700,82 @@ function SummaryTabContent({ item }: { item: Summary | null }) {
   );
 }
 
-// Social Insights tab content
-function SocialInsightsTabContent({
-  insights,
-  getEntityName,
-}: {
-  insights: SocialInsight[];
-  getEntityName: (id: string) => string;
-}) {
-  if (insights.length === 0) {
-    return <p>No social insights available.</p>;
+// Citations tab content
+function CitationsTabContent({ citations }: { citations: Citation[] | undefined }) {
+  if (!citations || citations.length === 0) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <p className="text-muted-foreground">No citations available.</p>
+      </div>
+    );
   }
 
   return (
     <motion.div
-      className="space-y-4"
-      variants={containerVariants}
-      initial="hidden"
-      animate="visible"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="space-y-6"
     >
-      <div className="relative overflow-hidden rounded-md border border-accent">
-        {/* Table for Medium screens and up */}
-        <table className="hidden w-full text-xs text-left md:table sm:text-sm">
-          <thead className="text-xs uppercase bg-zinc-900/50">
-            <tr>
-              <th scope="col" className="px-6 py-3">
-                Entity
-              </th>
-              <th scope="col" className="px-6 py-3">
-                Keyword
-              </th>
-              <th scope="col" className="px-6 py-3">
-                Platform
-              </th>
-              <th scope="col" className="px-6 py-3">
-                Mentions
-              </th>
-              <th scope="col" className="px-6 py-3">
-                Sentiment
-              </th>
-              <th scope="col" className="px-6 py-3">
-                Date Collected
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {insights.map((insight, idx) => (
-              <motion.tr
-                key={`${insight.id}-desktop-${idx}`}
-                variants={itemVariants}
-                custom={idx}
-                className="border-b border-accent hover:bg-zinc-800/20"
-              >
-                <td className="px-6 py-4 font-medium text-white">
-                  {getEntityName(insight.entity_id)}
-                </td>
-                <td className="px-6 py-4">
-                  {insight.keyword ? (
-                    <Badge className="bg-zinc-700 text-zinc-300 text-xs">
-                      #{insight.keyword}
-                    </Badge>
-                  ) : (
-                    "N/A"
-                  )}
-                </td>
-                <td className="px-6 py-4">{insight.platform}</td>
-                <td className="px-6 py-4">{insight.mention_count}</td>
-                <td className="px-6 py-4">
-                  <Badge
-                    variant={
-                      insight.sentiment === "positive"
-                        ? "default"
-                        : insight.sentiment === "negative"
-                        ? "destructive"
-                        : "outline"
-                    }
-                    className={`text-xs ${
-                      insight.sentiment === "positive"
-                        ? "bg-green-500/20 text-green-200 border-green-500/30"
-                        : insight.sentiment === "negative"
-                        ? "bg-red-500/20 text-red-200 border-red-500/30"
-                        : "bg-zinc-500/20 text-zinc-200 border-zinc-500/30"
-                    }`}
-                  >
-                    {insight.sentiment || "Neutral"}
-                  </Badge>
-                </td>
-                <td className="px-6 py-4">
-                  {new Date(insight.data_fetched_at).toLocaleString()}
-                </td>
-              </motion.tr>
-            ))}
-          </tbody>
-        </table>
-
-        {/* Cards for Small screens */}
-        <div className="block md:hidden">
-          <AnimatePresence>
-            {insights.map((insight, idx) => (
-              <motion.div
-                key={`${insight.id}-mobile-${idx}`}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: idx * 0.05 }}
-                className="p-4 border-b border-accent last:border-b-0 bg-zinc-800/10 hover:bg-zinc-800/30"
-              >
-                <div className="flex justify-between items-center mb-2">
-                  <span className="font-medium text-white text-sm">
-                    {getEntityName(insight.entity_id)}
-                  </span>
-                  <Badge
-                    variant={
-                      insight.sentiment === "positive"
-                        ? "default"
-                        : insight.sentiment === "negative"
-                        ? "destructive"
-                        : "outline"
-                    }
-                    className={`text-xs ml-2 ${
-                      insight.sentiment === "positive"
-                        ? "bg-green-500/20 text-green-200 border-green-500/30"
-                        : insight.sentiment === "negative"
-                        ? "bg-red-500/20 text-red-200 border-red-500/30"
-                        : "bg-zinc-500/20 text-zinc-200 border-zinc-500/30"
-                    }`}
-                  >
-                    {insight.sentiment || "Neutral"}
-                  </Badge>
-                </div>
-                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs mb-2">
-                  <div>
-                    <span className="text-muted-foreground">Platform: </span>
-                    <span>{insight.platform}</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Mentions: </span>
-                    <span>{insight.mention_count}</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Keyword: </span>
-                    {insight.keyword ? (
-                      <Badge className="bg-zinc-700 text-zinc-300 text-[10px] px-1 py-0">
-                        #{insight.keyword}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <AnimatePresence>
+          {citations.map((citation, index) => (
+            <motion.div
+              key={index}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{
+                type: "spring",
+                damping: 15,
+                stiffness: 100,
+                delay: index * 0.1,
+              }}
+            >
+              <Card className="h-full bg-zinc-800/50 border-accent hover:bg-zinc-800/70 transition-colors">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base font-medium line-clamp-2">
+                    {citation.url_citation.title}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between pt-2">
+                      <Badge variant="outline" className="text-xs">
+                        {new URL(citation.url_citation.url).hostname}
                       </Badge>
-                    ) : (
-                      "N/A"
-                    )}
+                      <a
+                        href={citation.url_citation.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                      >
+                        Visit Source
+                        <svg
+                          className="ml-1 h-3 w-3"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                          />
+                        </svg>
+                      </a>
+                    </div>
                   </div>
-                </div>
-                <p className="text-[10px] text-muted-foreground">
-                  Collected:{" "}
-                  {new Date(insight.data_fetched_at).toLocaleDateString()}
-                </p>
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          ))}
+        </AnimatePresence>
       </div>
     </motion.div>
   );
 }
-
-
 
 // Animation variants
 const containerVariants = {

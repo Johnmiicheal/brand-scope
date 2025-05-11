@@ -1,10 +1,10 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/ban-ts-comment */
-// @ts-nocheck
 
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import {
@@ -23,6 +23,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { v4 as uuidv4 } from "uuid";
 import {
+  ChevronDown,
+  Clock9,
   CloudUpload,
   RefreshCcw,
   SquareArrowOutUpRight,
@@ -62,8 +64,13 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useAuth } from "@/hooks/useAuth";
-import { ScheduledQueriesDashboard } from "@/components/dashboard/scheduled-queries-dashboard";
-import { ScheduledQueriesList } from "@/components/library/scheduled-queries-list";
+import {
+  ScheduledQueriesList,
+  ScheduledQuery,
+} from "@/components/library/scheduled-queries-list";
+import { useToast } from "@/components/ui/use-toast";
+import { User } from "@supabase/supabase-js";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 const INDUSTRIES = [
   "Technology",
@@ -83,37 +90,29 @@ const INDUSTRIES = [
 
 // Define props for the new table component
 interface IndustryRankingsTableProps {
-  competitors: Competitor[];
-  brand: Brand;
+  brands: {
+    brand_name: string;
+    gpt_mentions: number;
+    claude_mentions: number;
+    perplexity_mentions: number;
+    gemini_mentions: number;
+    total_mentions: number;
+  }[]
 }
 
 // Updated component for the Industry Rankings Table
 function IndustryRankingsTable({
-  competitors,
-  brand,
+  brands
 }: IndustryRankingsTableProps) {
-  // Create an entry for the user's brand
-  const userBrandEntry = {
-    competitor_id: brand.id,
-    name: brand.name,
-    ranking_diff: 0, // User's brand is the baseline
-    // Add other properties if needed, matching Competitor type structure
-  };
-
-  // Combine user's brand with competitors
-  const allEntities = [...competitors, userBrandEntry];
-
-  // Sort all entities by ranking_diff (higher difference is better, so descending order)
-  const sortedEntities = allEntities.sort(
-    (a, b) => (b.ranking_diff || 0) - (a.ranking_diff || 0)
-  );
+  if(!brands) return null;
+  const all_total_mentions = brands.reduce((acc, brand) => acc + brand.total_mentions, 0);
 
   return (
     <Card className="bg-background border-accent text-white">
       <CardHeader>
-        <CardTitle>Industry Ranking</CardTitle>
+        <CardTitle>Brand Ranking</CardTitle>
         <CardDescription>
-          Your brand and competitors ranked by performance difference
+          Brands ranked by visibility score
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -122,67 +121,82 @@ function IndustryRankingsTable({
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5 }}
         >
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[50px]">Rank</TableHead>
-                <TableHead>Entity</TableHead>
-                <TableHead className="text-right">Ranking Difference</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {sortedEntities.length === 0 ? (
+          <ScrollArea className="h-[400px]">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell
-                    colSpan={3}
-                    className="text-center text-muted-foreground"
-                  >
-                    No ranking data available yet.
-                  </TableCell>
+                  <TableHead className="w-[50px] sticky top-0 bg-background">Rank</TableHead>
+                  <TableHead className="sticky top-0 bg-background">Entity</TableHead>
+                  <TableHead className="text-right sticky top-0 bg-background">Visibility %</TableHead>
+                  <TableHead className="text-right sticky top-0 bg-background">Mentions</TableHead>
+                  <TableHead className="text-right sticky top-0 bg-background">ChatGPT</TableHead>
+                  <TableHead className="text-right sticky top-0 bg-background">Perplexity</TableHead>
+                  <TableHead className="text-right sticky top-0 bg-background">Google AI Overview</TableHead>
                 </TableRow>
-              ) : (
-                sortedEntities.map((entity, index) => (
-                  <TableRow key={entity.competitor_id || entity.id || index}>
-                    <TableCell className="font-medium">{index + 1}</TableCell>
-                    <TableCell className="flex items-center gap-2">
-                      {entity.name}
-                      {entity.competitor_id === brand.id && ( // Check if it's the user's brand
-                        <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <span
-                        className={
-                          (entity.ranking_diff || 0) > 0
-                            ? "text-green-400"
-                            : (entity.ranking_diff || 0) < 0
-                            ? "text-red-400"
-                            : "text-zinc-400" // Style for 0 difference (user's brand)
-                        }
-                      >
-                        {(entity.ranking_diff || 0) > 0
-                          ? `+${entity.ranking_diff}`
-                          : entity.ranking_diff ?? "0"}
-                      </span>
+              </TableHeader>
+              <TableBody>
+                {brands.length === 0 ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={7}
+                      className="text-center text-muted-foreground"
+                    >
+                      No ranking data available yet.
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                ) : (
+                  brands.map((entity, index) => (
+                    <TableRow key={index}>
+                      <TableCell className="font-medium">{index + 1}</TableCell>
+                      <TableCell className="flex items-center gap-2">
+                        {entity.brand_name}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {((entity.total_mentions / all_total_mentions) * 100).toFixed(1)}%
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {entity.total_mentions}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {entity.gpt_mentions}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {entity.perplexity_mentions}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {entity.gemini_mentions}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </ScrollArea>
         </motion.div>
       </CardContent>
     </Card>
   );
 }
 
+
+
 function DashboardContent() {
   const router = useRouter();
   const { brand, metrics, competitors, keywords, isLoading, error, refetch } =
     useBrandData();
   const [sessionKey, setSessionKey] = useState("");
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [monitoringFrequency, setMonitoringFrequency] = useState<string>("none");
+  const [user, setUser] = useState<User | null>(null);
+  const [selectedQuery, setSelectedQuery] = useState<ScheduledQuery | null>(null);
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  // Update time every second
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -192,448 +206,147 @@ function DashboardContent() {
       if (!session) {
         router.push("/login");
       }
-      setSessionKey(session?.access_token);
+      setSessionKey(session?.access_token || "");
+      setUser(session?.user || null);
     };
     checkAuth();
   }, [router]);
 
-  // Form states for brand creation
-  const [brandName, setBrandName] = useState("");
-  const [brandWebsite, setBrandWebsite] = useState("");
-  const [brandIndustry, setBrandIndustry] = useState("");
-  const [brandLogo, setBrandLogo] = useState<File | null>(null);
-  const [brandLogoPreview, setBrandLogoPreview] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [showBrandModal, setShowBrandModal] = useState(false);
-  const [brands, setBrands] = useState<Brand[]>([]);
-  const [selectedBrand, setSelectedBrand] = useState<Brand | null>(null);
+  // Function to fetch scheduled queries for the dashboard
+  const [queries, setQueries] = useState<ScheduledQuery[]>([]);
   const [loading, setLoading] = useState(true);
-
+  const { toast } = useToast();
   useEffect(() => {
-    fetchBrands();
-  }, []);
+    async function fetchScheduledQueries() {
+      if (!sessionKey) return;
 
-  const fetchBrands = async () => {
-    try {
-      setLoading(true);
+      try {
+        setLoading(true);
+        const response = await fetch(`/api/monitoring?user_id=${user?.id}`);
 
-      // Get current user
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) {
-        console.error("No authenticated user found");
-        setLoading(false);
-        return;
-      }
-
-      // Fetch brands where user_id matches and website and logo are not empty
-      const { data, error } = await supabase
-        .from("brands")
-        .select("*")
-        .eq("user_id", user.id)
-        .not("website", "is", null)
-        .not("logo_url", "is", null);
-
-      if (error) {
-        console.error("Error fetching brands:", error);
-        setLoading(false);
-        return;
-      }
-
-      setBrands(data || []);
-
-      // Set the first brand as selected if available
-      if (data && data.length > 0) {
-        setSelectedBrand(data[0]);
-      } else {
-        // Show brand creation modal if no valid brands exist
-        setShowBrandModal(true);
-      }
-
-      setLoading(false);
-    } catch (error) {
-      console.error("Error:", error);
-      setLoading(false);
-    }
-  };
-
-  const handleCreateBrand = async () => {
-    if (!brandName || !brandWebsite || !brandIndustry) {
-      alert("Please fill all required fields");
-      return;
-    }
-
-    try {
-      setSubmitting(true);
-
-      // Get current user
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) {
-        alert("You must be logged in to create a brand");
-        setSubmitting(false);
-        return;
-      }
-
-      let logoData = null;
-
-      // Convert file to base64 if provided
-      if (brandLogo) {
-        logoData = brandLogoPreview;
-      }
-
-      // Create brand record
-      const brandId = uuidv4();
-      const { data, error } = await supabase
-        .from("brands")
-        .insert([
-          {
-            id: brandId,
-            name: brandName,
-            logo_url: logoData,
-            website: brandWebsite,
-            industry: brandIndustry,
-            user_id: user.id,
-          },
-        ])
-        .select();
-
-      if (error) {
-        console.error("Error creating brand:", error);
-        setSubmitting(false);
-        return;
-      }
-
-      // Clear form
-      setBrandName("");
-      setBrandWebsite("");
-      setBrandIndustry("");
-      setBrandLogo(null);
-      setBrandLogoPreview(null);
-
-      // Close modal and refresh brands
-      setShowBrandModal(false);
-      fetchBrands();
-
-      // Trigger brand analysis
-      await analyzeBrand(brandId);
-
-      setSubmitting(false);
-    } catch (error) {
-      console.error("Error:", error);
-      setSubmitting(false);
-    }
-  };
-
-  const analyzeBrand = async (brandId: string) => {
-    try {
-      setIsAnalyzing(true);
-      // Call the analysis API
-      const response = await fetch(
-        process.env.NEXT_PUBLIC_ANALYZE_BRAND as string,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${sessionKey}`,
-          },
-          body: JSON.stringify({
-            brandId,
-          }),
+        if (!response.ok) {
+          throw new Error(
+            `Error fetching scheduled queries: ${response.statusText}`
+          );
         }
-      );
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error("Brand analysis failed:", errorData);
-        setIsAnalyzing(false);
-        return;
-      }
+        const data = await response.json();
 
-      const data = await response.json();
-      if (data) {
-        window.location.reload();
-      }
-      setIsAnalyzing(false);
-    } catch (error) {
-      console.error("Error analyzing brand:", error);
-      setIsAnalyzing(false);
-    }
-  };
-
-  const handleAnalyze = async () => {
-    if (!brand) return;
-    
-    console.log("Selected Monitoring Frequency:", monitoringFrequency);
-
-    setIsAnalyzing(true);
-    try {
-      const response = await fetch(
-        process.env.NEXT_PUBLIC_ANALYZE_BRAND as string,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${sessionKey}`,
-          },
-          body: JSON.stringify({ brandId: brand.id }),
+        if (data && data.monitoring) {
+          setQueries(data.monitoring);
+          setSelectedQuery(data.monitoring[0]);
+        } else {
+          setQueries([]);
         }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error("Brand analysis failed:", errorData);
-        setIsAnalyzing(false);
-        return;
+      } catch (error) {
+        console.error("Failed to fetch scheduled queries:", error);
+        toast({
+          title: "Error",
+          description:
+            "Failed to load scheduled queries. Please try again later.",
+          variant: "destructive",
+        });
+        setQueries([]);
+      } finally {
+        setLoading(false);
       }
-
-      // Refetch brand data to get updated metrics
-      await refetch();
-    } catch (error) {
-      console.error("Error analyzing brand:", error);
-    } finally {
-      setIsAnalyzing(false);
     }
-  };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setBrandLogo(file);
+    fetchScheduledQueries();
+  }, [sessionKey, toast, user?.id]);
 
-      // Create preview
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setBrandLogoPreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
+  const [isExpanded, setIsExpanded] = useState(false);
 
-  const handleFileDrop = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
+  const results = selectedQuery?.results;
+  const analysis_dates = results?.map((result: { analysis_date: string; }) => result.analysis_date);
 
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      const file = e.dataTransfer.files[0];
-      setBrandLogo(file);
-
-      // Create preview
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setBrandLogoPreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-  };
-
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-  };
-
-  const openFileDialog = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
-  };
-
-  if (!brand) {
-    return isAnalyzing ? (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="w-full max-w-3xl">
-          <h1 className="text-2xl font-bold mb-6 text-center">
-            Creating Brand Analysis
-          </h1>
-          <p className="text-muted-foreground mb-8 text-center">Analyzing...</p>
-          <LoadingState />
-        </div>
-      </div>
-    ) : isLoading ? (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="w-full max-w-3xl">
-          <div className="flex flex-col items-center justify-center">
-            <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-            <ShinyText
-              text="Fetching your latest brand data..."
-              disabled={false}
-              speed={3}
-              className="font-medium text-sm"
-            />
-          </div>
-        </div>
-      </div>
-    ) : (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center gap-2">
-          <h2 className="text-2xl font-bold text-red-500/60 mb-4">
-            Empty Brand :/
-          </h2>
-          <p className="text-white/50 mb-8">
-            Create your Brand to unlock your dashboard, or try out the search
-            feature
-          </p>
-          <Button onClick={() => setShowBrandModal(true)}>Create Brand</Button>
-        </div>
-        <Dialog open={showBrandModal} onOpenChange={setShowBrandModal}>
-          <DialogContent className="sm:max-w-[500px] bg-gradient-to-b from-background to-zinc-900 overflow-hidden border-accent">
-            <DialogHeader>
-              <DialogTitle className="text-2xl text-white">
-                Create Brand
-              </DialogTitle>
-              <DialogDescription className="text-white/50">
-                Add your brand details to start tracking analytics
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="p-6">
-              <div className="grid gap-6">
-                <div className="grid gap-2">
-                  <Label htmlFor="name">Name</Label>
-                  <Input
-                    id="name"
-                    value={brandName}
-                    placeholder="Acme Corporation"
-                    onChange={(e) => setBrandName(e.target.value)}
-                    className="bg-zinc-800"
-                    required
-                  />
-                </div>
-
-                <div className="grid gap-2">
-                  <Label htmlFor="website">Website</Label>
-                  <Input
-                    id="website"
-                    value={brandWebsite}
-                    onChange={(e) => setBrandWebsite(e.target.value)}
-                    className="bg-zinc-800"
-                    placeholder="https://example.com"
-                    required
-                  />
-                </div>
-
-                <div className="grid gap-2">
-                  <Label htmlFor="industry">Industry</Label>
-                  <Select
-                    value={brandIndustry}
-                    onValueChange={setBrandIndustry}
-                  >
-                    <SelectTrigger className="bg-zinc-800 w-full">
-                      <SelectValue placeholder="Select industry" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {INDUSTRIES.map((industry) => (
-                        <SelectItem key={industry} value={industry}>
-                          {industry}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="grid gap-2">
-                  <Label htmlFor="logo">Logo</Label>
-                  <div className="flex items-center gap-4">
-                    <input
-                      ref={fileInputRef}
-                      id="logo"
-                      type="file"
-                      accept="image/*"
-                      onChange={handleFileChange}
-                      className="hidden"
-                    />
-
-                    {!brandLogoPreview ? (
-                      <div
-                        onClick={openFileDialog}
-                        onDragEnter={handleDragEnter}
-                        onDragOver={handleDragOver}
-                        onDragLeave={handleDragLeave}
-                        onDrop={handleFileDrop}
-                        className={`
-                          h-32 w-full rounded-md border-2 border-dashed 
-                          flex flex-col items-center justify-center p-4 
-                          cursor-pointer transition-all duration-200
-                          ${
-                            isDragging
-                              ? "border-blue-500 bg-blue-500/10"
-                              : "border-zinc-700 bg-zinc-800 hover:border-zinc-500"
-                          }
-                        `}
-                      >
-                        <div className="flex flex-col items-center text-center">
-                          <CloudUpload className="w-5 h-5 text-zinc-400 mb-2" />
-                          <div className="font-medium text-sm mb-1">
-                            Click to upload
-                          </div>
-                          <div className="text-xs text-zinc-400">
-                            or drag and drop your logo here
-                          </div>
-                          <div className="text-[10px] text-zinc-500 mt-3">
-                            PNG, JPG or SVG (max 5MB)
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="w-full flex flex-col items-center">
-                        <div className="w-28 h-28 p-3 rounded-md overflow-hidden bg-zinc-700 flex items-center justify-center mb-3">
-                          <Image
-                            src={brandLogoPreview}
-                            alt="Preview"
-                            width={50}
-                            height={50}
-                            className="w-full h-full object-contain"
-                          />
-                        </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={openFileDialog}
-                          className="mt-2"
-                        >
-                          <CloudUpload className="w-4 h-4 mr-2" />
-                          Change Logo
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <DialogFooter className="px-6 py-4">
-              <Button
-                onClick={handleCreateBrand}
-                disabled={submitting}
-                className="w-full"
-              >
-                {submitting ? "Creating..." : "Create Brand"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
+  const analysis_models = useMemo(() => {
+    if (!results || !Array.isArray(results)) return [];
+    const allModels = results?.flatMap((result: { model_results: { llm_name: string; }[]; }) => 
+      result.model_results?.map((r: { llm_name: string; }) => r.llm_name) || []
     );
-  }
+    return [...new Set(allModels)];
+  }, [results]);
+
+  const analysis_brands = useMemo(() => {
+    if (!results || !Array.isArray(results)) return [];
+    const allBrands = results.flatMap((result: { model_results: { llm_name: string; data: { brands: any[]; }; }[]; }) => 
+      result.model_results?.flatMap((r: { llm_name: string; data: { brands: any[]; }; }) => 
+        r.data?.brands || []
+      )
+    ).filter(Boolean);
+    return [...new Set(allBrands)];
+  }, [results]);
+
+  // Calculate brand mentions in model summaries
+  const brandMentionsInSummaries = useMemo(() => {
+    if (!results || !Array.isArray(results) || !analysis_brands || analysis_brands.length === 0) {
+      return [];
+    }
+
+    // Initialize a map to store brand mentions
+    const brandMentionsMap = new Map();
+
+    // Process each brand
+    analysis_brands.forEach(brand => {
+      const brandName = brand.name;
+      const mentions = {
+        gpt_mentions: 0,
+        claude_mentions: 0,
+        perplexity_mentions: 0,
+        gemini_mentions: 0,
+      };
+
+      // Process each model's results
+      results.forEach(result => {
+        result.model_results?.forEach((modelResult: { llm_name: string; data: { brands: any[]; }; }) => {
+          const modelName = modelResult.llm_name.toLowerCase();
+          
+          // Count mentions in brand data
+          const brandData = modelResult.data?.brands?.find(b => b.name === brandName);
+          if (brandData) {
+            let mentionCount = 1; // Count direct mention in brand analysis
+            
+            // Add mentions from reasoning if available
+            if (brandData.reasoning) {
+              const reasoningMatches = brandData.reasoning.match(new RegExp(`\\b${brandName}\\b`, 'gi'));
+              if (reasoningMatches) {
+                mentionCount += reasoningMatches.length;
+              }
+            }
+
+            // Assign mentions to the appropriate model
+            if (modelName.includes('gpt')) {
+              mentions.gpt_mentions += mentionCount;
+            } else if (modelName.includes('claude')) {
+              mentions.claude_mentions += mentionCount;
+            } else if (modelName.includes('perplexity')) {
+              mentions.perplexity_mentions += mentionCount;
+            } else if (modelName.includes('gemini')) {
+              mentions.gemini_mentions += mentionCount;
+            }
+          }
+        });
+      });
+
+      const total_mentions = Object.values(mentions).reduce((sum, count) => sum + count, 0);
+      
+      if (total_mentions > 0) {
+        brandMentionsMap.set(brandName, {
+          brand_name: brandName,
+          ...mentions,
+          total_mentions
+        });
+      }
+    });
+
+    // Convert map to array and sort by total mentions
+    return Array.from(brandMentionsMap.values())
+      .sort((a, b) => b.total_mentions - a.total_mentions);
+  }, [results, analysis_brands]);
+
+  // For debugging
+  // console.log("Brand Mentions:", brandMentionsInSummaries);
 
   if (isLoading) {
     return (
@@ -642,7 +355,7 @@ function DashboardContent() {
           <div className="flex flex-col items-center justify-center">
             <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
             <ShinyText
-              text="Fetching your latest brand data..."
+              text="Fetching your latest data..."
               disabled={false}
               speed={3}
               className="font-medium text-sm"
@@ -666,110 +379,119 @@ function DashboardContent() {
 
   return (
     <div className="container mx-auto px-4 py-4">
-      <div className="flex justify-between items-center mb-8">
-        <div className="flex items-end gap-2">
-          <div className="flex items-center gap-2">
-            <Image
-              src={brand.logo_url}
-              alt={brand.name}
-              width={24}
-              height={24}
-              className="rounded-md"
-            />
-            <h2 className="text-2xl">{brand.name}</h2>
-          </div>
-          <Link
-            href={brand?.website}
-            target="_blank"
-            className="text-sm text-white/40 hover:text-white/80 flex items-center gap-1"
-          >
-            {brand.website} <SquareArrowOutUpRight className="w-3 h-3 mt-1" />
-          </Link>
-        </div>
-        <div className="flex items-center gap-2">
-          <Select value={monitoringFrequency} onValueChange={setMonitoringFrequency} >
-            <SelectTrigger className="w-[150px] text-xs h-9" disabled={isAnalyzing}>
-              <SelectValue placeholder="Monitoring" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">No Monitoring</SelectItem>
-              <SelectItem value="daily">Daily</SelectItem>
-              <SelectItem value="weekly">Weekly</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button
-            onClick={handleAnalyze} 
-            disabled={isAnalyzing}
-            variant="outline" 
-            size="icon"
-            className="h-9 w-9"
-          >
-            <RefreshCcw
-              className={`w-4 h-4 ${isAnalyzing ? "animate-spin" : ""}`}
-            />
-          </Button>
-        </div>
-      </div>
-
-      {isAnalyzing ? (
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="w-full max-w-3xl">
-            <h1 className="text-2xl font-bold mb-6 text-center">
-              Analyzing Your Brand
-            </h1>
-            <p className="text-muted-foreground mb-8 text-center">
-              Analyzing {brand.name}...
-            </p>
-            <LoadingState />
-          </div>
-        </div>
-      ) : (
-        <AnimatePresence mode="wait">
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.2 }}
-          >
-            <div className="min-h-screen flex-1">
-              <div className="space-y-6">
-                {/* Key metrics */}
-                <MetricsHeader metrics={metrics} competitors={competitors} />
-
-                {/* Main content grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Left column - Make keyword cloud take full width */}
-                  <div className="space-y-6 lg:col-span-2">
-                    <KeywordCloud keywords={keywords} />
-                  </div>
-
-                  {/* Industry Ranking Table - Full width */}
-                  <div className="lg:col-span-2">
-                    <IndustryRankingsTable
-                      competitors={competitors}
-                      brand={brand}
-                    />
-                  </div>
-
-                  {/* Two columns for other components */}
-                  <div className="space-y-6">
-                    <CompetitorNetwork competitors={competitors} />
-                  </div>
-
-                  <div className="space-y-6">
-                    {/* <KeywordMetrics keywords={brandData.data.keywords} /> */}
-                    <BrandInsights insights={metrics} />
-                  </div>
+      <AnimatePresence mode="wait">
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          transition={{ duration: 0.2 }}
+        >
+          <div className="min-h-screen flex-1">
+            <div className="space-y-6">
+              <motion.div
+                className="w-full flex justify-between rounded-md p-3 items-center bg-accent border-dashed border-1 cursor-pointer hover:bg-accent/80 transition duration-300"
+                onClick={() => setIsExpanded(!isExpanded)}
+                whileTap={{ scale: 0.98 }}
+              >
+                <div className="flex items-center gap-2">
+                  <Clock9 className="w-4 h-4 text-muted-foreground" />
+                  <p className="text-muted-foreground">
+                    {currentTime.toLocaleTimeString(undefined, {
+                      hour: "numeric",
+                      minute: "2-digit",
+                      second: "2-digit",
+                      hour12: false,
+                    })}
+                  </p>
+                  {"•"}
+                  <p>{queries.length} active prompts</p>
                 </div>
+                <motion.div
+                  animate={{ rotate: isExpanded ? 180 : 0 }}
+                  transition={{ duration: 0.3, ease: "easeInOut" }}
+                >
+                  <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                </motion.div>
+              </motion.div>
+              <AnimatePresence>
+                {isExpanded && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.3, ease: "easeInOut" }}
+                    className="overflow-hidden"
+                  >
+                    <Card className="bg-background rounded-md p-4">
+                      <ScheduledQueriesList 
+                        queries={queries} 
+                        onSelectQuery={(query) => {
+                          setSelectedQuery(query);
+                          setIsExpanded(false); // Close the list after selection
+                        }}
+                      />
+                    </Card>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Display selected query info
+              {selectedQuery && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="bg-accent/50 rounded-lg p-4 mb-6"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-lg font-medium mb-1">
+                        Currently Viewing: {selectedQuery.query}
+                      </h3>
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <span>Mode: {selectedQuery.mode}</span>
+                        <span>•</span>
+                        <span>Frequency: {selectedQuery.frequency}</span>
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSelectedQuery(null)}
+                    >
+                      Clear
+                    </Button>
+                  </div>
+                </motion.div>
+              )} */}
+
+              <MetricsHeader metrics={metrics} competitors={competitors} />
+                {/* Industry Ranking Table - Full width */}
+                <div className="lg:col-span-2">
+                  <IndustryRankingsTable
+                    brands={brandMentionsInSummaries}
+                  />
+                </div>
+
+              {/* Main content grid */}
+              <div className="flex w-full gap-6 h-full">
+                {/* Left column - Make keyword cloud take full width */}
+                <div className="space-y-6 w-[65%] h-full">
+                  <KeywordCloud keywords={keywords} />
+                </div>
+
+              
+
+                <div className="space-y-6 w-[35%] h-full">
+                  <CompetitorNetwork brands={analysis_brands} />
+                </div>
+
+
               </div>
-            <Card className="mt-12 bg-background rounded-md p-4">
-              <h2 className="text-xl  mb-4">Scheduled Queries</h2>
-              <ScheduledQueriesList />
-            </Card>
             </div>
-          </motion.div>
-        </AnimatePresence>
-      )}
+          </div>
+        </motion.div>
+      </AnimatePresence>
     </div>
   );
 }
