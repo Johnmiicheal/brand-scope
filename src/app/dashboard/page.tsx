@@ -246,7 +246,17 @@ function DashboardContent() {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const results = selectedQuery?.results;
-  const analysis_dates = results?.map((result: { analysis_date: string; }) => result.analysis_date);
+  const [analysis_brands, setAnalysisBrands] = useState<any[]>([]);
+  const [selectedBrand, setSelectedBrand] = useState<string>("");
+  const [selectedDate, setSelectedDate] = useState<string>("All Analysis");
+  const [selectedModel, setSelectedModel] = useState<string>("");
+
+
+  const analysis_dates = useMemo(() => {
+    if (!results || !Array.isArray(results)) return [];
+    return [...new Set(results.map((result: { analysis_date: string; }) => result.analysis_date))];
+  }, [results]);
+  // console.log("Analysis Dates: ", analysis_dates)
 
   const analysis_models = useMemo(() => {
     if (!results || !Array.isArray(results)) return [];
@@ -256,7 +266,42 @@ function DashboardContent() {
     return [...new Set(allModels)];
   }, [results]);
 
-  const analysis_brands = useMemo(() => {
+  // Filter analysis brands based on selected date and model
+  const filteredAnalysisBrands = useMemo(() => {
+    if (!results || !Array.isArray(results)) return [];
+    
+    // Filter results based on selected date
+    const dateFilteredResults = selectedDate === "All Analysis" 
+      ? results 
+      : results.filter(result => result.analysis_date === selectedDate);
+    
+    // Extract brands from the date-filtered results, considering model filter
+    const filteredBrands = dateFilteredResults.flatMap(result => 
+      result.model_results
+        // Filter by model if a specific model is selected
+        ?.filter((modelResult: { llm_name: string; }) => 
+          selectedModel === "All Models" || modelResult.llm_name === selectedModel
+        )
+        // Extract brands from filtered model results
+        .flatMap((modelResult: { llm_name: string; data: { brands: any[]; }; }) => 
+          modelResult.data?.brands || []
+        )
+    ).filter(Boolean);
+    
+    // Create a map to deduplicate brands by id
+    const brandMap = new Map();
+    filteredBrands.forEach(brand => {
+      if (brand && brand.name) {
+        brandMap.set(brand.name, brand);
+      }
+    });
+    
+    // Convert map values back to array
+    return Array.from(brandMap.values());
+  }, [results, selectedDate, selectedModel]);
+
+
+  const allAnalysisBrands = useMemo(() => {
     if (!results || !Array.isArray(results)) return [];
     const allBrands = results.flatMap((result: { model_results: { llm_name: string; data: { brands: any[]; }; }[]; }) => 
       result.model_results?.flatMap((r: { llm_name: string; data: { brands: any[]; }; }) => 
@@ -332,9 +377,30 @@ function DashboardContent() {
     return Array.from(brandMentionsMap.values())
       .sort((a, b) => b.total_mentions - a.total_mentions);
   }, [results, analysis_brands]);
+  
 
-  // For debugging
-  // console.log("Brand Mentions:", brandMentionsInSummaries);
+  // Effect to update analysis_brands based on selectedBrand
+  useEffect(() => {
+    if (!selectedModel || selectedModel === 'All Models' || selectedModel === "") {
+      setAnalysisBrands(allAnalysisBrands);
+    } else {
+      setAnalysisBrands(filteredAnalysisBrands);
+    }
+    console.log("Analysis Brands: ", analysis_brands)
+    console.log("Selected Model: ", selectedModel)
+
+  }, [selectedModel, allAnalysisBrands, filteredAnalysisBrands, analysis_brands]);
+
+  // Effect to reset filters when prompt changes
+  useEffect(() => {
+    // Reset filters when the prompt changes
+    if (selectedQuery) {
+      setSelectedModel('');
+      setSelectedDate('');
+      console.log("Prompt changed, resetting filters");
+    }
+  }, [selectedQuery]);
+
 
   if (isLoading) {
     return (
@@ -400,6 +466,67 @@ function DashboardContent() {
                 >
                   <ChevronDown className="w-4 h-4 text-muted-foreground" />
                 </motion.div>
+              </motion.div>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.3 }}
+                className="w-full"
+              >
+                <div className="flex flex-col md:flex-row gap-4 w-full">
+                    <Select 
+                      defaultValue="all"
+                      onValueChange={(value) => setSelectedBrand(value)}
+                    >
+                      <SelectTrigger className="w-fit">
+                        <SelectValue placeholder="Select brand" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Brands</SelectItem>
+                        <ScrollArea className="h-[200px]">
+                          {analysis_brands?.map((brand) => (
+                            <SelectItem key={brand.id} value={brand.name}>
+                              {brand.name}
+                            </SelectItem>
+                          ))}
+                        </ScrollArea>
+                      </SelectContent>
+                    </Select>
+                  
+                    <Select 
+                      defaultValue="latest"
+                      onValueChange={(value) => setSelectedDate(value)}
+                    >
+                      <SelectTrigger className="w-fit">
+                        <SelectValue placeholder="Select date" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="latest">All Analysis</SelectItem>
+                        {analysis_dates?.map((date: string) => (
+                          <SelectItem key={date} value={date}>
+                            {date}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  
+                    <Select 
+                      defaultValue="all"
+                      onValueChange={(value) => setSelectedModel(value)}
+                    >
+                      <SelectTrigger className="w-fit">
+                        <SelectValue placeholder="Select models" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Models</SelectItem>
+                        {analysis_models?.map((model: string) => (
+                          <SelectItem key={model} value={model}>
+                            {model}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                </div>
               </motion.div>
               <AnimatePresence>
                 {isExpanded && (
