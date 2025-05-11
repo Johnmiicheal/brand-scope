@@ -125,13 +125,10 @@ function IndustryRankingsTable({
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[50px] sticky top-0 bg-background">Rank</TableHead>
+                  <TableHead className="w-[100px] sticky top-0 bg-background">Rank</TableHead>
                   <TableHead className="sticky top-0 bg-background">Entity</TableHead>
                   <TableHead className="text-right sticky top-0 bg-background">Visibility %</TableHead>
                   <TableHead className="text-right sticky top-0 bg-background">Mentions</TableHead>
-                  <TableHead className="text-right sticky top-0 bg-background">ChatGPT</TableHead>
-                  <TableHead className="text-right sticky top-0 bg-background">Perplexity</TableHead>
-                  <TableHead className="text-right sticky top-0 bg-background">Google AI Overview</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -156,15 +153,6 @@ function IndustryRankingsTable({
                       </TableCell>
                       <TableCell className="text-right">
                         {entity.total_mentions}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {entity.gpt_mentions}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {entity.perplexity_mentions}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {entity.gemini_mentions}
                       </TableCell>
                     </TableRow>
                   ))
@@ -474,15 +462,15 @@ function DashboardContent() {
                 </div>
 
               {/* Main content grid */}
-              <div className="flex w-full gap-6 h-full">
+              <div className="flex flex-col lg:flex-row w-full gap-6 h-full">
                 {/* Left column - Make keyword cloud take full width */}
-                <div className="space-y-6 w-[65%] h-full">
+                <div className="space-y-6 lg:w-[65%] h-full">
                   <KeywordCloud keywords={keywords} />
                 </div>
 
               
 
-                <div className="space-y-6 w-[35%] h-full">
+                <div className="space-y-6 lg:w-[35%] h-full">
                   <CompetitorNetwork brands={analysis_brands} />
                 </div>
 

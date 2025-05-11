@@ -11,7 +11,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { motion } from 'framer-motion';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScheduledQueriesList } from '@/components/library/scheduled-queries-list';
+import { ScheduledQueriesList, ScheduledQuery } from '@/components/library/scheduled-queries-list';
 
 
 interface SearchRecord {
@@ -26,6 +26,7 @@ export default function LibraryPage() {
   const router = useRouter();
   const { user, isLoading } = useAuth();
   const [searches, setSearches] = useState<SearchRecord[]>([]);
+  const [scheduledQueries, setScheduledQueries] = useState<ScheduledQuery[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -52,11 +53,21 @@ export default function LibraryPage() {
           .eq('user_id', user.id)
           .order('analyzed_at', { ascending: false })
           .limit(100);
+
+          const { data: scheduledData, error: scheduledError } = await supabase
+          .from('scheduled_queries')
+          .select(`*`)
+          .eq('user_id', user.id)
+          .order('last_analysis_at', { ascending: false })
+          .limit(100);
         
         if (error) {
           console.error("Error fetching search history:", error);
+        } else if (scheduledError) {
+          console.error("Error fetching scheduled queries:", scheduledError);
         } else {
           setSearches(data || []);
+          setScheduledQueries(scheduledData || []);
         }
         
         setLoading(false);
@@ -281,7 +292,7 @@ export default function LibraryPage() {
 
         <TabsContent value="scheduled">
           {/* Embed the Scheduled Queries List component */}
-          <ScheduledQueriesList />
+          <ScheduledQueriesList queries={scheduledQueries} />
         </TabsContent>
 
       </Tabs>
