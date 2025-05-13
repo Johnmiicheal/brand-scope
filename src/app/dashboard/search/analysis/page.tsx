@@ -226,7 +226,9 @@ export default function AnalysisPage() {
     }
   };
 
-  const citations = results?.summary?.map((s) => s.reasoning).filter(Boolean);
+  const citations = results?.summary?.filter(s => !selectedModel || s.model === selectedModel)
+    .map((s) => s.reasoning)
+    .filter(Boolean);
   const citationsLinks = citations?.flatMap((c) => JSON.parse(c));
   // console.log(citationsLinks)
 

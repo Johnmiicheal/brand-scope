@@ -52,7 +52,6 @@ export default function LibraryPage() {
           `)
           .eq('user_id', user.id)
           .order('analyzed_at', { ascending: false })
-          .limit(100);
 
           const { data: scheduledData, error: scheduledError } = await supabase
           .from('scheduled_queries')
