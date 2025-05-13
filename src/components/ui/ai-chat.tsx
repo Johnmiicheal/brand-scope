@@ -13,22 +13,36 @@ import {
   Lightbulb,
   Search,
   Repeat,
+  MapPin,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "@/components/ui/use-toast";
 import { AnalysisMode } from "@/types/search";
-
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Button } from "./button";
 import { motion } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 import { LoadingState } from "../loading-state";
 import { useBrandData } from "@/contexts/brand-data-context";
+import { countries } from "@/lib/countries";
 
 interface UseAutoResizeTextareaProps {
   minHeight: number;
@@ -95,6 +109,8 @@ export function AIChatInterface() {
   const [monitorFrequency, setMonitorFrequency] = useState<"daily" | "weekly">(
     "daily"
   );
+  const [open, setOpen] = useState(false);
+  const [location, setLocation] = useState("");
   const { textareaRef, adjustHeight } = useAutoResizeTextarea({
     minHeight: 60,
     maxHeight: 200,
@@ -143,7 +159,9 @@ export function AIChatInterface() {
     if (!value.trim()) {
       toast({
         title: "Error",
-        description: `Please enter a query or keyword to ${isMonitoringMode ? "monitor" : "search"}.`,
+        description: `Please enter a query or keyword to ${
+          isMonitoringMode ? "monitor" : "search"
+        }.`,
         variant: "destructive",
       });
       return;
@@ -172,9 +190,10 @@ export function AIChatInterface() {
       setIsAnalyzing(true); // Keep this for UI feedback, adjust meaning if needed for monitor
 
       if (isMonitoringMode) {
-        setIsAnalyzing(true)
+        setIsAnalyzing(true);
         // --- Monitoring Mode Logic ---
-        const response = await fetch("/api/schedule-query", { // New API route
+        const response = await fetch("/api/schedule-query", {
+          // New API route
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -204,65 +223,64 @@ export function AIChatInterface() {
         setValue(""); // Clear input
         adjustHeight(true);
         setIsAnalyzing(false); // Reset analyzing state
-
       } else {
         // --- Search Mode Logic (Existing) ---
-      const response = await fetch(process.env.NEXT_PUBLIC_SEARCH as string, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session}`,
-        },
-        body: JSON.stringify({
-          mode,
-          user_id: user.id,
-          query: value.trim(),
+        const response = await fetch(process.env.NEXT_PUBLIC_SEARCH as string, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session}`,
+          },
+          body: JSON.stringify({
+            mode,
+            user_id: user.id,
+            query: value.trim(),
             brand_name: brand?.name, // Use optional chaining
             brand_industry: brand?.industry, // Use optional chaining
             brand_id: brand?.id, // Use optional chaining
-        }),
-      });
+          }),
+        });
 
-      if (!response.ok) {
-        const contentType = response.headers.get("content-type");
-        if (contentType && contentType.includes("application/json")) {
-          const error = await response.json();
+        if (!response.ok) {
+          const contentType = response.headers.get("content-type");
+          if (contentType && contentType.includes("application/json")) {
+            const error = await response.json();
             console.error("API Error (Search):", error);
-          throw new Error(error.error || "Failed to start analysis");
-        } else {
-          const text = await response.text();
-          console.error("Non-JSON Error Response:", text);
-          throw new Error(`HTTP error! status: ${response.status}`);
+            throw new Error(error.error || "Failed to start analysis");
+          } else {
+            const text = await response.text();
+            console.error("Non-JSON Error Response:", text);
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
         }
-      }
 
         // Handle streaming response (or adjust if backend changes)
-      const reader = response.body?.getReader();
-      if (!reader) {
-        throw new Error("No response body");
-      }
+        const reader = response.body?.getReader();
+        if (!reader) {
+          throw new Error("No response body");
+        }
 
-      let result = "";
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        result += new TextDecoder().decode(value);
-      }
+        let result = "";
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          result += new TextDecoder().decode(value);
+        }
 
-      const { mode_id } = JSON.parse(result);
+        const { mode_id } = JSON.parse(result);
 
-      toast({
-        title: "Analysis started",
-        description: `Your ${mode} analysis is processing. You'll be redirected to results when complete.`,
-      });
+        toast({
+          title: "Analysis started",
+          description: `Your ${mode} analysis is processing. You'll be redirected to results when complete.`,
+        });
 
-      setIsAnalyzing(false);
-      setTimeout(() => {
-        router.push(`/dashboard/search/analysis?mode_id=${mode_id}`);
-      }, 400);
+        setIsAnalyzing(false);
+        setTimeout(() => {
+          router.push(`/dashboard/search/analysis?mode_id=${mode_id}`);
+        }, 400);
 
-      setValue("");
-      adjustHeight(true);
+        setValue("");
+        adjustHeight(true);
       }
     } catch (error) {
       console.error("Error submitting request:", error);
@@ -277,7 +295,7 @@ export function AIChatInterface() {
       setLoading(false);
       // Ensure analyzing is false unless explicitly set during submission
       if (!isMonitoringMode) {
-      setIsAnalyzing(false);
+        setIsAnalyzing(false);
       } // For monitoring, it's reset earlier
     }
   };
@@ -286,7 +304,7 @@ export function AIChatInterface() {
     {
       key: "Explorer",
       caption:
-      "Enhanced brand analysis and insights from top AI search engines",
+        "Enhanced brand analysis and insights from top AI search engines",
     },
     {
       key: "Voyager",
@@ -295,62 +313,62 @@ export function AIChatInterface() {
     },
   ];
 
-const formatTime = (totalSeconds: number): string => {
-      if (totalSeconds < 0) return "0s";
-      if (totalSeconds === 0) return "0s";
+  const formatTime = (totalSeconds: number): string => {
+    if (totalSeconds < 0) return "0s";
+    if (totalSeconds === 0) return "0s";
 
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
 
-  const parts: string[] = [];
+    const parts: string[] = [];
 
-      if (hours > 0) parts.push(`${hours}h`);
-      if (minutes > 0) parts.push(`${minutes}m`);
-  if (seconds > 0 || parts.length === 0) {
-     if(seconds > 0 || (hours === 0 && minutes === 0)) {
+    if (hours > 0) parts.push(`${hours}h`);
+    if (minutes > 0) parts.push(`${minutes}m`);
+    if (seconds > 0 || parts.length === 0) {
+      if (seconds > 0 || (hours === 0 && minutes === 0)) {
         parts.push(`${seconds}s`);
-     }
-  }
-      return parts.join(' ');
-};
+      }
+    }
+    return parts.join(" ");
+  };
 
   if (isAnalyzing) {
     return (
       <div className="flex flex-col items-center justify-center p-4">
         <div className="w-full ">
           <div className="flex flex-col items-center space-y-3">
-          <div className="flex items-center space-x-2">
-            <span
+            <div className="flex items-center space-x-2">
+              <span
                 className={cn(
                   "px-2 py-1 text-xs rounded-full",
                   mode === "Voyager" && "bg-orange-500/20 text-orange-400",
                   mode === "Explorer" && "bg-green-500/20 text-green-400"
                 )}
-            >
-              {mode}
-            </span>
-            {isMonitoringMode && (
-              <span
-              className={cn(
-                "px-2 py-1 text-xs rounded-full",
-                isMonitoringMode && "bg-blue-500/20 text-blue-400"
+              >
+                {mode}
+              </span>
+              {isMonitoringMode && (
+                <span
+                  className={cn(
+                    "px-2 py-1 text-xs rounded-full",
+                    isMonitoringMode && "bg-blue-500/20 text-blue-400"
+                  )}
+                >
+                  Monitor
+                </span>
               )}
-          >
-            Monitor
-          </span>
-            )}
-            <span className="text-xs text-muted-foreground">
-             thought for {formatTime(elapsedSeconds)}
-          </span>
-          </div>
-          <h1 className="text-2xl font-bold mb-3 text-center">
-            Analyzing Your Search Query
-          </h1>
+              <span className="text-xs text-muted-foreground">
+                thought for {formatTime(elapsedSeconds)}
+              </span>
+            </div>
+            <h1 className="text-2xl font-bold mb-3 text-center">
+              Analyzing Your Search Query
+            </h1>
           </div>
           <p className="text-muted-foreground mb-10 text-center">
-            We&apos;re gathering data and insights about {value || "your query"}.
-            This may take a few moments.
+            We&apos;re gathering data and insights about {value || "your query"}
+            . This may take a few moments.
           </p>
           <LoadingState />
         </div>
@@ -370,7 +388,8 @@ const formatTime = (totalSeconds: number): string => {
         <div
           className={cn(
             "relative bg-neutral-900 rounded-xl border border-neutral-800",
-            isMonitoringMode && "ring-2 ring-blue-500 ring-offset-2 ring-offset-neutral-950"
+            isMonitoringMode &&
+              "ring-2 ring-blue-500 ring-offset-2 ring-offset-neutral-950"
           )}
         >
           <div className="overflow-y-auto">
@@ -407,18 +426,55 @@ const formatTime = (totalSeconds: number): string => {
           <div className="flex items-center justify-between p-3 flex-wrap gap-2">
             {/* Left Side Controls */}
             <div className="flex items-center gap-2 flex-wrap">
-              {/* Attach Brand Button - Consider disabling/hiding in Monitor mode if not needed */}
-              {/* {!isMonitoringMode && (
-              <button
-                type="button"
-                className="group p-3 hover:bg-neutral-800 cursor-pointer rounded-full border border-accent transition-all duration-400 ease flex items-center "
-              >
-                <Paperclip className="w-4 h-4 text-white/60" />
-                <span className="text-xs opacity-0 max-w-0 group-hover:max-w-[200px] group-hover:ml-2 group-hover:opacity-100 transition-all duration-300 ease-in-out overflow-hidden whitespace-nowrap">
-                  Attach Brand
-                </span>
-              </button>
-               )} */}
+              {/* Attach Location Button */}
+              <Popover open={open} onOpenChange={setOpen}>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className="group p-3 hover:bg-neutral-800 cursor-pointer rounded-full border border-accent transition-all duration-400 ease flex items-center "
+                  >
+                    <MapPin className="w-4 h-4 text-white/60" />
+                    <span className="text-xs opacity-0 max-w-0 group-hover:max-w-[200px] group-hover:ml-2 group-hover:opacity-100 transition-all duration-300 ease-in-out overflow-hidden whitespace-nowrap">
+                      {location
+                        ? countries.find((item) => item.label === location)
+                            ?.label
+                        : "Select location..."}
+                    </span>
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[200px] p-0">
+                  <Command>
+                    <CommandInput placeholder="Search locations..." />
+                    <CommandList>
+                      <CommandEmpty>No locations found.</CommandEmpty>
+                      <CommandGroup>
+                        {countries.map((item) => (
+                          <CommandItem
+                            key={item.value}
+                            value={item.label}
+                            onSelect={(currentValue) => {
+                              setLocation(
+                                currentValue === location ? "" : currentValue
+                              );
+                              setOpen(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                location === item.label
+                                  ? "opacity-100"
+                                  : "opacity-0"
+                              )}
+                            />
+                            {item.label}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
 
               {/* Analysis Mode Dropdown */}
               <DropdownMenu>
@@ -509,7 +565,7 @@ const formatTime = (totalSeconds: number): string => {
                     <DropdownMenuItem
                       onSelect={() => setMonitorFrequency("weekly")}
                     >
-                       <Check
+                      <Check
                         className={cn(
                           "mr-2 h-4 w-4",
                           monitorFrequency === "weekly"
@@ -526,27 +582,31 @@ const formatTime = (totalSeconds: number): string => {
 
             {/* Right Side Controls */}
             <div className="flex items-center gap-3">
-               {/* Search/Monitor Toggle */}
-                <div className="flex items-center space-x-2 bg-neutral-800/60 p-1 rounded-full">
-                    <Button
-                        variant={!isMonitoringMode ? "secondary" : "ghost"}
-                        size="sm"
-                        onClick={() => setIsMonitoringMode(false)}
-                        className="rounded-full h-7 px-3 text-xs"
-                    >
-                        <Search className="w-3 h-3 mr-1"/>
-                        Search
-                    </Button>
-                    <Button
-                        variant={isMonitoringMode ? "secondary" : "ghost"}
-                        size="sm"
-                        onClick={() => setIsMonitoringMode(true)}
-                        className={`rounded-full h-7 px-3 text-xs ${isMonitoringMode ? "bg-blue-600 hover:bg-blue-600" : ""}`}
-                    >
-                        <Repeat className="w-3 h-3 mr-1"/>
-                        Monitor
-                    </Button>
-                </div>
+              {/* Country Selector Dropdown */}
+
+              {/* Search/Monitor Toggle */}
+              <div className="flex items-center space-x-2 bg-neutral-800/60 p-1 rounded-full">
+                <Button
+                  variant={!isMonitoringMode ? "secondary" : "ghost"}
+                  size="sm"
+                  onClick={() => setIsMonitoringMode(false)}
+                  className="rounded-full h-7 px-3 text-xs"
+                >
+                  <Search className="w-3 h-3 mr-1" />
+                  Search
+                </Button>
+                <Button
+                  variant={isMonitoringMode ? "secondary" : "ghost"}
+                  size="sm"
+                  onClick={() => setIsMonitoringMode(true)}
+                  className={`rounded-full h-7 px-3 text-xs ${
+                    isMonitoringMode ? "bg-blue-600 hover:bg-blue-600" : ""
+                  }`}
+                >
+                  <Repeat className="w-3 h-3 mr-1" />
+                  Monitor
+                </Button>
+              </div>
 
               {/* Send Button */}
               <button
@@ -557,7 +617,9 @@ const formatTime = (totalSeconds: number): string => {
                   "p-2 active:scale-95 rounded-full text-sm -rotate-45 cursor-pointer hover:rotate-0 transition-all ease-in-out duration-300 border border-zinc-700 hover:border-zinc-600 hover:bg-accent flex items-center justify-center", // Centered icon
                   value.trim() ? "bg-white text-black" : "text-zinc-400"
                 )}
-                aria-label={isMonitoringMode ? "Schedule Monitor" : "Send Search"}
+                aria-label={
+                  isMonitoringMode ? "Schedule Monitor" : "Send Search"
+                }
               >
                 <ArrowRightIcon
                   className={cn(
@@ -621,38 +683,40 @@ const formatTime = (totalSeconds: number): string => {
             <Lightbulb className="w-5 h-5 text-yellow-400" />
             Search Mode Tips
           </h3>
-          
-          <div className="space-y-4">            
+
+          <div className="space-y-4">
             {mode === "Voyager" && (
               <div className="flex items-start gap-3">
                 <div>
                   <h4 className="font-medium text-sm">Voyager Mode</h4>
                   <p className="text-sm text-neutral-400 mt-1">
-                    Leverages Llama 4 Scout, DeepSeek R1, and Qwen to create in-depth brand ranking and analysis with social sentiment insights.
-                    Includes citations for more credible results. Ideal for comprehensive market research.
+                    Leverages Llama 4 Scout, DeepSeek R1, and Qwen to create
+                    in-depth brand ranking and analysis with social sentiment
+                    insights. Includes citations for more credible results.
+                    Ideal for comprehensive market research.
                   </p>
                 </div>
               </div>
             )}
-            
+
             {mode === "Explorer" && (
               <div className="flex items-start gap-3">
                 <div>
                   <h4 className="font-medium text-sm">Explorer Mode</h4>
                   <p className="text-sm text-neutral-400 mt-1">
-                    Our most comprehensive analysis using GPT 4o, Perplexity Sonar, Gemini 2.0 Flash and Claude 3.5
-                    Extracts brands insights from native AI search prompts
+                    Our most comprehensive analysis using GPT 4o, Perplexity
+                    Sonar, Gemini 2.0 Flash and Claude 3.5 Extracts brands
+                    insights from native AI search prompts
                   </p>
                 </div>
               </div>
             )}
-            
+
             <div className="pt-2 border-t border-neutral-800">
               <p className="text-xs text-neutral-500">
                 {isMonitoringMode
                   ? "Monitored queries run automatically. View their status and results in the Monitoring tab."
-                  : "For best results, be specific in your queries and include relevant industry terms."
-                  }
+                  : "For best results, be specific in your queries and include relevant industry terms."}
               </p>
             </div>
           </div>

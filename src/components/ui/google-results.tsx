@@ -32,7 +32,7 @@ interface GoogleResultsProps {
 }
 
 export function GoogleResults({ googleResults, rankings }: GoogleResultsProps) {
-  const [showCitations, setShowCitations] = useState<boolean>(false);
+  const [showCitations, setShowCitations] = useState<boolean>(true);
   const [isAIOverviewExpanded, setIsAIOverviewExpanded] =
     useState<boolean>(false);
 
