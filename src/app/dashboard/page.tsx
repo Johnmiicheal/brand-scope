@@ -31,13 +31,13 @@ import {
   Star,
 } from "lucide-react";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -97,23 +97,22 @@ interface IndustryRankingsTableProps {
     perplexity_mentions: number;
     gemini_mentions: number;
     total_mentions: number;
-  }[]
+  }[];
 }
 
 // Updated component for the Industry Rankings Table
-function IndustryRankingsTable({
-  brands
-}: IndustryRankingsTableProps) {
-  if(!brands) return null;
-  const all_total_mentions = brands.reduce((acc, brand) => acc + brand.total_mentions, 0);
+function IndustryRankingsTable({ brands }: IndustryRankingsTableProps) {
+  if (!brands) return null;
+  const all_total_mentions = brands.reduce(
+    (acc, brand) => acc + brand.total_mentions,
+    0
+  );
 
   return (
     <Card className="bg-background border-accent text-white">
       <CardHeader>
         <CardTitle>Brand Ranking</CardTitle>
-        <CardDescription>
-          Brands ranked by visibility score
-        </CardDescription>
+        <CardDescription>Brands ranked by visibility score</CardDescription>
       </CardHeader>
       <CardContent>
         <motion.div
@@ -125,10 +124,18 @@ function IndustryRankingsTable({
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[100px] sticky top-0 bg-background">Rank</TableHead>
-                  <TableHead className="sticky top-0 bg-background">Entity</TableHead>
-                  <TableHead className="text-right sticky top-0 bg-background">Visibility %</TableHead>
-                  <TableHead className="text-right sticky top-0 bg-background">Mentions</TableHead>
+                  <TableHead className="w-[100px] sticky top-0 bg-background">
+                    Rank
+                  </TableHead>
+                  <TableHead className="sticky top-0 bg-background">
+                    Entity
+                  </TableHead>
+                  <TableHead className="text-right sticky top-0 bg-background">
+                    Visibility %
+                  </TableHead>
+                  <TableHead className="text-right sticky top-0 bg-background">
+                    Mentions
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -149,7 +156,11 @@ function IndustryRankingsTable({
                         {entity.brand_name}
                       </TableCell>
                       <TableCell className="text-right">
-                        {((entity.total_mentions / all_total_mentions) * 100).toFixed(1)}%
+                        {(
+                          (entity.total_mentions / all_total_mentions) *
+                          100
+                        ).toFixed(1)}
+                        %
                       </TableCell>
                       <TableCell className="text-right">
                         {entity.total_mentions}
@@ -166,15 +177,15 @@ function IndustryRankingsTable({
   );
 }
 
-
-
 function DashboardContent() {
   const router = useRouter();
   const { brand, metrics, competitors, keywords, isLoading, error, refetch } =
     useBrandData();
   const [sessionKey, setSessionKey] = useState("");
   const [user, setUser] = useState<User | null>(null);
-  const [selectedQuery, setSelectedQuery] = useState<ScheduledQuery | null>(null);
+  const [selectedQuery, setSelectedQuery] = useState<ScheduledQuery | null>(
+    null
+  );
   const [currentTime, setCurrentTime] = useState(new Date());
 
   // Update time every second
@@ -247,21 +258,85 @@ function DashboardContent() {
 
   const results = selectedQuery?.results;
   const [analysis_brands, setAnalysisBrands] = useState<any[]>([]);
-  const [selectedBrand, setSelectedBrand] = useState<string>("");
-  const [selectedDate, setSelectedDate] = useState<string>("All Analysis");
+  const [selectedBrands, setSelectedBrands] = useState<Set<string>>(
+    new Set<string>([])
+  );
+  const [selectedDate, setSelectedDate] = useState<string>("");
   const [selectedModel, setSelectedModel] = useState<string>("");
 
+  const handleCheckedChange = (brandName: string, isChecked: boolean) => {
+    setSelectedBrands((prevSelected) => {
+      const newSelection = new Set(prevSelected);
+
+      if (brandName === "all") {
+        if (isChecked) {
+          newSelection.clear();
+          newSelection.add("all");
+        } else {
+          newSelection.delete("all");
+          // Optional: if unchecking "all" and the list is empty,
+          // and you want to ensure at least one "default" state like "all"
+          // if (newSelection.size === 0 && analysis_brands.length > 0) {
+          //   newSelection.add("all"); // Or leave empty for "no selection"
+          // }
+        }
+      } else {
+        // Handle individual brand selection
+        if (isChecked) {
+          newSelection.add(brandName);
+          // If "all" was selected, unselect it as we are now specific
+          if (newSelection.has("all")) {
+            newSelection.delete("all");
+          }
+        } else {
+          newSelection.delete(brandName);
+        }
+
+        // Optional: if all individual brands are selected, automatically select "all"
+        // const allIndividualBrandsSelected = analysis_brands.every(brand => newSelection.has(brand.name));
+        // if (allIndividualBrandsSelected && analysis_brands.length > 0) {
+        //   newSelection.clear();
+        //   newSelection.add("all");
+        // }
+
+        // Optional: if the selection becomes empty (and not due to unchecking "all"), select "all"
+        if (newSelection.size === 0 && analysis_brands.length > 0) {
+          newSelection.add("all"); // Default to "all" if empty
+        }
+      }
+      return newSelection;
+    });
+  };
+
+  const getDisplayValue = () => {
+    if (selectedBrands.has("all")) {
+      return "All Brands";
+    }
+    if (selectedBrands.size === 0) {
+      return "Select brand(s)";
+    }
+    if (selectedBrands.size === 1) {
+      return Array.from(selectedBrands)[0];
+    }
+    return `${selectedBrands.size} brands selected`;
+  };
+  // console.log("Selected Brands: ", selectedBrands);
 
   const analysis_dates = useMemo(() => {
     if (!results || !Array.isArray(results)) return [];
-    return [...new Set(results.map((result: { analysis_date: string; }) => result.analysis_date))];
+    return [
+      ...new Set(
+        results.map((result: { analysis_date: string }) => result.analysis_date)
+      ),
+    ];
   }, [results]);
   // console.log("Analysis Dates: ", analysis_dates)
 
   const analysis_models = useMemo(() => {
     if (!results || !Array.isArray(results)) return [];
-    const allModels = results?.flatMap((result: { model_results: { llm_name: string; }[]; }) => 
-      result.model_results?.map((r: { llm_name: string; }) => r.llm_name) || []
+    const allModels = results?.flatMap(
+      (result: { model_results: { llm_name: string }[] }) =>
+        result.model_results?.map((r: { llm_name: string }) => r.llm_name) || []
     );
     return [...new Set(allModels)];
   }, [results]);
@@ -269,51 +344,67 @@ function DashboardContent() {
   // Filter analysis brands based on selected date and model
   const filteredAnalysisBrands = useMemo(() => {
     if (!results || !Array.isArray(results)) return [];
-    
+
     // Filter results based on selected date
-    const dateFilteredResults = selectedDate === "All Analysis" 
-      ? results 
-      : results.filter(result => result.analysis_date === selectedDate);
-    
+    const dateFilteredResults =
+      selectedDate === "latest"
+        ? results
+        : results.filter((result) => result.analysis_date === selectedDate);
+
     // Extract brands from the date-filtered results, considering model filter
-    const filteredBrands = dateFilteredResults.flatMap(result => 
-      result.model_results
-        // Filter by model if a specific model is selected
-        ?.filter((modelResult: { llm_name: string; }) => 
-          selectedModel === "All Models" || modelResult.llm_name === selectedModel
-        )
-        // Extract brands from filtered model results
-        .flatMap((modelResult: { llm_name: string; data: { brands: any[]; }; }) => 
-          modelResult.data?.brands || []
-        )
-    ).filter(Boolean);
-    
+    const filteredBrands = dateFilteredResults
+      .flatMap((result) =>
+        result.model_results
+          // Filter by model if a specific model is selected
+          ?.filter(
+            (modelResult: { llm_name: string }) =>
+              selectedModel === "all" ||
+              modelResult.llm_name === selectedModel
+          )
+          // Extract brands from filtered model results
+          .flatMap(
+            (modelResult: { llm_name: string; data: { brands: any[] } }) =>
+              modelResult.data?.brands || []
+          )
+      )
+      .filter(Boolean);
+
     // Create a map to deduplicate brands by id
     const brandMap = new Map();
-    filteredBrands.forEach(brand => {
+    filteredBrands.forEach((brand) => {
       if (brand && brand.name) {
         brandMap.set(brand.name, brand);
       }
     });
-    
+
     // Convert map values back to array
     return Array.from(brandMap.values());
   }, [results, selectedDate, selectedModel]);
 
-
   const allAnalysisBrands = useMemo(() => {
     if (!results || !Array.isArray(results)) return [];
-    const allBrands = results.flatMap((result: { model_results: { llm_name: string; data: { brands: any[]; }; }[]; }) => 
-      result.model_results?.flatMap((r: { llm_name: string; data: { brands: any[]; }; }) => 
-        r.data?.brands || []
+    const allBrands = results
+      .flatMap(
+        (result: {
+          model_results: { llm_name: string; data: { brands: any[] } }[];
+        }) =>
+          result.model_results?.flatMap(
+            (r: { llm_name: string; data: { brands: any[] } }) =>
+              r.data?.brands || []
+          )
       )
-    ).filter(Boolean);
+      .filter(Boolean);
     return [...new Set(allBrands)];
   }, [results]);
 
   // Calculate brand mentions in model summaries
   const brandMentionsInSummaries = useMemo(() => {
-    if (!results || !Array.isArray(results) || !analysis_brands || analysis_brands.length === 0) {
+    if (
+      !results ||
+      !Array.isArray(results) ||
+      !analysis_brands ||
+      analysis_brands.length === 0
+    ) {
       return [];
     }
 
@@ -321,7 +412,7 @@ function DashboardContent() {
     const brandMentionsMap = new Map();
 
     // Process each brand
-    analysis_brands.forEach(brand => {
+    analysis_brands.forEach((brand) => {
       const brandName = brand.name;
       const mentions = {
         gpt_mentions: 0,
@@ -331,76 +422,90 @@ function DashboardContent() {
       };
 
       // Process each model's results
-      results.forEach(result => {
-        result.model_results?.forEach((modelResult: { llm_name: string; data: { brands: any[]; }; }) => {
-          const modelName = modelResult.llm_name.toLowerCase();
-          
-          // Count mentions in brand data
-          const brandData = modelResult.data?.brands?.find(b => b.name === brandName);
-          if (brandData) {
-            let mentionCount = 1; // Count direct mention in brand analysis
-            
-            // Add mentions from reasoning if available
-            if (brandData.reasoning) {
-              const reasoningMatches = brandData.reasoning.match(new RegExp(`\\b${brandName}\\b`, 'gi'));
-              if (reasoningMatches) {
-                mentionCount += reasoningMatches.length;
+      results.forEach((result) => {
+        result.model_results?.forEach(
+          (modelResult: { llm_name: string; data: { brands: any[] } }) => {
+            const modelName = modelResult.llm_name.toLowerCase();
+
+            // Count mentions in brand data
+            const brandData = modelResult.data?.brands?.find(
+              (b) => b.name === brandName
+            );
+            if (brandData) {
+              let mentionCount = 1; // Count direct mention in brand analysis
+
+              // Add mentions from reasoning if available
+              if (brandData.reasoning) {
+                const reasoningMatches = brandData.reasoning.match(
+                  new RegExp(`\\b${brandName}\\b`, "gi")
+                );
+                if (reasoningMatches) {
+                  mentionCount += reasoningMatches.length;
+                }
+              }
+
+              // Assign mentions to the appropriate model
+              if (modelName.includes("gpt")) {
+                mentions.gpt_mentions += mentionCount;
+              } else if (modelName.includes("claude")) {
+                mentions.claude_mentions += mentionCount;
+              } else if (modelName.includes("perplexity")) {
+                mentions.perplexity_mentions += mentionCount;
+              } else if (modelName.includes("gemini")) {
+                mentions.gemini_mentions += mentionCount;
               }
             }
-
-            // Assign mentions to the appropriate model
-            if (modelName.includes('gpt')) {
-              mentions.gpt_mentions += mentionCount;
-            } else if (modelName.includes('claude')) {
-              mentions.claude_mentions += mentionCount;
-            } else if (modelName.includes('perplexity')) {
-              mentions.perplexity_mentions += mentionCount;
-            } else if (modelName.includes('gemini')) {
-              mentions.gemini_mentions += mentionCount;
-            }
           }
-        });
+        );
       });
 
-      const total_mentions = Object.values(mentions).reduce((sum, count) => sum + count, 0);
-      
+      const total_mentions = Object.values(mentions).reduce(
+        (sum, count) => sum + count,
+        0
+      );
+
       if (total_mentions > 0) {
         brandMentionsMap.set(brandName, {
           brand_name: brandName,
           ...mentions,
-          total_mentions
+          total_mentions,
         });
       }
     });
 
     // Convert map to array and sort by total mentions
-    return Array.from(brandMentionsMap.values())
-      .sort((a, b) => b.total_mentions - a.total_mentions);
+    return Array.from(brandMentionsMap.values()).sort(
+      (a, b) => b.total_mentions - a.total_mentions
+    );
   }, [results, analysis_brands]);
-  
 
   // Effect to update analysis_brands based on selectedBrand
   useEffect(() => {
-    if (!selectedModel || selectedModel === 'All Models' || selectedModel === "") {
+    if (
+      !selectedModel ||
+      selectedModel === "all" ||
+      selectedModel === ""
+    ) {
       setAnalysisBrands(allAnalysisBrands);
     } else {
       setAnalysisBrands(filteredAnalysisBrands);
     }
-    console.log("Analysis Brands: ", analysis_brands)
-    console.log("Selected Model: ", selectedModel)
-
-  }, [selectedModel, allAnalysisBrands, filteredAnalysisBrands, analysis_brands]);
+  }, [
+    selectedModel,
+    allAnalysisBrands,
+    filteredAnalysisBrands,
+    analysis_brands,
+  ]);
 
   // Effect to reset filters when prompt changes
   useEffect(() => {
     // Reset filters when the prompt changes
     if (selectedQuery) {
-      setSelectedModel('');
-      setSelectedDate('');
+      setSelectedModel("all");
+      setSelectedDate("latest");
       console.log("Prompt changed, resetting filters");
     }
   }, [selectedQuery]);
-
 
   if (isLoading) {
     return (
@@ -474,58 +579,81 @@ function DashboardContent() {
                 className="w-full"
               >
                 <div className="flex flex-col md:flex-row gap-4 w-full">
-                    <Select 
-                      defaultValue="all"
-                      onValueChange={(value) => setSelectedBrand(value)}
-                    >
-                      <SelectTrigger className="w-fit">
-                        <SelectValue placeholder="Select brand" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Brands</SelectItem>
-                        <ScrollArea className="h-[200px]">
-                          {analysis_brands?.map((brand) => (
-                            <SelectItem key={brand.id} value={brand.name}>
-                              {brand.name}
-                            </SelectItem>
-                          ))}
-                        </ScrollArea>
-                      </SelectContent>
-                    </Select>
-                  
-                    <Select 
-                      defaultValue="latest"
-                      onValueChange={(value) => setSelectedDate(value)}
-                    >
-                      <SelectTrigger className="w-fit">
-                        <SelectValue placeholder="Select date" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="latest">All Analysis</SelectItem>
-                        {analysis_dates?.map((date: string) => (
-                          <SelectItem key={date} value={date}>
-                            {date}
-                          </SelectItem>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" className="w-fit">
+                        {getDisplayValue()} 
+                        <span>
+                          <ChevronDown className="w-4 h-4 opacity-40" />
+                        </span>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="w-56">
+                      {" "}
+                      {/* Adjust width as needed */}
+                      <DropdownMenuLabel>Filter by Brand</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuCheckboxItem
+                        checked={selectedBrands.has("all")}
+                        onCheckedChange={(checked) =>
+                          handleCheckedChange("all", checked)
+                        }
+                      >
+                        All Brands
+                      </DropdownMenuCheckboxItem>
+                      <ScrollArea className="h-[200px]">
+                        {analysis_brands?.map((brand) => (
+                          <DropdownMenuCheckboxItem
+                            key={brand.id}
+                            checked={selectedBrands.has(brand.name)}
+                            onCheckedChange={(checked) =>
+                              handleCheckedChange(brand.name, checked)
+                            }
+                            // If "all" is checked, individual items are conceptually covered by "all".
+                            // You might want to disable them visually, or manage state so "all" overrides.
+                            // Current logic: checking an individual item unchecks "all".
+                            // Checking "all" clears individual items from the active selection set.
+                          >
+                            {brand.name}
+                          </DropdownMenuCheckboxItem>
                         ))}
-                      </SelectContent>
-                    </Select>
-                  
-                    <Select 
-                      defaultValue="all"
-                      onValueChange={(value) => setSelectedModel(value)}
-                    >
-                      <SelectTrigger className="w-fit">
-                        <SelectValue placeholder="Select models" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Models</SelectItem>
-                        {analysis_models?.map((model: string) => (
-                          <SelectItem key={model} value={model}>
-                            {model}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      </ScrollArea>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+
+                  <Select
+                    defaultValue={selectedDate || "latest"}
+                    onValueChange={(value) => setSelectedDate(value)}
+                  >
+                    <SelectTrigger className="w-fit">
+                      <SelectValue placeholder="Select date" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="latest">All Analysis</SelectItem>
+                      {analysis_dates?.map((date: string) => (
+                        <SelectItem key={date} value={date}>
+                          {date}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  <Select
+                    defaultValue={selectedModel || "all"}
+                    onValueChange={(value) => setSelectedModel(value)}
+                  >
+                    <SelectTrigger className="w-fit">
+                      <SelectValue placeholder="Select models" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Models</SelectItem>
+                      {analysis_models?.map((model: string) => (
+                        <SelectItem key={model} value={model}>
+                          {model}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </motion.div>
               <AnimatePresence>
@@ -538,8 +666,8 @@ function DashboardContent() {
                     className="overflow-hidden"
                   >
                     <Card className="bg-background rounded-md p-4">
-                      <ScheduledQueriesList 
-                        queries={queries} 
+                      <ScheduledQueriesList
+                        queries={queries}
                         onSelectQuery={(query) => {
                           setSelectedQuery(query);
                           setIsExpanded(false); // Close the list after selection
@@ -580,13 +708,11 @@ function DashboardContent() {
                 </motion.div>
               )} */}
 
-              <MetricsHeader metrics={metrics} competitors={competitors} />
-                {/* Industry Ranking Table - Full width */}
-                <div className="lg:col-span-2">
-                  <IndustryRankingsTable
-                    brands={brandMentionsInSummaries}
-                  />
-                </div>
+              <MetricsHeader brands={brandMentionsInSummaries} selectedBrand={selectedBrands} />
+              {/* Industry Ranking Table - Full width */}
+              <div className="lg:col-span-2">
+                <IndustryRankingsTable brands={brandMentionsInSummaries} />
+              </div>
 
               {/* Main content grid */}
               <div className="flex flex-col lg:flex-row w-full gap-6 h-full">
@@ -595,13 +721,9 @@ function DashboardContent() {
                   <KeywordCloud keywords={keywords} />
                 </div>
 
-              
-
                 <div className="space-y-6 lg:w-[35%] h-full">
                   <CompetitorNetwork brands={analysis_brands} />
                 </div>
-
-
               </div>
             </div>
           </div>

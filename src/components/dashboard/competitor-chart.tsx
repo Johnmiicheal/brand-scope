@@ -15,7 +15,24 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart"
-import { Competitor } from "@/contexts/brand-data-context"
+
+interface Brand {
+    brand_name: string;
+    total_mentions: number;
+}
+
+// Calculate brand merit index based on visibility score and mentions
+function calculateBrandMeritIndex(visibilityScore: number, mentions: number): number {
+    // Normalize mentions to a 0-1 scale using a logarithmic scale to handle large variations
+    const normalizedMentions = Math.log(mentions + 1) / Math.log(1000); // +1 to handle 0 mentions
+    
+    // Combine visibility score and normalized mentions with weights
+    // Visibility has 60% weight, mentions have 40% weight
+    const meritIndex = (visibilityScore * 0.6) + (normalizedMentions * 0.4);
+    
+    // Scale to 0-100 for better visualization
+    return Math.round(meritIndex * 100);
+}
 
 const chartConfig = {
     brand: {
@@ -26,26 +43,26 @@ const chartConfig = {
 } satisfies ChartConfig
 
 interface CompetitorChartProps {
-    competitors: Competitor[];
-    visibilityScore: number;
-    customer_perception: string
+    competitors: Brand[];
+    selectedBrands: Set<string>
 }
 
-export function CompetitorChart({ competitors, visibilityScore }: CompetitorChartProps) {
-    // Calculate brand merit index based on visibility score and ranking differences
-    const calculateBrandMeritIndex = (visibilityScore: number, rankingDiff: number) => {
-      // Scale visibility score (0-1) to a base value between 100-300
-      const baseValue = visibilityScore * 200 + 100;
-      
-      const modifier = rankingDiff * 50; // this amplifies the effect of ranking differences, basically makes the barchart look clean
-      
-      return Math.round(baseValue + modifier);
-    };
+export function CompetitorChart({ competitors, selectedBrands }: CompetitorChartProps) {
+    // Filter to get only selected brands
+    const selectedBrandData = competitors.filter((b) => selectedBrands.has(b.brand_name));
     
-    const chartData = competitors?.map(competitor => ({
-      competitors: competitor.name,
-      index: calculateBrandMeritIndex(visibilityScore, competitor.ranking_diff)
-    }));
+    // Calculate total mentions across all competitors for visibility score
+    const total_mentions = competitors.reduce((acc, b) => acc + b.total_mentions, 0);
+
+    // Create chart data with visibility scores and mentions for selected brands
+    const chartData = selectedBrandData.map(brand => {
+      const visibilityScore = brand.total_mentions / total_mentions;
+      return {
+        name: brand.brand_name,
+        mentions: brand.total_mentions,
+        index: calculateBrandMeritIndex(visibilityScore, brand.total_mentions)
+      };
+    });
     
     if (!chartData?.length) {
       return (
@@ -60,7 +77,7 @@ export function CompetitorChart({ competitors, visibilityScore }: CompetitorChar
         <CardHeader>
           <CardTitle>Visibility Analysis</CardTitle>
           <CardDescription>
-            Showing comparative index for the top 10 competitors
+            Showing comparative index for selected brands
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -75,18 +92,16 @@ export function CompetitorChart({ competitors, visibilityScore }: CompetitorChar
             >
               <CartesianGrid vertical={false} />
               <XAxis
-                dataKey="competitors"
+                dataKey="name"
                 tickLine={false}
                 axisLine={false}
                 tickMargin={8}
-                tickFormatter={(value) => value}
               />
               <YAxis
                 dataKey="index"
                 tickLine={false}
                 axisLine={false}
                 tickMargin={8}
-                tickFormatter={(value) => value}
               />
               <ChartTooltip
                 cursor={false}

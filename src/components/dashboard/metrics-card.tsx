@@ -1,10 +1,8 @@
-/* eslint-disable @typescript-eslint/no-non-null-asserted-optional-chain */
 "use client";
 
 import { motion } from "framer-motion";
 import { ArrowUpRight, ArrowDownRight, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { BrandMetrics, Competitor } from "@/contexts/brand-data-context";
 import { CompetitorChart } from "./competitor-chart";
 
 interface MetricCardProps {
@@ -71,17 +69,35 @@ function MetricCard({
   );
 }
 
-interface MetricsHeaderProps {
-  metrics: BrandMetrics | null;
-  competitors: Competitor[];
+interface Brand {
+  brand_name: string;
+  gpt_mentions: number;
+  claude_mentions: number;
+  perplexity_mentions: number;
+  gemini_mentions: number;
+  total_mentions: number;
 }
 
-export function MetricsHeader({ metrics, competitors }: MetricsHeaderProps) {
-  const visibilityScore = metrics?.visibility_score || 0;
-  const positive = metrics?.positive_sentiment || 0;
-  const negative = metrics?.negative_sentiment || 0;
-  const mentions = metrics?.brand_mentions || 0;
-  const citations = metrics?.brand_citations
+
+interface MetricsHeaderProps {
+  brands: Brand[];
+  selectedBrand: Set<string>;
+}
+
+export function MetricsHeader({ brands, selectedBrand }: MetricsHeaderProps) {
+  // Get all selected brands data
+  const selectedBrandsData = brands.filter(b => selectedBrand.has(b.brand_name));
+
+  if(!selectedBrandsData.length) return null;
+
+  const all_total_mentions = brands.reduce(
+    (acc, brand) => acc + brand.total_mentions,
+    0
+  );
+
+  const total_mentions = selectedBrandsData.reduce((acc, b) => acc + (b?.total_mentions || 0), 0);
+  const visibilityScore = total_mentions / all_total_mentions || 0;
+  const mentions = total_mentions || 0;
 
   return (
     <div>
@@ -93,28 +109,24 @@ export function MetricsHeader({ metrics, competitors }: MetricsHeaderProps) {
           className="border-b-4 border-b-[hsl(var(--brand-primary))]"
         />
 
-        <MetricCard title="Detection Rate" value={negative} trend={0.04} />
+        {/* <MetricCard title="Detection Rate" value={negative} trend={0.04} /> */}
 
-        <MetricCard title="Mentions" value={mentions} trend={0.04} />
-
-        <MetricCard
-          title="Citations"
-          value={citations?.length!}
-          trend={0.25}
-          trendLabel="since last week"
+        <MetricCard 
+          title="Mentions" 
+          value={mentions} 
+          trend={0.04} 
         />
 
-        <MetricCard
+        {/* <MetricCard
           title="Sentiment Score"
           value={`${Math.round(positive * 100)}%`}
           trend={-0.02}
           className="border-r-0"
-        />
+        /> */}
       </div>
       <CompetitorChart
-        competitors={competitors.slice(0, 10)}
-        visibilityScore={visibilityScore}
-        customer_perception={metrics?.consumer_perception!}
+        competitors={brands}
+        selectedBrands={selectedBrand}
       />
     </div>
   );
