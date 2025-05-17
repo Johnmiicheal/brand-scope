@@ -204,6 +204,7 @@ export function AIChatInterface() {
             query: value.trim(),
             frequency: monitorFrequency,
             mode,
+            location: location,
           }),
         });
 
@@ -238,6 +239,7 @@ export function AIChatInterface() {
             brand_name: brand?.name, // Use optional chaining
             brand_industry: brand?.industry, // Use optional chaining
             brand_id: brand?.id, // Use optional chaining
+            location: location,
           }),
         });
 
