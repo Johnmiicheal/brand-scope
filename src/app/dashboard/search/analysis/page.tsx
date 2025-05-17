@@ -37,6 +37,7 @@ import {
 import { supabase } from "@/lib/supabase";
 import {
   TbAt,
+  TbDiamond,
   TbScanPosition,
   TbSearch,
   TbSparkles,
@@ -226,7 +227,8 @@ export default function AnalysisPage() {
     }
   };
 
-  const citations = results?.summary?.filter(s => !selectedModel || s.model === selectedModel)
+  const citations = results?.summary
+    ?.filter((s) => !selectedModel || s.model === selectedModel)
     .map((s) => s.reasoning)
     .filter(Boolean);
   const citationsLinks = citations?.flatMap((c) => JSON.parse(c));
@@ -293,66 +295,69 @@ export default function AnalysisPage() {
               </span>
             </div>
           </div>
-
-          {results.ai_rankings.length > 0 && (
-            <div className="w-full sm:w-[200px]">
-              <Select
-                value={selectedModel || ""}
-                onValueChange={setSelectedModel}
-              >
-                <SelectTrigger className="bg-transparent border-accent">
-                  <SelectValue placeholder="Select Model" />
-                </SelectTrigger>
-                <SelectContent className="p-1">
-                  {[...new Set(results.ai_rankings.map((r) => r.llm_name))].map(
-                    (model) => (
-                      <SelectItem key={model} value={model as string}>
-                        {model}
-                      </SelectItem>
-                    )
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
         </div>
 
         <Tabs defaultValue="rankings" className="w-full">
-          <div className="flex flex-col sm:flex-row w-full justify-between items-start sm:items-center gap-3 sm:gap-0">
-            <TabsList className="mb-4 bg-transparent overflow-x-auto w-full sm:w-auto pb-1 flex justify-start">
-              <TabsTrigger
-                value="rankings"
-                className="data-[state=active]:bg-zinc-700 cursor-pointer whitespace-nowrap"
-              >
-                <TbTableSpark className="w-4 h-4 mr-1 hidden sm:inline" />
-                AI Ranking
-              </TabsTrigger>
+          <TabsList className="mb-4 bg-transparent w-full sm:w-auto pb-1 flex justify-start">
+            <div className="flex flex-col sm:flex-row w-full justify-between items-start overflow-hidden sm:items-center gap-3 sm:gap-0">
+              <div className="flex items-center gap-2 ">
+                <TabsTrigger
+                  value="rankings"
+                  className="data-[state=active]:bg-zinc-700 cursor-pointer whitespace-nowrap"
+                >
+                  <TbTableSpark className="w-4 h-4 mr-1 hidden sm:inline" />
+                  AI Ranking
+                </TabsTrigger>
 
-              <TabsTrigger
-                value="summary"
-                className="data-[state=active]:bg-zinc-700 cursor-pointer whitespace-nowrap"
-              >
-                <TbSparkles className="w-4 h-4 mr-1 hidden sm:inline" />
-                AI Response
-              </TabsTrigger>
+                <TabsTrigger
+                  value="summary"
+                  className="data-[state=active]:bg-zinc-700 cursor-pointer whitespace-nowrap"
+                >
+                  <TbSparkles className="w-4 h-4 mr-1 hidden sm:inline" />
+                  AI Response
+                </TabsTrigger>
 
-              <TabsTrigger
-                value="citations"
-                className="data-[state=active]:bg-zinc-700 cursor-pointer whitespace-nowrap"
-              >
-                <TbScanPosition className="w-4 h-4 mr-1 hidden sm:inline" />
-                Citations
-              </TabsTrigger>
+                <TabsTrigger
+                  value="citations"
+                  className="data-[state=active]:bg-zinc-700 cursor-pointer whitespace-nowrap"
+                >
+                  <TbScanPosition className="w-4 h-4 mr-1 hidden sm:inline" />
+                  Citations
+                </TabsTrigger>
+              </div>
+              <div className="flex items-center gap-2 ">
+                <TabsTrigger
+                  value="searches"
+                  className="data-[state=active]:bg-zinc-700 py-2 cursor-pointer whitespace-nowrap justify-end"
+                >
+                  <TbDiamond className="w-4 h-4 mr-1 hidden sm:inline" />
+                  AI Overview
+                </TabsTrigger>
+                {results.ai_rankings.length > 0 && (
+                  <div className="w-full">
+                    <Select
+                      value={selectedModel || ""}
+                      onValueChange={setSelectedModel}
+                    >
+                      <SelectTrigger className="bg-transparent border-accent h-10">
+                        <SelectValue placeholder="Select Model" />
+                      </SelectTrigger>
+                      <SelectContent className="p-1">
+                        {[
+                          ...new Set(results.ai_rankings.map((r) => r.llm_name)),
+                        ].map((model) => (
+                          <SelectItem key={model} value={model as string}>
+                            {model}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
 
-              <TabsTrigger
-                value="searches"
-                className="data-[state=active]:bg-zinc-700 cursor-pointer whitespace-nowrap"
-              >
-                <TbSearch className="w-4 h-4 mr-1 hidden sm:inline" />
-                AI Overviews
-              </TabsTrigger>
-            </TabsList>
-          </div>
+            </div>
+          </TabsList>
 
           <TabsContent value="rankings" className="space-y-4">
             <RankingsTabContent
@@ -370,7 +375,10 @@ export default function AnalysisPage() {
           </TabsContent>
 
           <TabsContent value="searches" className="space-y-4">
-            <GoogleResults googleResults={results?.search_results[0]?.results} rankings={results?.search_results[0]?.rankings} />
+            <GoogleResults
+              googleResults={results?.search_results[0]?.results}
+              rankings={results?.search_results[0]?.rankings}
+            />
           </TabsContent>
         </Tabs>
       </motion.div>
@@ -578,20 +586,20 @@ function RankingsTabContent({
                           </span>
                         </div>
                         <div>
-                        <span
-                          className={`text-xs font-bold ${
-                            ranking.sentiment === "positive"
-                              ? "text-green-300"
-                              : ranking.sentiment === "negative"
-                              ? "text-red-300"
-                              : "text-zinc-300"
-                          }`}
-                        >
-                          {ranking.sentiment || "Neutral"}
-                        </span>
+                          <span
+                            className={`text-xs font-bold ${
+                              ranking.sentiment === "positive"
+                                ? "text-green-300"
+                                : ranking.sentiment === "negative"
+                                ? "text-red-300"
+                                : "text-zinc-300"
+                            }`}
+                          >
+                            {ranking.sentiment || "Neutral"}
+                          </span>
+                        </div>
                       </div>
-                      </div>
-                     
+
                       <div>
                         <p className="text-xs text-muted-foreground mb-1">
                           Reasoning:
@@ -613,7 +621,7 @@ function RankingsTabContent({
 
 // Summary tab content
 function SummaryTabContent({ item }: { item: Summary | null }) {
-  const parseReasoning = JSON.parse(item?.reasoning || "[]")
+  const parseReasoning = JSON.parse(item?.reasoning || "[]");
   if (!item) {
     return <p>No summary data available.</p>;
   }
@@ -703,7 +711,11 @@ function SummaryTabContent({ item }: { item: Summary | null }) {
 }
 
 // Citations tab content
-function CitationsTabContent({ citations }: { citations: Citation[] | undefined }) {
+function CitationsTabContent({
+  citations,
+}: {
+  citations: Citation[] | undefined;
+}) {
   if (!citations || citations.length === 0) {
     return (
       <div className="flex items-center justify-center p-8">
