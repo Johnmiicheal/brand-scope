@@ -199,8 +199,8 @@ async function callSearchGoogleEndpoint(
   query: string,
   mode_id: string,
   user_id: string,
+  location?: string,
   brandName?: string,
-  location?: string
 ): Promise<void> {
   try {
     const apiUrl = `https://brandscope.vercel.app/api/search-google`;
@@ -230,8 +230,8 @@ async function callSearchGoogleEndpoint(
       includeAiOverview: true,
       monitoringId: mode_id,
       userId: user_id,
+      location: location || 'United States',
       brandName: brandName || undefined,
-      location: location || 'United States'
     };
     
     console.log(`Calling search-google endpoint for query: "${query}" with monitoring ID: ${mode_id}`);
@@ -294,7 +294,7 @@ async function callSearchGoogleEndpoint(
  * @param now - The current timestamp (ISO string) for this analysis run.
  */
 async function processQuery(
-  query: { id: string; query: string; frequency: string; mode?: string | null, user_id: string },
+  query: { id: string; query: string; frequency: string; mode?: string | null, user_id: string, location?: string },
   now: string
 ): Promise<{ id: string; newAnalysisRun: z.infer<typeof AnalysisRunSchema> }> {
   console.log(
@@ -309,7 +309,7 @@ async function processQuery(
   
   // Call the search-google endpoint to get Google search results
   // This helps enrich our analysis with current web data
-  await callSearchGoogleEndpoint(query.query, analysisRunId, query.user_id);
+  await callSearchGoogleEndpoint(query.query, analysisRunId, query.user_id, query.location);
 
   // --- Define Models ---
   const textModels = [
@@ -390,7 +390,10 @@ async function processQuery(
           model: modelId,
           messages: [{ role: 'user', content: query.query }],
           temperature: 0.2,
-          max_retries: 2
+          max_retries: 2,
+          web_search_options: {
+            user_location: {country: query.location}
+          }
         })
       }).then(res => res.json());
       console.log(`    ${name} text generated.`);
@@ -593,6 +596,7 @@ export async function POST(req: Request) {
       frequency: z.enum(["daily", "weekly"]),
       mode: z.string().optional(), // Mode is optional
       user_id: z.string().uuid("Invalid user ID format."),
+      location: z.string().optional(),
     });
 
     const validation = inputSchema.safeParse(body);
@@ -605,7 +609,7 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
-    const { query, frequency, mode, user_id } = validation.data;
+    const { query, frequency, mode, user_id, location } = validation.data;
 
     // --- Check for Duplicate Query ---
     const { data: existingQuery, error: checkError } = await supabase
@@ -681,7 +685,7 @@ export async function POST(req: Request) {
         mode: queryMode,
       } = newQueryData;
       const initialAnalysis = await processQuery(
-        { id, query: queryText, frequency: queryFreq, mode: queryMode, user_id: user_id },
+        { id, query: queryText, frequency: queryFreq, mode: queryMode, user_id: user_id, location: location },
         now
       );
       console.log(`Initial analysis complete for query ${newQueryData.id}`);
