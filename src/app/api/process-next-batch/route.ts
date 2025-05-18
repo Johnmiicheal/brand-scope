@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+// api/process-next-batch.ts
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
@@ -12,15 +13,13 @@ const supabase = createClient(
 );
 export const maxDuration = 60;
 
-
 const openRouterApiKey = process.env.OPENROUTER_API_KEY;
 const openrouter = createOpenRouter({ apiKey: openRouterApiKey });
 
 
-// Maximum number of queries to process in a single run
-const BATCH_SIZE = 10;
 // Maximum number of concurrent requests
 const CONCURRENCY_LIMIT = 3;
+
 
 // Schema for a single brand analysis by one LLM
 const BrandResultSchema = z.object({
@@ -231,7 +230,8 @@ const StoredResultsSchema = z
   }
   
 
-export async function GET(req: NextRequest) {
+export async function POST(req: NextRequest) {
+  // Verify authorization
   const authHeader = req.headers.get("authorization");
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return new Response("Unauthorized", {
@@ -240,54 +240,41 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    // Step 1: Get the total count of queries that need processing
-    const { count, error: countError } = await supabase
-      .from("scheduled_queries")
-      .select("id", { count: "exact", head: true })
-      .lte("next_analysis_at", new Date().toISOString())
-      .eq("status", "active");
+    // Parse request body
+    const body = await req.json();
+    const { batchSize = 10, offset = 0 } = body;
 
-    if (countError) {
-      console.error("Error getting query count:", countError);
-      return NextResponse.json(
-        { error: "Failed to get query count" },
-        { status: 500 }
-      );
-    }
-
-    console.log(`Total queries to process: ${count}`);
-    
-    // Step 2: Fetch just the first batch
+    // Fetch the next batch of queries
     const { data: queries, error } = await supabase
       .from("scheduled_queries")
       .select("id, query, frequency, mode, user_id")
       .lte("next_analysis_at", new Date().toISOString())
       .eq("status", "active")
       .order("next_analysis_at", { ascending: true })
-      .limit(BATCH_SIZE);
+      .range(offset, offset + batchSize - 1);
 
     if (error) {
-      console.error("Error fetching queries:", error);
+      console.error("Error fetching next batch of queries:", error);
       return NextResponse.json(
         { error: "Failed to fetch queries" },
         { status: 500 }
       );
     }
 
-    console.log(`Processing batch of ${queries.length} queries`);
+    console.log(`Processing next batch of ${queries.length} queries`);
 
-    // Step 3: Process queries with concurrency control
+    // Process queries with concurrency control
     const results = [];
     
-    // Process in batches with limited concurrency
-    const processQueryBatch = async (queryBatch: any[]) => {
-      const batchResults = await Promise.all(
-        queryBatch.map(async (query) => {
+    // Process in chunks with limited concurrency
+    for (let i = 0; i < queries.length; i += CONCURRENCY_LIMIT) {
+      const chunk = queries.slice(i, i + CONCURRENCY_LIMIT);
+      const chunkResults = await Promise.all(
+        chunk.map(async (query) => {
           try {
             console.log(`Processing query ID: ${query.id}`);
             
-            // Instead of calling the endpoint, directly execute the needed logic
-            // Pass the query object directly to your processing function
+            // Process the query directly
             const result = await processQueryDirectly(query);
             
             return { queryId: query.id, status: "success", result };
@@ -302,19 +289,18 @@ export async function GET(req: NextRequest) {
         })
       );
       
-      return batchResults;
-    };
-
-    // Process queries in chunks with concurrency control
-    for (let i = 0; i < queries.length; i += CONCURRENCY_LIMIT) {
-      const chunk = queries.slice(i, i + CONCURRENCY_LIMIT);
-      const chunkResults = await processQueryBatch(chunk);
       results.push(...chunkResults);
     }
 
-    // Step 4: Schedule the next batch if there are more queries to process
-    if (count && count > BATCH_SIZE) {
-      console.log(`Scheduling next batch. ${count - BATCH_SIZE} queries remaining.`);
+    // Check if there are more queries to process
+    const { count, error: countError } = await supabase
+      .from("scheduled_queries")
+      .select("id", { count: "exact", head: true })
+      .lte("next_analysis_at", new Date().toISOString())
+      .eq("status", "active");
+
+    if (!countError && count && count > offset + batchSize) {
+      console.log(`Scheduling next batch. ${count - (offset + batchSize)} queries remaining.`);
       
       // Trigger the next batch asynchronously
       fetch(`${process.env.BASE_SYSTEM_URL}/api/process-next-batch`, {
@@ -324,8 +310,8 @@ export async function GET(req: NextRequest) {
           Authorization: `Bearer ${process.env.CRON_SECRET}`,
         },
         body: JSON.stringify({ 
-          batchSize: BATCH_SIZE,
-          offset: BATCH_SIZE 
+          batchSize,
+          offset: offset + batchSize 
         }),
       }).catch(error => {
         console.error("Failed to schedule next batch:", error);
@@ -334,27 +320,24 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       message: `Processed ${queries.length} queries`,
-      total: count,
       processed: queries.length,
-      remaining: count ? count - queries.length : 0,
       results,
     });
   } catch (error: any) {
-    console.error("Cron job error:", error);
+    console.error("Error processing next batch:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
-// This function replaces the external API call with direct processing
+// This function processes a query directly
 async function processQueryDirectly(query: any) {
-  // Implement the core query processing logic here
-  // This should contain the essential functionality from your processQuery function
-  // without making HTTP requests to your own API
-
   const now = new Date().toISOString();
   
   try {
-    console.log(
+    // Your query processing logic here
+    // This should be the same as in your main cron job file
+    
+     console.log(
       `Processing query ID: ${query.id}, Text: "${query.query}", Mode: ${
         query.mode || "Default"
       }`
@@ -604,7 +587,6 @@ async function processQueryDirectly(query: any) {
       }. Next run: ${nextAnalysisDate.toISOString()}`
     );
     
-    
     // Update the query record
     const { error: updateError } = await supabase
       .from("scheduled_queries")
@@ -630,6 +612,7 @@ async function processQueryDirectly(query: any) {
     throw error;
   }
 }
+
 
 const RANKING_PROMPT = `You are an expert brand analyst.
 Based ONLY on the text provided below,
