@@ -3,6 +3,7 @@ import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { generateObject } from "ai";
+import { domains } from "@/types/domains";
 
 export const maxDuration = 60;
 
@@ -142,12 +143,14 @@ async function performGoogleSearch(
   if (!query) throw new Error("Search query is required");
   if (!apiKey) throw new Error("SerpAPI key is required");
 
+  const google_domain = domains.find((domain) => domain.country_name === location)?.domain || "google.com";
   // Prepare search parameters for SerpAPI
   const params = new URLSearchParams({
     api_key: apiKey,
     engine: "google", // Always use 'google' for SerpAPI
     q: query,
     location: location || "United States",
+    google_domain: google_domain,
   });
 
   // Add parameters to include enhanced results
