@@ -147,7 +147,6 @@ async function performGoogleSearch(
     api_key: apiKey,
     engine: "google", // Always use 'google' for SerpAPI
     q: query,
-    google_domain: "google.com",
     location: location || "United States",
   });
 
