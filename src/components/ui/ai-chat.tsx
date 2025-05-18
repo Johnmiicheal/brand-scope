@@ -42,7 +42,7 @@ import { motion } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 import { LoadingState } from "../loading-state";
 import { useBrandData } from "@/contexts/brand-data-context";
-import { countries } from "@/lib/countries";
+import { domains } from "@/types/domains";
 
 interface UseAutoResizeTextareaProps {
   minHeight: number;
@@ -176,14 +176,6 @@ export function AIChatInterface() {
       return;
     }
 
-    if (!brand && mode === "Explorer") {
-      toast({
-        title: "Error",
-        description: "Explorer mode requires a brand to be selected.",
-        variant: "destructive",
-      });
-      return;
-    }
 
     try {
       setLoading(true);
@@ -364,7 +356,7 @@ export function AIChatInterface() {
                 thought for {formatTime(elapsedSeconds)}
               </span>
             </div>
-            <h1 className="text-2xl font-bold mb-3 text-center">
+            <h1 className="text-2xl font-bold mb-3 text-center text-foreground dark:text-white">
               Analyzing Your Search Query
             </h1>
           </div>
@@ -380,7 +372,7 @@ export function AIChatInterface() {
 
   return (
     <div className="flex flex-col items-center w-full max-w-4xl mx-auto p-4 space-y-8">
-      <h1 className="text-4xl font-regular text-black dark:text-white">
+      <h1 className="text-4xl font-regular text-neutral-700 dark:text-white">
         {isMonitoringMode
           ? "Search and Monitor Prompts"
           : "Let's help you understand your brand"}
@@ -389,9 +381,9 @@ export function AIChatInterface() {
       <div className="w-full">
         <div
           className={cn(
-            "relative bg-neutral-900 rounded-xl border border-neutral-800",
+            "relative bg-[#e2e2e2]/20 dark:bg-neutral-900 rounded-xl border border-[#e2e2e2]/20 hover:border-[#e2e2e2]/40 dark:border-neutral-800",
             isMonitoringMode &&
-              "ring-2 ring-blue-500 ring-offset-2 ring-offset-neutral-950"
+              "ring-3 ring-blue-500 ring-offset-2 ring-offset-background dark:ring-offset-neutral-950"
           )}
         >
           <div className="overflow-y-auto">
@@ -413,10 +405,10 @@ export function AIChatInterface() {
                 "resize-none",
                 "bg-transparent",
                 "border-none",
-                "text-white text-sm",
+                "text-neutral-600 dark:text-white text-sm",
                 "focus:outline-none",
                 "focus-visible:ring-0 focus-visible:ring-offset-0",
-                "placeholder:text-neutral-500 placeholder:text-sm",
+                "placeholder:text-neutral-300 dark:placeholder:text-neutral-500 placeholder:text-sm",
                 "min-h-[60px]"
               )}
               style={{
@@ -433,13 +425,13 @@ export function AIChatInterface() {
                 <PopoverTrigger asChild>
                   <button
                     type="button"
-                    className="group p-3 hover:bg-neutral-800 cursor-pointer rounded-full border border-accent transition-all duration-400 ease flex items-center "
+                    className="group p-[10px] bg-muted/50 dark:bg-black/20 dark:hover:bg-neutral-800 cursor-pointer rounded-full border border-[#e2e2e2]/20 dark:border-accent transition-all duration-400 ease flex items-center "
                   >
-                    <MapPin className="w-4 h-4 text-white/60" />
-                    <span className="text-xs opacity-0 max-w-0 group-hover:max-w-[200px] group-hover:ml-2 group-hover:opacity-100 transition-all duration-300 ease-in-out overflow-hidden whitespace-nowrap">
+                    <MapPin className="w-4 h-4 text-neutral-400 dark:text-white/60" />
+                    <span className="text-xs text-neutral-400 dark:text-white opacity-0 max-w-0 group-hover:max-w-[200px] group-hover:ml-2 group-hover:opacity-100 transition-all duration-300 ease-in-out overflow-hidden whitespace-nowrap">
                       {location
-                        ? countries.find((item) => item.label === location)
-                            ?.label
+                        ? domains.find((item) => item.country_name === location)
+                            ?.country_name
                         : "Select location..."}
                     </span>
                   </button>
@@ -450,10 +442,10 @@ export function AIChatInterface() {
                     <CommandList>
                       <CommandEmpty>No locations found.</CommandEmpty>
                       <CommandGroup>
-                        {countries.map((item) => (
+                        {domains.map((item) => (
                           <CommandItem
-                            key={item.value}
-                            value={item.label}
+                            key={item.country_name}
+                            value={item.country_name}
                             onSelect={(currentValue) => {
                               setLocation(
                                 currentValue === location ? "" : currentValue
@@ -464,12 +456,12 @@ export function AIChatInterface() {
                             <Check
                               className={cn(
                                 "mr-2 h-4 w-4",
-                                location === item.label
+                                location === item.country_name
                                   ? "opacity-100"
                                   : "opacity-0"
                               )}
                             />
-                            {item.label}
+                            {item.country_name}
                           </CommandItem>
                         ))}
                       </CommandGroup>
@@ -480,10 +472,10 @@ export function AIChatInterface() {
 
               {/* Analysis Mode Dropdown */}
               <DropdownMenu>
-                <div className="inline-flex bg-blue-500/20 text-white/70 -space-x-px divide-x divide-primary-foreground/30 rounded-full rtl:space-x-reverse">
+                <div className="inline-flex bg-blue-500/20 text-primary dark:text-white/70 -space-x-px divide-x divide-primary/30 dark:divide-primary-foreground/30 rounded-full rtl:space-x-reverse">
                   <Button
                     variant="outline"
-                    className="rounded-none shadow-none first:rounded-s-full last:rounded-e-full focus-visible:z-10 text-[12px] overflow-hidden"
+                    className="rounded-none shadow-none first:rounded-s-full last:rounded-e-full focus-visible:z-10 text-[12px] overflow-hidden border-primary/30 dark:border-primary-foreground/30 text-primary dark:text-white hover:bg-primary/20 dark:hover:bg-transparent"
                   >
                     <Telescope
                       className="opacity-60 w-4 h-4"
@@ -506,7 +498,7 @@ export function AIChatInterface() {
                   <DropdownMenuTrigger className="focus-visible:ring-0 focus-visible:ring-offset-0 focus:outline-none">
                     <Button
                       variant="outline"
-                      className="rounded-none shadow-none focus-visible:z-10 focus-visible:ring-0 focus-visible:ring-offset-0 focus:outline-none focus-visible:outline-none last:rounded-e-full"
+                      className="rounded-none shadow-none focus-visible:z-10 focus-visible:ring-0 focus-visible:ring-offset-0 focus:outline-none focus-visible:outline-none last:rounded-e-full border-primary/30 dark:border-primary-foreground/30 text-primary dark:text-white hover:bg-primary/20 dark:hover:bg-transparent"
                       size="icon"
                       aria-label="Options"
                     >
@@ -529,8 +521,8 @@ export function AIChatInterface() {
                       <div className="flex gap-2 items-center">
                         {item.key === mode && <Check className="w-4 h-4" />}
                         <div>
-                          <h4 className="text-[14px]">{item.key}</h4>
-                          <p className="text-white/70 text-[10px]">
+                          <h4 className="text-[14px] text-neutral-600 dark:text-white">{item.key}</h4>
+                          <p className="text-neutral-400 dark:text-white/70 text-[10px]">
                             {item.caption}
                           </p>
                         </div>
@@ -544,7 +536,7 @@ export function AIChatInterface() {
               {isMonitoringMode && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="rounded-full text-xs">
+                    <Button variant="outline" className="rounded-full text-xs text-muted-foreground dark:text-muted-foreground">
                       <Repeat className="w-3 h-3 mr-2" />
                       {monitorFrequency === "daily" ? "Daily" : "Weekly"}
                       <ChevronDown className="w-3 h-3 ml-1" />
@@ -587,12 +579,12 @@ export function AIChatInterface() {
               {/* Country Selector Dropdown */}
 
               {/* Search/Monitor Toggle */}
-              <div className="flex items-center space-x-2 bg-neutral-800/60 p-1 rounded-full">
+              <div className="flex items-center space-x-2 bg-background dark:bg-neutral-800/60 p-1 rounded-full">
                 <Button
                   variant={!isMonitoringMode ? "secondary" : "ghost"}
                   size="sm"
                   onClick={() => setIsMonitoringMode(false)}
-                  className="rounded-full h-7 px-3 text-xs"
+                  className={`rounded-full h-7 px-3 text-xs hover:bg-transparent hover:text-muted-foreground/50 text-muted-foreground/50 dark:text-muted-foreground/50 ${!isMonitoringMode && "bg-neutral-100 dark:bg-neutral-800 text-[#7a7a7a] dark:text-muted-foreground hover:dark:bg-neutral-800 hover:bg-neutral-100"}`}
                 >
                   <Search className="w-3 h-3 mr-1" />
                   Search
@@ -601,8 +593,8 @@ export function AIChatInterface() {
                   variant={isMonitoringMode ? "secondary" : "ghost"}
                   size="sm"
                   onClick={() => setIsMonitoringMode(true)}
-                  className={`rounded-full h-7 px-3 text-xs ${
-                    isMonitoringMode ? "bg-blue-600 hover:bg-blue-600" : ""
+                  className={`rounded-full h-7 px-3 text-xs text-muted-foreground/50 dark:text-muted-foreground/50 ${
+                    isMonitoringMode ? "bg-primary hover:bg-primary dark:bg-blue-600 dark:hover:bg-blue-600 text-primary-foreground dark:text-white" : ""
                   }`}
                 >
                   <Repeat className="w-3 h-3 mr-1" />
@@ -616,8 +608,8 @@ export function AIChatInterface() {
                 onClick={handleSubmit}
                 disabled={loading || !value.trim()}
                 className={cn(
-                  "p-2 active:scale-95 rounded-full text-sm -rotate-45 cursor-pointer hover:rotate-0 transition-all ease-in-out duration-300 border border-zinc-700 hover:border-zinc-600 hover:bg-accent flex items-center justify-center", // Centered icon
-                  value.trim() ? "bg-white text-black" : "text-zinc-400"
+                  "p-2 active:scale-95 rounded-full text-sm -rotate-45 cursor-pointer hover:rotate-0 transition-all ease-in-out duration-300 border hover:bg-accent flex items-center justify-center", // Centered icon
+                  value.trim() ? "bg-foreground text-background dark:bg-white dark:text-black border-foreground dark:border-zinc-700 hover:border-foreground/80 dark:hover:border-zinc-600" : "text-muted-foreground dark:text-zinc-400 border-border dark:border-zinc-700"
                 )}
                 aria-label={
                   isMonitoringMode ? "Schedule Monitor" : "Send Search"
@@ -626,7 +618,7 @@ export function AIChatInterface() {
                 <ArrowRightIcon
                   className={cn(
                     "w-4 h-4",
-                    value.trim() ? "text-black" : "text-zinc-400"
+                    value.trim() ? "text-background dark:text-black" : "text-muted-foreground dark:text-zinc-400"
                   )}
                 />
               </button>
@@ -646,12 +638,12 @@ export function AIChatInterface() {
           }}
           className="flex w-full justify-center overflow-hidden"
         >
-          <div className="flex w-[90%] gap-3 mx-0 p-5 items-center rounded-b-xl border-l border-r border-b border-accent">
-            <div className="flex gap-2 items-center text-sm font-bold w-1/4">
+          <div className="flex w-[90%] gap-3 mx-0 p-5 items-center rounded-b-xl border-l border-r border-b border-[#e2e2e2]/50 dark:border-accent text-foreground">
+            <div className="flex gap-2 items-center text-sm font-bold w-1/4 text-neutral-500 dark:text-white">
               <Telescope className="w-4 h-4" />
               {mode}
             </div>
-            <span className="text-xs w-full">
+            <span className="text-xs w-full text-neutral-500 dark:text-muted-foreground">
               {modes.find((item) => item.key === mode)?.caption}
             </span>
           </div>
@@ -680,8 +672,8 @@ export function AIChatInterface() {
 
       {/* Search Mode Tips */}
       <div className="w-full max-w-4xl mt-8">
-        <div className="bg-neutral-900/50 rounded-xl border border-neutral-800 p-5">
-          <h3 className="text-lg font-medium mb-3 flex items-center gap-2">
+        <div className="bg-[#e2e2e2]/20 dark:bg-neutral-900/50 rounded-xl border border-[#e2e2e2]/20 dark:border-neutral-800 p-5">
+          <h3 className="text-lg font-medium mb-3 flex items-center gap-2 text-neutral-700 dark:text-foreground">
             <Lightbulb className="w-5 h-5 text-yellow-400" />
             Search Mode Tips
           </h3>
@@ -690,8 +682,8 @@ export function AIChatInterface() {
             {mode === "Voyager" && (
               <div className="flex items-start gap-3">
                 <div>
-                  <h4 className="font-medium text-sm">Voyager Mode</h4>
-                  <p className="text-sm text-neutral-400 mt-1">
+                  <h4 className="font-medium text-sm text-neutral-700 dark:text-foreground">Voyager Mode</h4>
+                  <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
                     Leverages Llama 4 Scout, DeepSeek R1, and Qwen to create
                     in-depth brand ranking and analysis with social sentiment
                     insights. Includes citations for more credible results.
@@ -704,8 +696,8 @@ export function AIChatInterface() {
             {mode === "Explorer" && (
               <div className="flex items-start gap-3">
                 <div>
-                  <h4 className="font-medium text-sm">Explorer Mode</h4>
-                  <p className="text-sm text-neutral-400 mt-1">
+                  <h4 className="font-medium text-sm text-neutral-700 dark:text-foreground">Explorer Mode</h4>
+                  <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
                     Our most comprehensive analysis using GPT 4o, Perplexity
                     Sonar, Gemini 2.0 Flash and Claude 3.5 Extracts brands
                     insights from native AI search prompts
@@ -714,8 +706,8 @@ export function AIChatInterface() {
               </div>
             )}
 
-            <div className="pt-2 border-t border-neutral-800">
-              <p className="text-xs text-neutral-500">
+            <div className="pt-2 border-t border-[#e2e2e2]/50 dark:border-neutral-800">
+              <p className="text-xs text-muted-foreground/30 dark:text-neutral-500">
                 {isMonitoringMode
                   ? "Monitored queries run automatically. View their status and results in the Monitoring tab."
                   : "For best results, be specific in your queries and include relevant industry terms."}
@@ -737,7 +729,7 @@ function ActionButton({ icon, label }: ActionButtonProps) {
   return (
     <button
       type="button"
-      className="flex group items-center gap-2 px-4 py-2 bg-neutral-900 hover:bg-neutral-800 rounded-full border border-neutral-800 text-neutral-400 hover:text-white transition-colors"
+      className="flex group items-center gap-2 px-4 py-2 bg-neutral-100 hover:bg-accent/80 dark:bg-neutral-900 dark:hover:bg-neutral-800 rounded-full border border-[#e2e2e2]/40 dark:border-neutral-800 text-muted-foreground hover:text-accent-foreground dark:text-neutral-400 dark:hover:text-white transition-colors"
     >
       {icon}
       <span className="text-xs">{label}</span>
