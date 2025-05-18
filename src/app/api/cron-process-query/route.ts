@@ -14,6 +14,8 @@ export async function GET(req: NextRequest) {
       status: 401,
     });
   }
+  console.log("Cron job header:", authHeader);
+  console.log("Cron job secret:", process.env.CRON_SECRET);
 
   try {
     // Fetch queries where next_analysis_at is due
