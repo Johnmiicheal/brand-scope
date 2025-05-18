@@ -148,16 +148,8 @@ async function performGoogleSearch(
     engine: "google", // Always use 'google' for SerpAPI
     q: query,
     google_domain: "google.com",
-    gl: "us",
-    hl: "en",
+    location: location || "United States",
   });
-
-  // Add custom location if provided, otherwise use default
-  if (location) {
-    params.set("location", location);
-  } else {
-    params.set("location", "United States");
-  }
 
   // Add parameters to include enhanced results
   params.append("include_answer_box", "true");
