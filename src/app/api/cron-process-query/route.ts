@@ -8,8 +8,11 @@ const supabase = createClient(
 );
 
 export async function GET(req: NextRequest) {
-  if (process.env.CRON_SECRET !== req.headers.get("Authorization")) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const authHeader = req.headers.get("authorization");
+  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    return new Response("Unauthorized", {
+      status: 401,
+    });
   }
 
   try {
