@@ -126,9 +126,9 @@ export function GoogleResults({ googleResults, rankings }: GoogleResultsProps) {
           </h2>
         </div>
         <div className="flex items-center gap-2 w-full justify-end">
-          {googleResults.search_metadata?.google_url && (
+          {googleResults.search_metadata?.raw_html_file && (
             <a
-              href={googleResults.search_metadata.google_url}
+              href={googleResults.search_metadata.raw_html_file}
               target="_blank"
               rel="noopener noreferrer"
               className="text-sm text-blue-500 font-semibold hover:underline flex items-center gap-1"
