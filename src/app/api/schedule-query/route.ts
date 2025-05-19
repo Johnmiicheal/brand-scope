@@ -753,7 +753,7 @@ export async function GET(req: Request) {
     const { data: existingQueries, error: existingError } = await supabase
       .from("scheduled_queries")
       .select("id, query, frequency, mode, user_id")
-      .lte("DATE(next_analysis_at)", new Date().toISOString().split('T')[0])
+      .lte("next_analysis_at::date", new Date().toISOString().split('T')[0])
       .not("next_analysis_at", "is", null); // Ensure it has a scheduled time
 
     if (existingError) {
