@@ -244,11 +244,13 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { batchSize = 10, offset = 0 } = body;
 
+    const now = new Date().toISOString();
+    
     // Fetch the next batch of queries
     const { data: queries, error } = await supabase
       .from("scheduled_queries")
       .select("id, query, frequency, mode, user_id")
-      .lte("next_analysis_at::date", new Date().toISOString().split('T')[0])
+      .lte("next_analysis_at", now)
       .eq("status", "active")
       .order("next_analysis_at", { ascending: true })
       .range(offset, offset + batchSize - 1);
@@ -296,7 +298,7 @@ export async function POST(req: NextRequest) {
     const { count, error: countError } = await supabase
       .from("scheduled_queries")
       .select("id", { count: "exact", head: true })
-      .lte("next_analysis_at::date", new Date().toISOString().split('T')[0])
+      .lte("next_analysis_at", now)
       .eq("status", "active");
 
     if (!countError && count && count > offset + batchSize) {
