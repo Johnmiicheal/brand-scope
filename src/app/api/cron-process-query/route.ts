@@ -244,7 +244,7 @@ export async function GET(req: NextRequest) {
     const { count, error: countError } = await supabase
       .from("scheduled_queries")
       .select("id", { count: "exact", head: true })
-      .lte("next_analysis_at", new Date().toISOString())
+      .lte("DATE(next_analysis_at)", new Date().toISOString().split('T')[0])
       .eq("status", "active");
 
     if (countError) {
@@ -261,7 +261,7 @@ export async function GET(req: NextRequest) {
     const { data: queries, error } = await supabase
       .from("scheduled_queries")
       .select("id, query, frequency, mode, user_id")
-      .lte("next_analysis_at", new Date().toISOString())
+      .lte("DATE(next_analysis_at)", new Date().toISOString().split('T')[0])
       .eq("status", "active")
       .order("next_analysis_at", { ascending: true })
       .limit(BATCH_SIZE);

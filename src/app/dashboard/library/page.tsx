@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { format } from 'date-fns';
-import { MoreHorizontal, Plus, Search, ScrollText, ChevronLeft, ChevronRight } from 'lucide-react';
+import { MoreHorizontal, Plus, Search, ScrollText, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/AuthContext';
@@ -12,6 +12,24 @@ import { supabase } from '@/lib/supabase';
 import { motion } from 'framer-motion';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScheduledQueriesList, ScheduledQuery } from '@/components/library/scheduled-queries-list';
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { toast } from "@/components/ui/use-toast";
 
 
 interface SearchRecord {
@@ -144,6 +162,46 @@ export default function LibraryPage() {
     }
   };
   
+  // Add delete thread function
+  const deleteThread = async (modeId: string) => {
+    try {
+      const { error } = await supabase
+        .from('ai_rankings')
+        .delete()
+        .eq('mode_id', modeId)
+        .eq('user_id', user?.id);
+
+      // Also delete related search results
+      if (modeId) {
+        const { error: searchResultsError } = await supabase
+          .from('search_results')
+          .delete()
+          .eq('mode_id', modeId);
+
+        if (searchResultsError) {
+          console.error('Error deleting related search results:', searchResultsError);
+          // Continue with deletion even if this fails
+        }
+      }
+
+      if (error) throw error;
+
+      // Update local state to remove the deleted thread
+      setSearches(prevSearches => prevSearches.filter(search => search.mode_id !== modeId));
+      toast({
+        title: "Thread deleted",
+        description: "The thread has been successfully deleted.",
+      });
+    } catch (error) {
+      console.error('Error deleting thread:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete the thread. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+  
   if (isLoading || loading) {
     return (
       <div className="h-full text-white flex flex-col items-center justify-center">
@@ -224,37 +282,79 @@ export default function LibraryPage() {
                   variants={itemVariants}
                   custom={index}
                 >
-                  <Link 
-                    href={`/dashboard/search/analysis?mode_id=${search.mode_id}`} 
-                    className="block"
-                  >
-                    <div className="border-b border-zinc-800 pb-4">
-                      <div className="flex flex-col gap-2">
-                        <div className="font-medium text-sm sm:text-base line-clamp-2">{search.query}</div>
-                        <div className="text-zinc-400 text-xs sm:text-sm line-clamp-2">
-                          {search.reasoning}
-                        </div>
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between mt-1 gap-2">
-                          <div className="flex flex-wrap gap-2 items-center">
-                              <div className="flex items-center text-xs text-zinc-400 bg-gradient-to-b from-zinc-900/40 to-zinc-900 border border-accent px-2 sm:px-3 py-1 sm:py-2 rounded-full truncate max-w-[160px] sm:max-w-none">
-                                  <span className="truncate">{search.mode}</span>
-                              </div>
-                              <div className="text-xs text-zinc-500">
-                                {format(new Date(search.analyzed_at), "MMM d, yyyy")}
-                              </div>
+                  <div className="border-b border-zinc-800 pb-4">
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-start justify-between">
+                        <Link 
+                          href={`/dashboard/search/analysis?mode_id=${search.mode_id}`}
+                          className="flex-1"
+                        >
+                          <div className="font-medium text-sm sm:text-base line-clamp-2">{search.query}</div>
+                          <div className="text-zinc-400 text-xs sm:text-sm line-clamp-2">
+                            {search.reasoning}
                           </div>
-                          <div className="flex gap-2 self-end sm:self-auto">
-                            <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8">
-                              <Plus className="h-3 w-3 sm:h-4 sm:w-4" />
-                            </Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8">
-                              <MoreHorizontal className="h-3 w-3 sm:h-4 sm:w-4" />
-                            </Button>
+                          <div className="flex flex-wrap gap-2 items-center mt-2">
+                            <div className="flex items-center text-xs text-zinc-400 bg-gradient-to-b from-zinc-900/40 to-zinc-900 border border-accent px-2 sm:px-3 py-1 sm:py-2 rounded-full truncate max-w-[160px] sm:max-w-none">
+                              <span className="truncate">{search.mode}</span>
+                            </div>
+                            <div className="text-xs text-zinc-500">
+                              {format(new Date(search.analyzed_at), "MMM d, yyyy")}
+                            </div>
                           </div>
+                        </Link>
+                        <div className="flex gap-2 ml-4">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-7 w-7 sm:h-8 sm:w-8"
+                          >
+                            <Plus className="h-3 w-3 sm:h-4 sm:w-4" />
+                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-7 w-7 sm:h-8 sm:w-8"
+                              >
+                                <MoreHorizontal className="h-3 w-3 sm:h-4 sm:w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <DropdownMenuItem 
+                                    className="text-destructive focus:text-destructive"
+                                    onSelect={(e) => e.preventDefault()}
+                                  >
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Delete Thread
+                                  </DropdownMenuItem>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      This action cannot be undone. This will permanently delete this thread and remove all associated data.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() => deleteThread(search.mode_id)}
+                                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                    >
+                                      Delete
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       </div>
                     </div>
-                  </Link>
+                  </div>
                 </motion.div>
               ))
             )}

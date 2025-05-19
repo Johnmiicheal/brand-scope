@@ -750,33 +750,33 @@ export async function GET(req: Request) {
   console.log(`GET /api/schedule-query (Cron Job) triggered at ${now}`);
 
   try {
-    const { data: queries, error: fetchError } = await supabase
+    const { data: existingQueries, error: existingError } = await supabase
       .from("scheduled_queries")
-      .select("id, query, frequency, mode, user_id") // Fetch necessary fields
-      .lte("next_analysis_at", now) // Due for analysis
+      .select("id, query, frequency, mode, user_id")
+      .lte("DATE(next_analysis_at)", new Date().toISOString().split('T')[0])
       .not("next_analysis_at", "is", null); // Ensure it has a scheduled time
 
-    if (fetchError) {
-      console.error("Error fetching due queries:", fetchError);
+    if (existingError) {
+      console.error("Error fetching due queries:", existingError);
       return NextResponse.json(
         { error: "Failed to fetch due queries" },
         { status: 500 }
       );
     }
 
-    if (!queries || queries.length === 0) {
+    if (!existingQueries || existingQueries.length === 0) {
       console.log("No queries due for processing.");
       return NextResponse.json({ message: "No queries due" }, { status: 200 });
     }
 
-    console.log(`Processing ${queries.length} due queries...`);
+    console.log(`Processing ${existingQueries.length} due queries...`);
 
     let processedCount = 0;
     let failedCount = 0;
 
     // Process queries sequentially to avoid overwhelming APIs/DB
     // Consider Promise.allSettled with concurrency limits for larger scale
-    for (const query of queries) {
+    for (const query of existingQueries) {
       try {
         await processQuery(query, now);
         processedCount++;

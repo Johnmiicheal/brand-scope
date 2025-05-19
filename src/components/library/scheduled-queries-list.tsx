@@ -2,8 +2,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
+import { toast } from "@/components/ui/use-toast";
 import {
   Table,
   TableBody,
@@ -22,9 +24,21 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatDistanceToNow, parseISO } from "date-fns";
-import { EllipsisVertical, FilterX } from "lucide-react";
+import { EllipsisVertical, FilterX, Search, XCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "../ui/dropdown-menu";
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "../ui/alert-dialog";
+import { Input } from "@/components/ui/input";
 
 type FilterOptions = {
   frequency: "all" | "daily" | "weekly";
@@ -46,31 +60,40 @@ export type ScheduledQuery = {
 };
 
 export function ScheduledQueriesList({
-  queries,
+  queries: initialQueries,
   onSelectQuery,
 }: {
   queries: ScheduledQuery[];
   onSelectQuery?: (query: ScheduledQuery) => void;
 }) {
   const router = useRouter();
+  const [queries, setQueries] = useState<ScheduledQuery[]>(initialQueries);
+  const [loadingStates, setLoadingStates] = useState<Record<string, boolean>>({});
+  const [searchTerm, setSearchTerm] = useState("");
   const [filters, setFilters] = useState<FilterOptions>({
     frequency: "all",
     mode: "all",
-    status: "all", // Default to 'active' if you prefer
+    status: "all",
   });
 
+  // Update local queries when initialQueries changes
+  useEffect(() => {
+    setQueries(initialQueries);
+  }, [initialQueries]);
 
-  // Filtering logic
+  // Updated filtering logic to include search
   const filteredQueries = useMemo(() => {
     return queries?.filter((query) => {
+      const searchMatch = searchTerm === "" || 
+        query.query.toLowerCase().includes(searchTerm.toLowerCase());
       const frequencyMatch =
         filters.frequency === "all" || query.frequency === filters.frequency;
       const modeMatch = filters.mode === "all" || query.mode === filters.mode;
       const statusMatch =
-        filters.status === "all" || query.status === filters.status; // Assumes 'status' column exists
-      return frequencyMatch && modeMatch && statusMatch;
+        filters.status === "all" || query.status === filters.status;
+      return searchMatch && frequencyMatch && modeMatch && statusMatch;
     });
-  }, [queries, filters]);
+  }, [queries, filters, searchTerm]);
 
   const handleFilterChange = (
     filterType: keyof FilterOptions,
@@ -117,57 +140,150 @@ export function ScheduledQueriesList({
     visible: { opacity: 1, y: 0, transition: { type: "spring", damping: 15 } },
   };
 
+  // Add functions to handle deactivate and delete
+  const handleDeactivate = async (query: ScheduledQuery) => {
+    try {
+      setLoadingStates(prev => ({ ...prev, [query.id]: true }));
+      const newStatus = query.status === 'active' ? 'paused' : 'active';
+      const { error } = await supabase
+        .from('scheduled_queries')
+        .update({ status: newStatus })
+        .eq('id', query.id);
+
+      if (error) throw error;
+
+      // Update local state immediately
+      setQueries(currentQueries => 
+        currentQueries.map(q => 
+          q.id === query.id 
+            ? { ...q, status: newStatus }
+            : q
+        )
+      );
+      
+      toast({
+        title: newStatus === 'paused' ? "Prompt Deactivated" : "Prompt Activated",
+        description: newStatus === 'paused'
+          ? "The prompt has been paused and will not be analyzed." 
+          : "The prompt has been activated and will resume analysis.",
+      });
+    } catch (error) {
+      console.error('Error updating prompt status:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update the prompt status. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingStates(prev => ({ ...prev, [query.id]: false }));
+    }
+  };
+
+  const handleDelete = async (query: ScheduledQuery) => {
+    try {
+      setLoadingStates(prev => ({ ...prev, [query.id]: true }));
+      const { error } = await supabase
+        .from('scheduled_queries')
+        .delete()
+        .eq('id', query.id);
+      // Also delete related search results
+      if (query.mode_id) {
+        const { error: searchResultsError } = await supabase
+          .from('search_results')
+          .delete()
+          .eq('mode_id', query.mode_id);
+        
+        if (searchResultsError) {
+          console.error('Error deleting related search results:', searchResultsError);
+          // Continue with deletion even if this fails
+        }
+      }
+
+      if (error) throw error;
+
+      // Update local state immediately
+      setQueries(currentQueries => 
+        currentQueries.filter(q => q.id !== query.id)
+      );
+      
+      toast({
+        title: "Prompt Deleted",
+        description: "The prompt has been permanently deleted.",
+      });
+    } catch (error) {
+      console.error('Error deleting prompt:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete the prompt. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingStates(prev => ({ ...prev, [query.id]: false }));
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Filter Section */}
-      <div className="flex justify-end flex-wrap items-center gap-4 mb-10">
-        <Select
-          value={filters.frequency}
-          onValueChange={(value) => handleFilterChange("frequency", value)}
-        >
-          <SelectTrigger className="w-[150px]">
-            <SelectValue placeholder="Frequency" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Frequencies</SelectItem>
-            <SelectItem value="daily">Daily</SelectItem>
-            <SelectItem value="weekly">Weekly</SelectItem>
-          </SelectContent>
-        </Select>
-
-        <Select
-          value={filters.status}
-          onValueChange={(value) => handleFilterChange("status", value)}
-        >
-          <SelectTrigger className="w-[150px]">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Statuses</SelectItem>
-            <SelectItem value="active">Active</SelectItem>
-            <SelectItem value="paused">Paused</SelectItem>
-            {/* Add more statuses if needed */}
-          </SelectContent>
-        </Select>
-        {hasActiveFilters && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={resetFilters}
-            className="text-muted-foreground"
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-10">
+        <div className="relative w-full sm:w-96">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+          <Input
+            placeholder="Search queries..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        <div className="flex flex-wrap items-center gap-4">
+          <Select
+            value={filters.frequency}
+            onValueChange={(value) => handleFilterChange("frequency", value)}
           >
-            <FilterX className="w-4 h-4 mr-2" />
-            Reset Filters
-          </Button>
-        )}
+            <SelectTrigger className="w-[150px]">
+              <SelectValue placeholder="Frequency" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Frequencies</SelectItem>
+              <SelectItem value="daily">Daily</SelectItem>
+              <SelectItem value="weekly">Weekly</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select
+            value={filters.status}
+            onValueChange={(value) => handleFilterChange("status", value)}
+          >
+            <SelectTrigger className="w-[150px]">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Statuses</SelectItem>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="paused">Paused</SelectItem>
+              {/* Add more statuses if needed */}
+            </SelectContent>
+          </Select>
+          {hasActiveFilters && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={resetFilters}
+              className="text-muted-foreground"
+            >
+              <FilterX className="w-4 h-4 mr-2" />
+              Reset Filters
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Data Display Section */}
       <div>
-        {filteredQueries?.length! > 0 && (
+        {filteredQueries?.length! > 0 ? (
           <Table>
             <TableHeader>
-              <TableRow>
+              <TableRow className="border-[#e2e2e2]/50 dark:border-accent">
                 <TableHead>Query</TableHead>
                 <TableHead>Frequency</TableHead>
                 <TableHead>Status</TableHead>
@@ -232,12 +348,55 @@ export function ScheduledQueriesList({
                             View on Page
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-amber-500 hover:!bg-amber-500/10 hover:!text-amber-500">
-                            Deactivate Prompt
+                          <DropdownMenuItem 
+                            className="text-amber-500 hover:!bg-amber-500/10 hover:!text-amber-500"
+                            onClick={() => handleDeactivate(query)}
+                            disabled={loadingStates[query.id]}
+                          >
+                            {loadingStates[query.id] ? (
+                              <div className="flex items-center">
+                                <div className="h-4 w-4 animate-spin rounded-full border-2 border-amber-500 border-t-transparent mr-2" />
+                                {query.status === 'active' ? 'Deactivating...' : 'Activating...'}
+                              </div>
+                            ) : (
+                              `${query.status === 'active' ? 'Deactivate' : 'Activate'} Prompt`
+                            )}
                           </DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive hover:!bg-destructive/10 hover:!text-destructive">
-                            Delete Prompt
-                          </DropdownMenuItem>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <DropdownMenuItem 
+                                className="text-destructive hover:!bg-destructive/10 hover:!text-destructive"
+                                onSelect={(e) => e.preventDefault()}
+                                disabled={loadingStates[query.id]}
+                              >
+                                {loadingStates[query.id] ? (
+                                  <div className="flex items-center">
+                                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-destructive border-t-transparent mr-2" />
+                                    Deleting...
+                                  </div>
+                                ) : (
+                                  'Delete Prompt'
+                                )}
+                              </DropdownMenuItem>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This action cannot be undone. This will permanently delete this prompt and all its analysis history.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleDelete(query)}
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                >
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -246,6 +405,27 @@ export function ScheduledQueriesList({
               </AnimatePresence>
             </TableBody>
           </Table>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <XCircle className="h-12 w-12 text-muted-foreground/50 mb-4" />
+            <h3 className="text-lg font-semibold mb-2">No queries found</h3>
+            <p className="text-muted-foreground text-sm max-w-sm">
+              {queries.length === 0
+                ? "You haven't created any scheduled queries yet."
+                : "No queries match your current filters. Try adjusting your search or filters."}
+            </p>
+            {queries.length > 0 && hasActiveFilters && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={resetFilters}
+                className="mt-4"
+              >
+                <FilterX className="w-4 h-4 mr-2" />
+                Reset Filters
+              </Button>
+            )}
+          </div>
         )}
       </div>
     </div>
