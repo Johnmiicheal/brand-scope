@@ -314,6 +314,8 @@ async function processQuery(
   // --- Define Models ---
   const textModels = [
     { modelId: "openai/gpt-4o-search-preview", name: "GPT 4o" },
+    { modelId: "openai/gpt-4.1", name: "GPT 4.1"},
+
     {
       modelId: "anthropic/claude-3.5-sonnet",
       name: "Claude 3.5 Sonnet",
@@ -332,6 +334,7 @@ async function processQuery(
 
   const objectModels = [
     { model: openrouter("openai/gpt-4o"), name: "GPT 4o" },
+    { model: openrouter("openai/gpt-4.1"), name: "GPT 4.1"},
     {
       model: openrouter("anthropic/claude-3.5-sonnet"),
       name: "Claude 3.5 Sonnet",
