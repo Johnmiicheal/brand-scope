@@ -10,7 +10,7 @@ const ShinyText: React.FC<ShinyTextProps> = ({ text, disabled = false, speed = 5
 
     return (
         <div
-            className={`shiny-text ${disabled ? 'disabled' : ''} ${className}`}
+            className={`dark:shiny-text shiny-text-dark ${disabled ? 'disabled' : ''} ${className}`}
             style={{ animationDuration }}
         >
             {text}

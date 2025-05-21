@@ -39,10 +39,10 @@ export function NavMain({
               <SidebarMenuButton 
                 asChild 
                 tooltip={item.title}
-                className={`transition-colors duration-200 hover:bg-gray-800/30 font-medium ${
+                className={`transition-colors duration-200 dark:hover:bg-gray-800/30 font-medium ${
                   pathname === item.url 
                     ? "bg-blue-500/20 border border-blue-500/20" 
-                    : "text-white/40"
+                    : "dark:text-white/40 text-black/40"
                 }`}
               >
                 <Link href={item.url}>
@@ -63,10 +63,10 @@ export function NavMain({
               <SidebarMenuButton 
                 asChild 
                 tooltip={item.title}
-                className={`transition-colors duration-200 hover:bg-gray-800/30 font-medium ${
+                className={`transition-colors duration-200 dark:hover:bg-gray-800/30 font-medium ${
                   pathname === item.url 
                     ? "bg-blue-900/10 border border-blue-500/20" 
-                    : "text-white/40"
+                    : "dark:text-white/40 text-black/40"
                 }`}
               >
                 <Link href={item.url}>

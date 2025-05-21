@@ -36,6 +36,19 @@ const LLMOutputSchema = z.object({
     .describe("List of analyzed brands with rank, score, and reasoning."),
 });
 
+const keywordAnalysisSchema = z.object({
+  keywords: z.array(
+    z.object({
+      keyword: z.string(),
+      search_volume: z.number(),
+      difficulty: z.number(),
+      opportunity_score: z.number(),
+      relevance: z.number(),
+    })
+  ),
+});
+
+
 // Schema for a single analysis run (one object in the 'results' array)
 const AnalysisRunSchema = z.object({
   analysis_date: z
@@ -51,25 +64,27 @@ const AnalysisRunSchema = z.object({
           .describe("Status of the API call for this model."),
         data: LLMOutputSchema.nullable()
           .optional()
-          .describe("The structured brand analysis data if successful."), // Store successful data
+          .describe("The structured brand analysis data if successful."),
         error: z
           .string()
           .nullable()
           .optional()
-          .describe("Error message if the API call failed."), // Store error message if rejected
+          .describe("Error message if the API call failed."),
       })
     )
     .describe("Results from each language model for this analysis run."),
-    model_summary: z
+  model_summary: z
     .array(
       z.object({
         model: z.string(),
         summary: z.string(),
         query: z.string(),
-        reasoning: z.string(),
+        reasoning: z.array(z.any()).nullable().optional(),
       })
     )
     .describe("Summary from each language model for this analysis run."),
+  keyword_analysis: keywordAnalysisSchema.nullable()
+    .describe("Keyword analysis from the keyword analysis model for this analysis run."),
 });
 
 // Schema for the entire 'results' column (a jsonb storing an array of runs)
@@ -261,7 +276,7 @@ export async function GET(req: NextRequest) {
     // Step 2: Fetch just the first batch
     const { data: queries, error } = await supabase
       .from("scheduled_queries")
-      .select("id, query, frequency, mode, user_id")
+      .select("id, query, frequency, mode, user_id, mode_id, location")
       .lte("next_analysis_at", now)
       .eq("status", "active")
       .order("next_analysis_at", { ascending: true })
@@ -369,7 +384,7 @@ async function processQueryDirectly(query: any) {
   
     // --- Define Models ---
     const textModels = [
-      { modelId: "openai/gpt-4o-search-preview", name: "GPT 4o" },
+      { modelId: "openai/gpt-4o-search-preview", name: "GPT 4o Web Search" },
     { modelId: "openai/gpt-4.1", name: "GPT 4.1"},
 
       {
@@ -389,7 +404,7 @@ async function processQueryDirectly(query: any) {
     ];
   
     const objectModels = [
-      { model: openrouter("openai/gpt-4o"), name: "GPT 4o" },
+      { model: openrouter("openai/gpt-4o"), name: "GPT 4o Web Search" },
       { model: openrouter("openai/gpt-4.1"), name: "GPT 4.1"},
       {
         model: openrouter("anthropic/claude-3.5-sonnet"),
@@ -402,7 +417,7 @@ async function processQueryDirectly(query: any) {
       { model: openrouter("perplexity/sonar"), name: "Perplexity Sonar" }, // Keep Perplexity here
     ];
   
-    // --- Fetch Existing Results --- (Moved to the top)
+    // --- Fetch Existing Results ---
     let existingResultsArray: z.infer<typeof AnalysisRunSchema>[] = [];
     try {
       const { data: existingData, error: fetchError } = await supabase
@@ -417,12 +432,16 @@ async function processQueryDirectly(query: any) {
           fetchError
         );
       } else if (existingData?.results) {
-        // Make sure we're working with an array
-        const results = Array.isArray(existingData.results) 
-          ? existingData.results 
-          : [existingData.results];
-        existingResultsArray = parseAndValidateExistingResults(results);
-        console.log(`Found ${existingResultsArray.length} existing results for query ${query.id}`);
+        // Handle JSONB data properly
+        const rawResults = existingData.results;
+        console.log('Raw results from database:', typeof rawResults, Array.isArray(rawResults));
+        
+        // Ensure we're working with an array
+        const resultsArray = Array.isArray(rawResults) ? rawResults : [rawResults];
+        console.log('Results array before validation:', resultsArray);
+        
+        existingResultsArray = parseAndValidateExistingResults(resultsArray);
+        console.log(`Found ${existingResultsArray.length} existing valid results for query ${query.id}`);
       }
     } catch (fetchCatchError) {
       console.error(
@@ -583,6 +602,18 @@ async function processQueryDirectly(query: any) {
     );
     const finalModelResultsForDB = await Promise.all(extractionPromises);
     console.log(`  Finished extraction attempts.`);
+
+      // --- 3. Keyword Analysis ---
+  const keywordPrompt = `You are an SEO specialist. Generate a list of 25 high-value keywords for "${query.query}". For each keyword: estimate monthly search volume, rate difficulty (0.0-10.0), calculate opportunity score (0.0-10.0), and rate relevance (0.0-10.0). Include high-volume and long-tail keywords.`;
+
+  // Generate keyword analysis object using the LLM
+  const { object: keywordAnalysis } = await generateObject({
+    model: openrouter("openai/gpt-4o"),
+    schema: keywordAnalysisSchema, // Use the defined Zod schema
+    prompt: keywordPrompt,
+    maxRetries: 2,
+    temperature: 0.0,
+  });
   
   
     // --- Prepare New Analysis Run Object (Matches existing DB Schema) ---
@@ -590,23 +621,31 @@ async function processQueryDirectly(query: any) {
       analysis_date: now,
       model_results: finalModelResultsForDB, // Contains results conforming to the schema
       model_summary: ai_summary,
+      keyword_analysis: keywordAnalysis,
     };
   
     // --- Update Database ---
     const updatedResultsArray = [
-      ...(Array.isArray(existingResultsArray) ? existingResultsArray : []),
-      newAnalysisRun,
+      ...existingResultsArray,
+      newAnalysisRun
     ];
-    console.log(`Updating with ${updatedResultsArray.length} total results (${existingResultsArray.length} existing + 1 new)`);
     
-    const nextAnalysisDate = new Date(
-      new Date(now).getTime() +
-        (query.frequency === "daily"
-          ? 24 * 60 * 60 * 1000
-          : 7 * 24 * 60 * 60 * 1000)
+    console.log('Updating database with results:', {
+      totalResults: updatedResultsArray.length,
+      existingResults: existingResultsArray.length,
+      newResults: 1,
+      resultDates: updatedResultsArray.map(r => r.analysis_date)
+    });
+    
+    // Create date from current time and add the days first
+    const nextAnalysisDate = new Date();
+    nextAnalysisDate.setDate(
+      nextAnalysisDate.getDate() + (query.frequency === "daily" ? 1 : 7)
     );
-    // Set to midnight (00:00:00)
+    
+    // Then set to midnight of that next day
     nextAnalysisDate.setHours(0, 0, 0, 0);
+
     console.log(
       `  Updating Supabase for query ${
         query.id
@@ -619,8 +658,8 @@ async function processQueryDirectly(query: any) {
       .from("scheduled_queries")
       .update({ 
         last_analysis_at: now,
-        next_analysis_at: nextAnalysisDate,
-        results: updatedResultsArray as any,
+        next_analysis_at: nextAnalysisDate.toISOString(),
+        results: updatedResultsArray,
       })
       .eq("id", query.id);
       

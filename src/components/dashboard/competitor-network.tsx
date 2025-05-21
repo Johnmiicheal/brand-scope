@@ -243,7 +243,7 @@ export function CompetitorNetwork({ brands, detailed = true }: CompetitorNetwork
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5, delay: 0.3 }}>
-      <Card className="pb-0 overflow-hidden bg-background h-full">
+      <Card className="pb-0 overflow-hidden bg-background h-full border-[#e2e2e2]/70 dark:border-accent shadow-none">
         <CardHeader className="pb-2">
           <CardTitle>Brand Network</CardTitle>
         </CardHeader>

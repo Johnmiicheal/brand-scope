@@ -147,7 +147,7 @@ const searchRequestSchema = z.object({
   brand_name: z.string(),
   brand_industry: z.string(),
   brand_id: z.string().uuid(),
-  competitors: z.array(z.string()).optional(),
+  location: z.string().optional(),
 });
 
 serve(async (req) => {
@@ -236,7 +236,7 @@ serve(async (req) => {
     const body = await req.json();
     
     // Validate request body
-    const { mode, user_id, query, brand_name, brand_industry, brand_id } =
+    const { mode, user_id, query, brand_name, brand_industry, brand_id, location } =
       searchRequestSchema.parse(body);
 
     // Generate shared IDs for this search session
@@ -247,7 +247,7 @@ serve(async (req) => {
     let results;
     try {
       if (mode === "Voyager") {
-        results = await voyagerAnalysis(user_id, query, mode_id, search_id);
+        results = await voyagerAnalysis(user_id, query, mode_id, search_id, location);
       } else if (mode === "Explorer") {
         results = await explorerAnalysis(
           user_id,
@@ -256,7 +256,8 @@ serve(async (req) => {
           search_id,
           brand_name,
           brand_industry,
-          brand_id
+          brand_id,
+          location
         );
       } else {
         return new Response(
@@ -337,8 +338,8 @@ async function callSearchGoogleEndpoint(
   query: string,
   mode_id: string,
   user_id: string,
+  location?: string,
   brandName?: string,
-  location?: string
 ): Promise<void> {
   try {
     const apiUrl = `${Deno.env.get("FRONTEND_URL") || "https://brandscope.vercel.app"}/api/search-google`;
@@ -368,8 +369,8 @@ async function callSearchGoogleEndpoint(
       includeAiOverview: true,
       monitoringId: mode_id,
       userId: user_id,
+      location: location || 'United States',
       brandName: brandName || undefined,
-      location: location || 'United States'
     };
     
     console.log(`Calling search-google endpoint for query: "${query}" with monitoring ID: ${mode_id}`);
@@ -431,17 +432,19 @@ export async function explorerAnalysis(
   search_id: string,
   brand_name: string,
   brand_industry: string,
-  brand_id: string
+  brand_id: string,
+  location: string  
 ): Promise<SearchResults> {
   // Call the search-google endpoint after mode_id is defined
-  await callSearchGoogleEndpoint(query, mode_id, user_id, brand_name);
+  await callSearchGoogleEndpoint(query, mode_id, user_id, location);
   
   const rankings: AIRanking[] = [];
   const socialInsights: SocialInsight[] = [];
 
   // 1. Define Models for Text Generation
   const textModels = [
-    { modelId: "openai/gpt-4o-search-preview", name: "GPT 4o" },
+    { modelId: "openai/gpt-4o-search-preview", name: "GPT 4o Web Search" },
+    { modelId: "openai/gpt-4.1", name: "GPT 4.1"},
     {
       modelId: "anthropic/claude-3.5-sonnet",
       name: "Claude 3.5 Sonnet",
@@ -454,7 +457,8 @@ export async function explorerAnalysis(
   ];
 
   const objectModels = [
-    { model: openrouter("openai/gpt-4o"), name: "GPT 4o" },
+    { model: openrouter("openai/gpt-4o"), name: "GPT 4o Web Search" },
+    { model: openrouter("openai/gpt-4.1"), name: "GPT 4.1"},
     {
       model: openrouter("anthropic/claude-3.5-sonnet"),
       name: "Claude 3.5 Sonnet",
@@ -479,9 +483,12 @@ export async function explorerAnalysis(
             },
             body: JSON.stringify({
               model: modelId,
-              messages: [{ role: 'user', content: query }],
+              messages: [{ role: 'user', content: location ? `${query} in ${location}` : query }],
               temperature: 0.2,
-              max_retries: 2
+              max_retries: 2,
+              web_search_options: {
+                user_location: {country: location}
+              }
             })
           }).then(res => res.json());
 
@@ -855,10 +862,11 @@ export async function voyagerAnalysis(
   user_id: string, 
   query: string,
   mode_id: string,
-  search_id: string
+  search_id: string, 
+  location: string
 ): Promise<SearchResults> {
   // Call the search-google endpoint after mode_id is defined
-  await callSearchGoogleEndpoint(query, mode_id, user_id);
+  await callSearchGoogleEndpoint(query, mode_id, user_id, location);
   
   const models = [
     {
@@ -880,7 +888,7 @@ export async function voyagerAnalysis(
         try {
           const response = await generateText({
             model,
-            prompt: query,
+            prompt: location ? `${query} in ${location}` : query,
             temperature: 0.1,
           });
 

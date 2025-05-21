@@ -26,7 +26,7 @@ function MetricCard({
 
   return (
     <motion.div
-      className={cn("p-6 bg-card border-r", className)}
+      className={cn("p-6 bg-card border-r border-[#e2e2e2]/70 dark:border-accent", className)}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
@@ -101,7 +101,7 @@ export function MetricsHeader({ brands, selectedBrand }: MetricsHeaderProps) {
 
   return (
     <div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 border rounded-t-lg overflow-hidden">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 border rounded-t-lg overflow-hidden dark:border-accent border-[#e2e2e2]/70">
         <MetricCard
           title="Visibility Score"
           value={`${Math.round(visibilityScore * 100)}%`}

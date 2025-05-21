@@ -73,7 +73,7 @@ export function CompetitorChart({ competitors, selectedBrands }: CompetitorChart
     }
     
     return (
-      <div className="rounded-b-lg border p-5 border-t-0 gap-5 flex flex-col bg-background">
+      <div className="rounded-b-lg border p-5 border-t-0 gap-5 flex flex-col bg-background border-[#e2e2e2]/70 dark:border-accent">
         <CardHeader>
           <CardTitle>Visibility Analysis</CardTitle>
           <CardDescription>

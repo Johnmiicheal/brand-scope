@@ -287,6 +287,7 @@ export function ScheduledQueriesList({
                 <TableHead>Query</TableHead>
                 <TableHead>Frequency</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Country</TableHead>
                 <TableHead>Last Analyzed</TableHead>
                 <TableHead>Next Analysis</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
@@ -322,6 +323,9 @@ export function ScheduledQueriesList({
                       >
                         {query.status || "Unknown"}
                       </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {"Global"}
                     </TableCell>
                     <TableCell>
                       {formatDateDistance(query.last_analysis_at)}

@@ -109,9 +109,9 @@ function IndustryRankingsTable({ brands }: IndustryRankingsTableProps) {
   );
 
   return (
-    <Card className="bg-background border-accent text-white">
+    <Card className="bg-background shadow-none border-[#e2e2e2]/70 dark:border-accent text-white">
       <CardHeader>
-        <CardTitle>Brand Ranking</CardTitle>
+        <CardTitle className="text-black dark:text-white">Brand Ranking</CardTitle>
         <CardDescription>Brands ranked by visibility score</CardDescription>
       </CardHeader>
       <CardContent>
@@ -123,7 +123,7 @@ function IndustryRankingsTable({ brands }: IndustryRankingsTableProps) {
           <ScrollArea className="h-[400px]">
             <Table>
               <TableHeader>
-                <TableRow>
+                <TableRow className="border-[#e2e2e2]/40 dark:border-accent">
                   <TableHead className="w-[100px] sticky top-0 bg-background">
                     Rank
                   </TableHead>
@@ -150,7 +150,7 @@ function IndustryRankingsTable({ brands }: IndustryRankingsTableProps) {
                   </TableRow>
                 ) : (
                   brands.map((entity, index) => (
-                    <TableRow key={index}>
+                    <TableRow key={index} className="dark:text-white text-black border-[#e2e2e2]/40 dark:border-accent">
                       <TableCell className="font-medium">{index + 1}</TableCell>
                       <TableCell className="flex items-center gap-2">
                         {entity.brand_name}
@@ -179,8 +179,6 @@ function IndustryRankingsTable({ brands }: IndustryRankingsTableProps) {
 
 function DashboardContent() {
   const router = useRouter();
-  const { brand, metrics, competitors, keywords, isLoading, error, refetch } =
-    useBrandData();
   const [sessionKey, setSessionKey] = useState("");
   const [user, setUser] = useState<User | null>(null);
   const [selectedQuery, setSelectedQuery] = useState<ScheduledQuery | null>(
@@ -214,6 +212,7 @@ function DashboardContent() {
   // Function to fetch scheduled queries for the dashboard
   const [queries, setQueries] = useState<ScheduledQuery[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
   useEffect(() => {
     async function fetchScheduledQueries() {
@@ -224,6 +223,7 @@ function DashboardContent() {
         const response = await fetch(`/api/monitoring?user_id=${user?.id}`);
 
         if (!response.ok) {
+          setError(`Error fetching scheduled queries: ${response.statusText}`);
           throw new Error(
             `Error fetching scheduled queries: ${response.statusText}`
           );
@@ -238,6 +238,7 @@ function DashboardContent() {
           setQueries([]);
         }
       } catch (error) {
+        setError(`Error fetching scheduled queries: ${error}`);
         console.error("Failed to fetch scheduled queries:", error);
         toast({
           title: "Error",
@@ -257,6 +258,7 @@ function DashboardContent() {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const results = selectedQuery?.results;
+  const keywords = results?.[0]?.keyword_analysis?.keywords;
   const [analysis_brands, setAnalysisBrands] = useState<any[]>([]);
   const [selectedBrands, setSelectedBrands] = useState<Set<string>>(
     new Set<string>([])
@@ -507,7 +509,7 @@ function DashboardContent() {
     }
   }, [selectedQuery]);
 
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="w-full max-w-3xl">
@@ -665,7 +667,7 @@ function DashboardContent() {
                     transition={{ duration: 0.3, ease: "easeInOut" }}
                     className="overflow-hidden"
                   >
-                    <Card className="bg-background rounded-md p-4">
+                    <Card className="bg-background rounded-md p-4 border-[#e2e2e2]/70 dark:border-accent">
                       <ScheduledQueriesList
                         queries={queries}
                         onSelectQuery={(query) => {
@@ -678,36 +680,6 @@ function DashboardContent() {
                 )}
               </AnimatePresence>
 
-              {/* Display selected query info
-              {selectedQuery && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  className="bg-accent/50 rounded-lg p-4 mb-6"
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-lg font-medium mb-1">
-                        Currently Viewing: {selectedQuery.query}
-                      </h3>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <span>Mode: {selectedQuery.mode}</span>
-                        <span>•</span>
-                        <span>Frequency: {selectedQuery.frequency}</span>
-                      </div>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setSelectedQuery(null)}
-                    >
-                      Clear
-                    </Button>
-                  </div>
-                </motion.div>
-              )} */}
-
               <MetricsHeader brands={brandMentionsInSummaries} selectedBrand={selectedBrands} />
               {/* Industry Ranking Table - Full width */}
               <div className="lg:col-span-2">
@@ -717,9 +689,11 @@ function DashboardContent() {
               {/* Main content grid */}
               <div className="flex flex-col lg:flex-row w-full gap-6 h-full">
                 {/* Left column - Make keyword cloud take full width */}
-                <div className="space-y-6 lg:w-[65%] h-full">
-                  <KeywordCloud keywords={keywords} />
-                </div>
+                {keywords && (
+                  <div className="space-y-6 lg:w-[65%] h-full">
+                    <KeywordCloud keywords={keywords} />
+                  </div>
+                )}
 
                 <div className="space-y-6 lg:w-[35%] h-full">
                   <CompetitorNetwork brands={analysis_brands} />

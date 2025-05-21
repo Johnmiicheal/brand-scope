@@ -12,6 +12,8 @@ import {
   ChevronDown,
   ChevronUp,
   BarChart,
+  TextSearch,
+  ChevronLeft,
 } from "lucide-react";
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -35,6 +37,9 @@ export function GoogleResults({ googleResults, rankings }: GoogleResultsProps) {
   const [showCitations, setShowCitations] = useState<boolean>(true);
   const [isAIOverviewExpanded, setIsAIOverviewExpanded] =
     useState<boolean>(false);
+
+  // Get all citations from AI overview
+  const allCitations = googleResults?.ai_overview?.references || [];
 
   // Helper function to truncate URLs for display
   const truncateUrl = (url: string) => {
@@ -180,6 +185,15 @@ export function GoogleResults({ googleResults, rankings }: GoogleResultsProps) {
             >
               <BarChart className="h-4 w-4 mr-2" />
               Rankings
+            </TabsTrigger>
+            <TabsTrigger
+              value="citations"
+              className="!bg-transparent hover:!bg-transparent data-[state=active]:!bg-transparent 
+                        data-[state=active]:!text-blue-500 data-[state=active]:!border-b-2 data-[state=active]:!border-b-blue-500
+                        !text-gray-600 !rounded-none !border-transparent !px-3 hover:!text-blue-600 transition-all duration-200"
+            >
+              <TextSearch className="h-4 w-4 mr-2" />
+              Citations ({allCitations.length})
             </TabsTrigger>
           </TabsList>
         </div>
@@ -448,6 +462,11 @@ export function GoogleResults({ googleResults, rankings }: GoogleResultsProps) {
         <TabsContent value="rankings" className="m-0">
           <RankingsTabContent rankings={rankings} />
         </TabsContent>
+
+        {/* Citations Tab */}
+        <TabsContent value="citations" className="m-0">
+          <CitationsTabContent citations={allCitations} />
+        </TabsContent>
       </Tabs>
 
       {/* Footer - Google style pagination */}
@@ -543,6 +562,113 @@ function RankingsTabContent({ rankings }: { rankings: any }) {
             </motion.div>
         </motion.div>
       </div>
+    </div>
+  );
+}
+
+interface Citation {
+  link: string;
+  index: number;
+  title: string;
+  source: string;
+  snippet?: string;
+}
+
+function CitationsTabContent({ citations }: { citations: Citation[] }) {
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+  const totalPages = Math.ceil(citations.length / itemsPerPage);
+
+  if (!citations || citations.length === 0) {
+    return (
+      <div className="p-6 text-center">
+        <p className="text-white/70">No citations available.</p>
+      </div>
+    );
+  }
+
+  // Get current page items
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = citations.slice(indexOfFirstItem, indexOfLastItem);
+
+  // Change page
+  const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
+
+  return (
+    <div className="p-6">
+      <motion.div
+        className="space-y-4"
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+      >
+        {currentItems.map((citation, idx) => (
+          <motion.div
+            key={idx}
+            variants={itemVariants}
+            className="border border-accent rounded-lg p-4 bg-zinc-900/50 hover:bg-zinc-800/50 transition-all duration-200"
+          >
+            <div className="flex items-start justify-between">
+              <div className="space-y-2 flex-1">
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="text-xs">
+                    [{citation.index + 1}]
+                  </Badge>
+                  <span className="text-sm text-white/50">{citation.source}</span>
+                </div>
+                <a
+                  href={citation.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-500 hover:underline text-lg block"
+                >
+                  {citation.title}
+                </a>
+                <p className="text-white/70 text-sm">{citation.snippet || 'No preview available'}</p>
+              </div>
+              <ExternalLink className="h-4 w-4 text-white/30 flex-shrink-0 mt-1" />
+            </div>
+          </motion.div>
+        ))}
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center gap-2 mt-8 pt-4 border-t border-accent">
+            <button
+              onClick={() => paginate(currentPage - 1)}
+              disabled={currentPage === 1}
+              className="p-2 rounded-lg border border-accent disabled:opacity-50 disabled:cursor-not-allowed hover:bg-accent/10"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            
+            <div className="flex items-center gap-1">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((number) => (
+                <button
+                  key={number}
+                  onClick={() => paginate(number)}
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200 ${
+                    currentPage === number
+                      ? "bg-blue-500 text-white"
+                      : "hover:bg-accent/10"
+                  }`}
+                >
+                  {number}
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={() => paginate(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              className="p-2 rounded-lg border border-accent disabled:opacity-50 disabled:cursor-not-allowed hover:bg-accent/10"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+      </motion.div>
     </div>
   );
 }

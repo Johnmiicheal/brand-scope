@@ -45,6 +45,18 @@ const LLMOutputSchema = z.object({
     .describe("List of analyzed brands with rank, score, and reasoning."),
 });
 
+const keywordAnalysisSchema = z.object({
+  keywords: z.array(
+    z.object({
+      keyword: z.string(),
+      search_volume: z.number(),
+      difficulty: z.number(),
+      opportunity_score: z.number(),
+      relevance: z.number(),
+    })
+  ),
+});
+
 // Schema for a single analysis run (one object in the 'results' array)
 const AnalysisRunSchema = z.object({
   analysis_date: z
@@ -79,6 +91,8 @@ const AnalysisRunSchema = z.object({
       })
     )
     .describe("Summary from each language model for this analysis run."),
+    keyword_analysis: keywordAnalysisSchema.nullable()
+    .describe("Keyword analysis from the keyword analysis model for this analysis run."),
 });
 
 // Schema for the entire 'results' column (a jsonb storing an array of runs)
@@ -294,8 +308,8 @@ async function callSearchGoogleEndpoint(
  * @param now - The current timestamp (ISO string) for this analysis run.
  */
 async function processQuery(
-  query: { id: string; query: string; frequency: string; mode?: string | null, user_id: string, location?: string },
-  now: string
+  query: { id: string; query: string; frequency: string; mode?: string | null, mode_id: string, user_id: string, location?: string },
+  now: string,
 ): Promise<{ id: string; newAnalysisRun: z.infer<typeof AnalysisRunSchema> }> {
   console.log(
     `Processing query ID: ${query.id}, Text: "${query.query}", Mode: ${
@@ -303,17 +317,15 @@ async function processQuery(
     }`
   );
 
-  // Generate a unique ID for this specific run (like mode_id)
-  const analysisRunId = uuidv4();
-  console.log(`  Generated Analysis Run ID: ${analysisRunId}`);
+
   
   // Call the search-google endpoint to get Google search results
   // This helps enrich our analysis with current web data
-  await callSearchGoogleEndpoint(query.query, analysisRunId, query.user_id, query.location);
+  await callSearchGoogleEndpoint(query.query, query.mode_id, query.user_id, query.location);
 
   // --- Define Models ---
   const textModels = [
-    { modelId: "openai/gpt-4o-search-preview", name: "GPT 4o" },
+    { modelId: "openai/gpt-4o-search-preview", name: "GPT 4o Web Search" },
     { modelId: "openai/gpt-4.1", name: "GPT 4.1"},
 
     {
@@ -333,7 +345,7 @@ async function processQuery(
   ];
 
   const objectModels = [
-    { model: openrouter("openai/gpt-4o"), name: "GPT 4o" },
+    { model: openrouter("openai/gpt-4o"), name: "GPT 4o Web Search" },
     { model: openrouter("openai/gpt-4.1"), name: "GPT 4.1"},
     {
       model: openrouter("anthropic/claude-3.5-sonnet"),
@@ -526,11 +538,25 @@ async function processQuery(
   console.log(`  Finished extraction attempts.`);
 
 
+  // --- 3. Keyword Analysis ---
+  const keywordPrompt = `You are an SEO specialist. Generate a list of 25 high-value keywords for "${query.query}". For each keyword: estimate monthly search volume, rate difficulty (0.0-10.0), calculate opportunity score (0.0-10.0), and rate relevance (0.0-10.0). Include high-volume and long-tail keywords.`;
+
+  // Generate keyword analysis object using the LLM
+  const { object: keywordAnalysis } = await generateObject({
+    model: openrouter("openai/gpt-4o"),
+    schema: keywordAnalysisSchema, // Use the defined Zod schema
+    prompt: keywordPrompt,
+    maxRetries: 2,
+    temperature: 0.0,
+  });
+
+
   // --- Prepare New Analysis Run Object (Matches existing DB Schema) ---
   const newAnalysisRun: z.infer<typeof AnalysisRunSchema> = {
     analysis_date: now,
     model_results: finalModelResultsForDB, // Contains results conforming to the schema
     model_summary: ai_summary,
+    keyword_analysis: keywordAnalysis,
   };
 
   // --- Update Database ---
@@ -538,15 +564,15 @@ async function processQuery(
     ...existingResultsArray,
     newAnalysisRun,
   ];
-  // Create next analysis date at midnight
-  const nextAnalysisDate = new Date(
-    new Date(now).getTime() +
-      (query.frequency === "daily"
-        ? 24 * 60 * 60 * 1000
-        : 7 * 24 * 60 * 60 * 1000)
-  );
-  // Set to midnight (00:00:00)
-  nextAnalysisDate.setHours(0, 0, 0, 0);
+    // Create date from current time and add the days first
+    const nextAnalysisDate = new Date();
+    nextAnalysisDate.setDate(
+      nextAnalysisDate.getDate() + (query.frequency === "daily" ? 1 : 7)
+    );
+    
+    // Then set to midnight of that next day
+    nextAnalysisDate.setHours(0, 0, 0, 0);
+
   console.log(
     `  Updating Supabase for query ${
       query.id
@@ -623,6 +649,7 @@ export async function POST(req: Request) {
       .select("id")
       .eq("user_id", user_id)
       .eq("query", query)
+      .eq("location", location || "global")
       .maybeSingle();
 
     if (checkError) {
@@ -659,6 +686,7 @@ export async function POST(req: Request) {
         next_analysis_at: now, // Schedule immediate analysis
         last_analysis_at: null,
         status: "active",
+        location: location,
         results: [], // Initialize with an empty array in the jsonb column
       })
       .select("id, query, frequency, mode") // Select necessary fields
@@ -691,8 +719,8 @@ export async function POST(req: Request) {
         mode: queryMode,
       } = newQueryData;
       const initialAnalysis = await processQuery(
-        { id, query: queryText, frequency: queryFreq, mode: queryMode, user_id: user_id, location: location },
-        now
+        { id, query: queryText, frequency: queryFreq, mode: queryMode, mode_id: mode_id, user_id: user_id, location: location },
+        now,
       );
       console.log(`Initial analysis complete for query ${newQueryData.id}`);
 
@@ -755,7 +783,7 @@ export async function GET(req: Request) {
   try {
     const { data: existingQueries, error: existingError } = await supabase
       .from("scheduled_queries")
-      .select("id, query, frequency, mode, user_id")
+      .select("id, query, frequency, mode, user_id, mode_id")
       .lte("next_analysis_at", now)
       .not("next_analysis_at", "is", null); // Ensure it has a scheduled time
 

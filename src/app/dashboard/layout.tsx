@@ -101,9 +101,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   }, []);
   return (
     <ProtectedRoute>
-      <SidebarProvider>
+      <SidebarProvider className="!bg-white dark:!bg-background">
         <AppSidebar />
-        <SidebarInset className="border border-accent overflow-hidden">
+        <SidebarInset className="border border-[#e2e2e2]/70 dark:border-accent overflow-hidden bg-white dark:bg-background">
           <header className="flex h-16 shrink-0 items-center gap-2">
             <div className="flex items-center gap-2 px-4">
               <SidebarTrigger className="-ml-1" />
@@ -115,11 +115,14 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                 <BreadcrumbNav />
               </Breadcrumb>
             </div>
+            {/* <div className="ml-auto flex items-center gap-2 px-4">
+              <ThemeToggle />
+            </div> */}
           </header>
           <BrandDataProvider>
-          <ScrollArea className="h-full bg-gradient-to-b from-background to-zinc-900">
-            {children}
-          </ScrollArea>
+            <ScrollArea className="h-full bg-gradient-to-b from-background dark:to-zinc-900 to-neutral-100">
+              {children}
+            </ScrollArea>
           </BrandDataProvider>
         </SidebarInset>
       </SidebarProvider>
