@@ -538,12 +538,15 @@ async function processQuery(
     ...existingResultsArray,
     newAnalysisRun,
   ];
+  // Create next analysis date at midnight
   const nextAnalysisDate = new Date(
     new Date(now).getTime() +
       (query.frequency === "daily"
         ? 24 * 60 * 60 * 1000
         : 7 * 24 * 60 * 60 * 1000)
   );
+  // Set to midnight (00:00:00)
+  nextAnalysisDate.setHours(0, 0, 0, 0);
   console.log(
     `  Updating Supabase for query ${
       query.id

@@ -5,7 +5,6 @@ import { createClient } from "@supabase/supabase-js";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { generateObject, generateText } from "ai";
 import { z } from "zod";
-import { v4 as uuidv4 } from "uuid";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -345,13 +344,10 @@ async function processQueryDirectly(query: any) {
       }`
     );
   
-    // Generate a unique ID for this specific run (like mode_id)
-    const analysisRunId = uuidv4();
-    console.log(`  Generated Analysis Run ID: ${analysisRunId}`);
     
     // Call the search-google endpoint to get Google search results
     // This helps enrich our analysis with current web data
-    await callSearchGoogleEndpoint(query.query, analysisRunId, query.user_id, query.location);
+    await callSearchGoogleEndpoint(query.query, query.mode_id, query.user_id, query.location);
   
     // --- Define Models ---
     const textModels = [
@@ -401,10 +397,13 @@ async function processQueryDirectly(query: any) {
           `Error fetching existing results for query ${query.id}:`,
           fetchError
         );
-      } else {
-        existingResultsArray = parseAndValidateExistingResults(
-          existingData?.results
-        );
+      } else if (existingData?.results) {
+        // Make sure we're working with an array
+        const results = Array.isArray(existingData.results) 
+          ? existingData.results 
+          : [existingData.results];
+        existingResultsArray = parseAndValidateExistingResults(results);
+        console.log(`Found ${existingResultsArray.length} existing results for query ${query.id}`);
       }
     } catch (fetchCatchError) {
       console.error(
@@ -575,16 +574,20 @@ async function processQueryDirectly(query: any) {
     };
   
     // --- Update Database ---
-    const updatedResultsArray: z.infer<typeof AnalysisRunSchema>[] = [
-      ...existingResultsArray,
+    const updatedResultsArray = [
+      ...(Array.isArray(existingResultsArray) ? existingResultsArray : []),
       newAnalysisRun,
     ];
+    console.log(`Updating with ${updatedResultsArray.length} total results (${existingResultsArray.length} existing + 1 new)`);
+    
     const nextAnalysisDate = new Date(
       new Date(now).getTime() +
         (query.frequency === "daily"
           ? 24 * 60 * 60 * 1000
           : 7 * 24 * 60 * 60 * 1000)
     );
+    // Set to midnight (00:00:00)
+    nextAnalysisDate.setHours(0, 0, 0, 0);
     console.log(
       `  Updating Supabase for query ${
         query.id
