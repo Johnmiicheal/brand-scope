@@ -53,6 +53,7 @@ export type ScheduledQuery = {
   last_analysis_at: string | null;
   next_analysis_at: string | null;
   user_id: string;
+  location: string;
   frequency: "daily" | "weekly";
   mode: "DeepFocus" | "Voyager" | "Explorer" | null;
   mode_id: string | null;
@@ -325,7 +326,7 @@ export function ScheduledQueriesList({
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {"Global"}
+                      {query.location || "Global"}
                     </TableCell>
                     <TableCell>
                       {formatDateDistance(query.last_analysis_at)}
