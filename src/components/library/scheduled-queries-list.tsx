@@ -325,7 +325,7 @@ export function ScheduledQueriesList({
                         {query.status || "Unknown"}
                       </Badge>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="capitalize">
                       {query.location || "Global"}
                     </TableCell>
                     <TableCell>

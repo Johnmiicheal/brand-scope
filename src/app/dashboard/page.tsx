@@ -23,6 +23,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { v4 as uuidv4 } from "uuid";
 import {
+  Check,
+  CheckCircle,
   ChevronDown,
   Clock9,
   CloudUpload,
@@ -71,6 +73,11 @@ import {
 import { useToast } from "@/components/ui/use-toast";
 import { User } from "@supabase/supabase-js";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { CheckoutButton } from "@/components/stripe/checkout-button";
+import { CheckoutSuccess } from '@/components/stripe/checkout-success';
+import { stripe } from '@/lib/stripe';
+import { QueryCounter } from "@/components/dashboard/query-counter";
+import Stripe from "stripe";
 
 const INDUSTRIES = [
   "Technology",
@@ -177,14 +184,141 @@ function IndustryRankingsTable({ brands }: IndustryRankingsTableProps) {
   );
 }
 
+interface UserSubscription {
+  id: string;
+  user_id: string;
+  subscription_plan_id: string;
+  stripe_subscription_id: string;
+  status: string;
+  query_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
 function DashboardContent() {
   const router = useRouter();
+  // All state declarations at the top
   const [sessionKey, setSessionKey] = useState("");
   const [user, setUser] = useState<User | null>(null);
-  const [selectedQuery, setSelectedQuery] = useState<ScheduledQuery | null>(
-    null
-  );
+  const [subscription, setSubscription] = useState<UserSubscription | null>(null);
+  const [product, setProduct] = useState<Stripe.Product | null>(null);
+  const [selectedQuery, setSelectedQuery] = useState<ScheduledQuery | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [onboardingStep, setOnboardingStep] = useState(0);
+  const [selectedPlan, setSelectedPlan] = useState('');
+  const [brandName, setBrandName] = useState("");
+  const [brandWebsite, setBrandWebsite] = useState("");
+  const [brandIndustry, setBrandIndustry] = useState("");
+  const [brandLogo, setBrandLogo] = useState<File | null>(null);
+  const [brandLogoPreview, setBrandLogoPreview] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showBrandModal, setShowBrandModal] = useState(false);
+  const [brands, setBrands] = useState<Brand[]>([]);
+  const [selectedBrand, setSelectedBrand] = useState<Brand | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+
+
+  const fetchBrands = async () => {
+    try {
+      setLoading(true);
+
+      // Get current user
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        console.error("No authenticated user found");
+        setLoading(false);
+        return;
+      }
+
+      // Fetch brands where user_id matches and website and logo are not empty
+      const { data, error } = await supabase
+        .from("brands")
+        .select("*")
+        .eq("user_id", user.id)
+        .not("website", "is", null)
+        .not("logo_url", "is", null);
+
+      if (error) {
+        console.error("Error fetching brands:", error);
+        setLoading(false);
+        return;
+      }
+
+      setBrands(data || []);
+
+      // Set the first brand as selected if available
+      if (data && data.length > 0) {
+        setSelectedBrand(data[0]);
+      } else {
+        // Show brand creation modal if no valid brands exist
+        setShowBrandModal(true);
+      }
+
+      setLoading(false);
+    } catch (error) {
+      console.error("Error:", error);
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchBrands();
+  }, []);
+
+
+  
+  // Plans configuration
+  const plans = [
+    {
+      id: 'free',
+      name: 'Free Trial',
+      price: '$0',
+      features: ["Country Monitoring", "Company Research", "SEO Keyword Analysis", "Brand Analysis"],
+      searches: '5 Searches',
+      monitoring: '0 Monitoring',
+      frequency: 'N/A',
+      recommended: false,
+      product_id: ''
+    },
+    {
+      id: 'pro',
+      name: 'Pro Plan',
+      price: '$29/month',
+      features: ["Country Monitoring", "Company Research", "SEO Keyword Analysis", "Brand Analysis"],
+      searches: '30 Searches',
+      monitoring: '10 Monitoring',
+      frequency: '(Weekly only)',
+      recommended: false,
+      product_id: "price_1RRP3EFQrMIDoBVCh5GyR8s6"
+    },
+    {
+      id: 'plus',
+      name: 'Plus Plan',
+      price: '$189/month',
+      features: ["Country Monitoring", "Company Research", "SEO Keyword Analysis", "Brand Analysis"],
+      searches: '300 Searches',
+      monitoring: '100 Monitoring',
+      frequency: '(Daily + Weekly)',
+      recommended: true,
+      product_id: "price_1RRfOsFQrMIDoBVCpnaAjkZX"
+    },
+    {
+      id: 'premium',
+      name: 'Premium Plan',
+      price: '$300/month',
+      features: ["Country Monitoring", "Company Research", "SEO Keyword Analysis", "Brand Analysis"],
+      searches: '900 Searches',
+      monitoring: '300 Monitoring',
+      frequency: '(Daily + Weekly)',
+      recommended: false,
+      product_id: "price_1RRtvLFQrMIDoBVCxNAAW9sM"
+    }
+  ];
 
   // Update time every second
   useEffect(() => {
@@ -199,19 +333,68 @@ function DashboardContent() {
     const checkAuth = async () => {
       const {
         data: { session },
+        error,
       } = await supabase.auth.getSession();
-      if (!session) {
-        router.push("/login");
+  
+      if (error) {
+        setUser(null);
+        setSubscription(null);
+        return;
       }
-      setSessionKey(session?.access_token || "");
-      setUser(session?.user || null);
+  
+      if (!session) {
+        if (window.location.pathname !== "/login") {
+          router.push("/login");
+        }
+        setUser(null);
+        setSubscription(null);
+      } else {
+        setSessionKey(session.access_token || "");
+        setUser(session.user);
+        
+        // Check subscription immediately after setting user
+        if(!subscription){
+          await checkSubs(session.user);
+        }
+      }
     };
+  
+    const checkSubs = async (currentUser: User | null) => {
+      if (!currentUser) return;
+      
+      try {
+        const { data: fetchedSubscriptionData, error: subscriptionError } = await supabase
+          .from("user_subscriptions")
+          .select("*")
+          .eq("user_id", currentUser.id)
+          .single();
+  
+        if (subscriptionError) {
+          if (subscriptionError.code === 'PGRST116') {
+            setSubscription(null);
+          } else {
+            setSubscription(null);
+          }
+        } else {
+          setSubscription(fetchedSubscriptionData);
+          const stripePrice = await stripe.prices.retrieve(fetchedSubscriptionData.price_id);
+          const stripeProduct = await stripe.products.retrieve(stripePrice.product as string)
+          setProduct(stripeProduct);
+          console.log("Product: ", stripeProduct);
+        }
+      } catch (e) {
+        setSubscription(null);
+      }
+    };
+  
     checkAuth();
-  }, [router]);
+  }, []);
+
+
 
   // Function to fetch scheduled queries for the dashboard
   const [queries, setQueries] = useState<ScheduledQuery[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
   useEffect(() => {
@@ -223,7 +406,7 @@ function DashboardContent() {
         const response = await fetch(`/api/monitoring?user_id=${user?.id}`);
 
         if (!response.ok) {
-          setError(`Error fetching scheduled queries: ${response.statusText}`);
+          setError(`We could not fetch your scheduled queries. Please try again later.`);
           throw new Error(
             `Error fetching scheduled queries: ${response.statusText}`
           );
@@ -238,7 +421,7 @@ function DashboardContent() {
           setQueries([]);
         }
       } catch (error) {
-        setError(`Error fetching scheduled queries: ${error}`);
+        setError(`We could not fetch your scheduled queries. Please try again later.`);
         console.error("Failed to fetch scheduled queries:", error);
         toast({
           title: "Error",
@@ -253,7 +436,7 @@ function DashboardContent() {
     }
 
     fetchScheduledQueries();
-  }, [sessionKey, toast, user?.id]);
+  }, []);
 
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -527,182 +710,656 @@ function DashboardContent() {
     );
   }
 
-  if (error) {
+
+  const handleNextStep = () => {
+    setOnboardingStep(prev => prev + 1);
+  };
+
+  const handleSkip = () => {
+    if (onboardingStep === 0) {
+      setSelectedPlan('free');
+    }
+    setOnboardingStep(prev => prev + 1);
+  };
+
+  const handleStartSearching = () => {
+    // Handle subscription creation with selected plan
+    router.push('/dashboard/search');
+  };
+
+
+
+
+
+  const handleCreateBrand = async () => {
+    if (!brandName || !brandWebsite || !brandIndustry) {
+      alert("Please fill all required fields");
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+
+      // Get current user
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        alert("You must be logged in to create a brand");
+        setSubmitting(false);
+        return;
+      }
+
+      let logoData = null;
+
+      // Convert file to base64 if provided
+      if (brandLogo) {
+        logoData = brandLogoPreview;
+      }
+
+      // Create brand record
+      const brandId = uuidv4();
+      const { data, error } = await supabase
+        .from("brands")
+        .insert([
+          {
+            id: brandId,
+            name: brandName,
+            logo_url: logoData,
+            website: brandWebsite,
+            industry: brandIndustry,
+            user_id: user.id,
+          },
+        ])
+        .select();
+
+      if (error) {
+        console.error("Error creating brand:", error);
+        setSubmitting(false);
+        return;
+      }
+
+      // Clear form
+      setBrandName("");
+      setBrandWebsite("");
+      setBrandIndustry("");
+      setBrandLogo(null);
+      setBrandLogoPreview(null);
+
+      fetchBrands();
+
+      // Trigger brand analysis
+      await analyzeBrand(brandId);
+
+      setSubmitting(false);
+    } catch (error) {
+      console.error("Error:", error);
+      setSubmitting(false);
+    }
+  };
+
+  
+
+  const analyzeBrand = async (brandId: string) => {
+    try {
+      setIsAnalyzing(true);
+      // Call the analysis API
+      const response = await fetch(
+        process.env.NEXT_PUBLIC_ANALYZE_BRAND as string,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${sessionKey}`,
+          },
+          body: JSON.stringify({
+            brandId,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("Brand analysis failed:", errorData);
+        setIsAnalyzing(false);
+        return;
+      }
+      toast({
+        title: "Brand analysis completed",
+        description: "We've analyzed your brand and you can view the results in the dashboard",
+        duration: 5000,
+      });
+      setIsAnalyzing(false);
+    } catch (error) {
+      console.error("Error analyzing brand:", error);
+      setIsAnalyzing(false);
+    }
+  };
+
+  // const handleAnalyze = async () => {
+  //   if (!brand) return;
+    
+  //   console.log("Selected Monitoring Frequency:", monitoringFrequency);
+
+  //   setIsAnalyzing(true);
+  //   try {
+  //     const response = await fetch(
+  //       process.env.NEXT_PUBLIC_ANALYZE_BRAND as string,
+  //       {
+  //         method: "POST",
+  //         headers: {
+  //           "Content-Type": "application/json",
+  //           Authorization: `Bearer ${sessionKey}`,
+  //         },
+  //         body: JSON.stringify({ brandId: brand.id }),
+  //       }
+  //     );
+
+  //     if (!response.ok) {
+  //       const errorData = await response.json();
+  //       console.error("Brand analysis failed:", errorData);
+  //       setIsAnalyzing(false);
+  //       return;
+  //     }
+
+  //     // Refetch brand data to get updated metrics
+  //     await refetch();
+  //   } catch (error) {
+  //     console.error("Error analyzing brand:", error);
+  //   } finally {
+  //     setIsAnalyzing(false);
+  //   }
+  // };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setBrandLogo(file);
+
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setBrandLogoPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleFileDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      const file = e.dataTransfer.files[0];
+      setBrandLogo(file);
+
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setBrandLogoPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const openFileDialog = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  if (!loading && error && !subscription) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-red-500 mb-4">Error</h2>
-          <p className="text-gray-600">{error}</p>
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="w-full max-w-7xl p-8 bg-transparent rounded-lg shadow-lg">
+          <div className="flex justify-between mb-16">
+            {[1, 2, 3].map((step) => (
+              <div key={step} className="flex flex-col items-center">
+                <div 
+                  className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 ${
+                    onboardingStep >= step - 1 
+                      ? 'bg-blue-500 text-white' 
+                      : 'bg-gray-800 text-gray-300'
+                  }`}
+                >
+                  {step}
+                </div>
+                <span className="text-sm text-gray-400">
+                  {step === 1 ? 'Select Plan' : step === 2 ? 'Your Brand' : 'Get Started'}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {onboardingStep === 0 && (
+            <div className="text-center">
+              <h2 className="text-3xl font-bold text-gray-200 mb-2">Choose Your Plan</h2>
+              <p className="text-gray-400 mb-18">Select the plan that best fits your needs</p>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 mb-8">
+                {plans.map((plan) => (
+                  <div 
+                    key={plan.id}
+                    className={`border border-neutral-600 rounded-lg p-4 transition-all hover:translate-y-[-5px] cursor-pointer relative ${
+                      selectedPlan === plan.product_id 
+                        ? 'outline-2 outline-blue-500 outline-offset-2' 
+                        : ''
+                    } ${plan.recommended ? 'bg-gradient-to-b from-background to-blue-500/50' : ''}`}
+                    onClick={() => setSelectedPlan(plan?.product_id || '')}
+                  >
+                    {plan.recommended && (
+                      <div className="bg-blue-500 text-white text-xs font-bold px-3 py-1 rounded-t-full inline-block absolute top-0 left-0 right-0 -mt-4">
+                        POPULAR
+                      </div>
+                    )}
+                    <h3 className="text-md font-bold mb-2">{plan.name}</h3>
+                    <p className="text-3xl font-bold mb-4">{plan.price}</p>
+                    <div className="space-y-2 text-left">
+                      <p className="flex items-center">
+                        <Check className="w-5 h-5 text-blue-500 mr-2" />
+                        {plan.searches}
+                      </p>
+                      <p className="flex items-center">
+                        <Check className="w-5 h-5 text-blue-500 mr-2" />
+                        {plan.monitoring} {plan.frequency}
+                      </p>
+                      {plan.features.map((feature, index) => (
+                        <p key={index} className="flex items-center">
+                          <Check className="w-5 h-5 text-blue-500 mr-2" />
+                          {feature}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              
+              <div className="flex justify-between mt-8">
+                <Button variant="ghost" onClick={handleSkip}>
+                  Skip for now (Free Trial)
+                </Button>
+                <Button className="bg-blue-600 hover:bg-blue-700" onClick={handleNextStep} disabled={!selectedPlan}>
+                  Continue
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {onboardingStep === 1 && (
+            <div className="text-center">
+              <h2 className="text-3xl font-bold text-gray-800 mb-2">Tell Us About Your Brand</h2>
+              <p className="text-gray-600 mb-8">This helps us personalize your experience (optional)</p>
+              
+              <div className="max-w-md mx-auto mb-8">
+              <div className="sm:max-w-[500px] overflow-hidden border-accent">
+
+            <div className="p-6">
+              <div className="grid gap-6">
+                <div className="grid gap-2">
+                  <Label htmlFor="name">Name</Label>
+                  <Input
+                    id="name"
+                    value={brandName}
+                    placeholder="Acme Corporation"
+                    onChange={(e) => setBrandName(e.target.value)}
+                    className="bg-zinc-800"
+                    required
+                  />
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="website">Website</Label>
+                  <Input
+                    id="website"
+                    value={brandWebsite}
+                    onChange={(e) => setBrandWebsite(e.target.value)}
+                    className="bg-zinc-800"
+                    placeholder="https://example.com"
+                    required
+                  />
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="industry">Industry</Label>
+                  <Select
+                    value={brandIndustry}
+                    onValueChange={setBrandIndustry}
+                  >
+                    <SelectTrigger className="bg-zinc-800 w-full">
+                      <SelectValue placeholder="Select industry" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {INDUSTRIES.map((industry) => (
+                        <SelectItem key={industry} value={industry}>
+                          {industry}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="logo">Logo</Label>
+                  <div className="flex items-center gap-4">
+                    <input
+                      ref={fileInputRef}
+                      id="logo"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileChange}
+                      className="hidden"
+                    />
+
+                    {!brandLogoPreview ? (
+                      <div
+                        onClick={openFileDialog}
+                        onDragEnter={handleDragEnter}
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        onDrop={handleFileDrop}
+                        className={`
+                          h-32 w-full rounded-md border-2 border-dashed 
+                          flex flex-col items-center justify-center p-4 
+                          cursor-pointer transition-all duration-200
+                          ${
+                            isDragging
+                              ? "border-blue-500 bg-blue-500/10"
+                              : "border-zinc-700 bg-zinc-800 hover:border-zinc-500"
+                          }
+                        `}
+                      >
+                        <div className="flex flex-col items-center text-center">
+                          <CloudUpload className="w-5 h-5 text-zinc-400 mb-2" />
+                          <div className="font-medium text-sm mb-1">
+                            Click to upload
+                          </div>
+                          <div className="text-xs text-zinc-400">
+                            or drag and drop your logo here
+                          </div>
+                          <div className="text-[10px] text-zinc-500 mt-3">
+                            PNG, JPG or SVG (max 5MB)
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="w-full flex flex-col items-center">
+                        <div className="w-28 h-28 p-3 rounded-md overflow-hidden bg-zinc-700 flex items-center justify-center mb-3">
+                          <Image
+                            src={brandLogoPreview}
+                            alt="Preview"
+                            width={50}
+                            height={50}
+                            className="w-full h-full object-contain"
+                          />
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={openFileDialog}
+                          className="mt-2"
+                        >
+                          <CloudUpload className="w-4 h-4 mr-2" />
+                          Change Logo
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="px-6 py-4">
+              <Button
+                onClick={handleCreateBrand}
+                disabled={submitting}
+                className="w-full"
+              >
+                {submitting ? "Creating..." : "Create Brand"}
+              </Button>
+            </div>
+          </div>
+              </div>
+              
+              <div className="flex justify-between mt-8">
+                <Button variant="outline" onClick={() => setOnboardingStep(0)}>
+                  Back
+                </Button>
+                <div className="space-x-4">
+                  <Button variant="ghost" onClick={handleSkip}>
+                    Skip
+                  </Button>
+                  <Button className="bg-blue-600 hover:bg-blue-700" onClick={handleNextStep}>
+                    Continue
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {onboardingStep === 2 && (
+            <div className="text-center">
+              <div className="bg-green-50 text-green-700 p-4 rounded-lg inline-block mb-6">
+                <div className="flex items-center">
+                  <CheckCircle className="w-6 h-6 mr-2" />
+                  <span className="font-medium">You&apos;re all set!</span>
+                </div>
+              </div>
+              
+              <h2 className="text-3xl font-bold text-gray-800 mb-4">Ready to Get Started?</h2>
+              <p className="text-gray-600 mb-8 max-w-2xl mx-auto">
+                You&apos;ve chosen the <span className="font-semibold">
+                  {plans.find(p => p.id === selectedPlan)?.name}
+                </span> plan. You can always upgrade or change your plan later in settings.
+              </p>
+              
+              <div className="space-y-4 max-w-md mx-auto">
+                <CheckoutButton priceId={selectedPlan || ''} userId={user?.id || ''} buttonText="Continue to payments" />
+                <Button 
+                  variant="outline" 
+                  className="w-full"
+                  onClick={handleStartSearching}
+                >
+                  Try BrandScope for free
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-4">
-      <AnimatePresence mode="wait">
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -10 }}
-          transition={{ duration: 0.2 }}
-        >
-          <div className="min-h-screen flex-1">
-            <div className="space-y-6">
-              <motion.div
-                className="w-full flex justify-between rounded-md p-3 items-center bg-accent border-dashed border-1 cursor-pointer hover:bg-accent/80 transition duration-300"
-                onClick={() => setIsExpanded(!isExpanded)}
-                whileTap={{ scale: 0.98 }}
-              >
-                <div className="flex items-center gap-2">
-                  <Clock9 className="w-4 h-4 text-muted-foreground" />
-                  <p className="text-muted-foreground">
-                    {currentTime.toLocaleTimeString(undefined, {
-                      hour: "numeric",
-                      minute: "2-digit",
-                      second: "2-digit",
-                      hour12: false,
-                    })}
-                  </p>
-                  {"•"}
-                  <p>{queries.length} active prompts</p>
-                </div>
+    <div className="flex flex-col h-full">
+      <CheckoutSuccess />
+
+
+      <div className="container mx-auto px-4 py-4">
+      <QueryCounter product={product} subscription={subscription} />
+        <AnimatePresence mode="wait">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+            className="mt-4"
+          >
+            <div className="min-h-screen flex-1">
+              <div className="space-y-6">
                 <motion.div
-                  animate={{ rotate: isExpanded ? 180 : 0 }}
-                  transition={{ duration: 0.3, ease: "easeInOut" }}
+                  className="w-full flex justify-between rounded-md p-3 items-center bg-accent border-dashed border-1 cursor-pointer hover:bg-accent/80 transition duration-300"
+                  onClick={() => setIsExpanded(!isExpanded)}
+                  whileTap={{ scale: 0.98 }}
                 >
-                  <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                </motion.div>
-              </motion.div>
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.3 }}
-                className="w-full"
-              >
-                <div className="flex flex-col md:flex-row gap-4 w-full">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" className="w-fit">
-                        {getDisplayValue()} 
-                        <span>
-                          <ChevronDown className="w-4 h-4 opacity-40" />
-                        </span>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent className="w-56">
-                      {" "}
-                      {/* Adjust width as needed */}
-                      <DropdownMenuLabel>Filter by Brand</DropdownMenuLabel>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuCheckboxItem
-                        checked={selectedBrands.has("all")}
-                        onCheckedChange={(checked) =>
-                          handleCheckedChange("all", checked)
-                        }
-                      >
-                        All Brands
-                      </DropdownMenuCheckboxItem>
-                      <ScrollArea className="h-[200px]">
-                        {analysis_brands?.map((brand) => (
-                          <DropdownMenuCheckboxItem
-                            key={brand.id}
-                            checked={selectedBrands.has(brand.name)}
-                            onCheckedChange={(checked) =>
-                              handleCheckedChange(brand.name, checked)
-                            }
-                            // If "all" is checked, individual items are conceptually covered by "all".
-                            // You might want to disable them visually, or manage state so "all" overrides.
-                            // Current logic: checking an individual item unchecks "all".
-                            // Checking "all" clears individual items from the active selection set.
-                          >
-                            {brand.name}
-                          </DropdownMenuCheckboxItem>
-                        ))}
-                      </ScrollArea>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-
-                  <Select
-                    defaultValue={selectedDate || "latest"}
-                    onValueChange={(value) => setSelectedDate(value)}
-                  >
-                    <SelectTrigger className="w-fit">
-                      <SelectValue placeholder="Select date" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="latest">All Analysis</SelectItem>
-                      {analysis_dates?.map((date: string) => (
-                        <SelectItem key={date} value={date}>
-                          {date}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-
-                  <Select
-                    defaultValue={selectedModel || "all"}
-                    onValueChange={(value) => setSelectedModel(value)}
-                  >
-                    <SelectTrigger className="w-fit">
-                      <SelectValue placeholder="Select models" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Models</SelectItem>
-                      {analysis_models?.map((model: string) => (
-                        <SelectItem key={model} value={model}>
-                          {model}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </motion.div>
-              <AnimatePresence>
-                {isExpanded && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.3, ease: "easeInOut" }}
-                    className="overflow-hidden"
-                  >
-                    <Card className="bg-background rounded-md p-4 border-[#e2e2e2]/70 dark:border-accent">
-                      <ScheduledQueriesList
-                        queries={queries}
-                        onSelectQuery={(query) => {
-                          setSelectedQuery(query);
-                          setIsExpanded(false); // Close the list after selection
-                        }}
-                      />
-                    </Card>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              <MetricsHeader brands={brandMentionsInSummaries} selectedBrand={selectedBrands} />
-              {/* Industry Ranking Table - Full width */}
-              <div className="lg:col-span-2">
-                <IndustryRankingsTable brands={brandMentionsInSummaries} />
-              </div>
-
-              {/* Main content grid */}
-              <div className="flex flex-col lg:flex-row w-full gap-6 h-full">
-                {/* Left column - Make keyword cloud take full width */}
-                {keywords && (
-                  <div className="space-y-6 lg:w-[65%] h-full">
-                    <KeywordCloud keywords={keywords} />
+                  <div className="flex items-center gap-2">
+                    <Clock9 className="w-4 h-4 text-muted-foreground" />
+                    <p className="text-muted-foreground">
+                      {currentTime.toLocaleTimeString(undefined, {
+                        hour: "numeric",
+                        minute: "2-digit",
+                        second: "2-digit",
+                        hour12: false,
+                      })}
+                    </p>
+                    {"•"}
+                    <p>{queries.length} active prompts</p>
                   </div>
-                )}
+                  <motion.div
+                    animate={{ rotate: isExpanded ? 180 : 0 }}
+                    transition={{ duration: 0.3, ease: "easeInOut" }}
+                  >
+                    <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                  </motion.div>
+                </motion.div>
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.3 }}
+                  className="w-full"
+                >
+                  <div className="flex flex-col md:flex-row gap-4 w-full">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" className="w-fit">
+                          {getDisplayValue()} 
+                          <span>
+                            <ChevronDown className="w-4 h-4 opacity-40" />
+                          </span>
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent className="w-56">
+                        {" "}
+                        {/* Adjust width as needed */}
+                        <DropdownMenuLabel>Filter by Brand</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuCheckboxItem
+                          checked={selectedBrands.has("all")}
+                          onCheckedChange={(checked) =>
+                            handleCheckedChange("all", checked)
+                          }
+                        >
+                          All Brands
+                        </DropdownMenuCheckboxItem>
+                        <ScrollArea className="h-[200px]">
+                          {analysis_brands?.map((brand) => (
+                            <DropdownMenuCheckboxItem
+                              key={brand.id}
+                              checked={selectedBrands.has(brand.name)}
+                              onCheckedChange={(checked) =>
+                                handleCheckedChange(brand.name, checked)
+                              }
+                              // If "all" is checked, individual items are conceptually covered by "all".
+                              // You might want to disable them visually, or manage state so "all" overrides.
+                              // Current logic: checking an individual item unchecks "all".
+                              // Checking "all" clears individual items from the active selection set.
+                            >
+                              {brand.name}
+                            </DropdownMenuCheckboxItem>
+                          ))}
+                        </ScrollArea>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
 
-                <div className="space-y-6 lg:w-[35%] h-full">
-                  <CompetitorNetwork brands={analysis_brands} />
+                    <Select
+                      defaultValue={selectedDate || "latest"}
+                      onValueChange={(value) => setSelectedDate(value)}
+                    >
+                      <SelectTrigger className="w-fit">
+                        <SelectValue placeholder="Select date" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="latest">All Analysis</SelectItem>
+                        {analysis_dates?.map((date: string) => (
+                          <SelectItem key={date} value={date}>
+                            {date}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    <Select
+                      defaultValue={selectedModel || "all"}
+                      onValueChange={(value) => setSelectedModel(value)}
+                    >
+                      <SelectTrigger className="w-fit">
+                        <SelectValue placeholder="Select models" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Models</SelectItem>
+                        {analysis_models?.map((model: string) => (
+                          <SelectItem key={model} value={model}>
+                            {model}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </motion.div>
+                <AnimatePresence>
+                  {isExpanded && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.3, ease: "easeInOut" }}
+                      className="overflow-hidden"
+                    >
+                      <Card className="bg-background rounded-md p-4 border-[#e2e2e2]/70 dark:border-accent">
+                        <ScheduledQueriesList
+                          queries={queries}
+                          onSelectQuery={(query) => {
+                            setSelectedQuery(query);
+                            setIsExpanded(false); // Close the list after selection
+                          }}
+                        />
+                      </Card>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                <MetricsHeader brands={brandMentionsInSummaries} selectedBrand={selectedBrands} />
+                {/* Industry Ranking Table - Full width */}
+                <div className="lg:col-span-2">
+                  <IndustryRankingsTable brands={brandMentionsInSummaries} />
+                </div>
+
+                {/* Main content grid */}
+                <div className="flex flex-col lg:flex-row w-full gap-6 h-full">
+                  {/* Left column - Make keyword cloud take full width */}
+                  {keywords && (
+                    <div className="space-y-6 lg:w-[65%] h-full">
+                      <KeywordCloud keywords={keywords} />
+                    </div>
+                  )}
+
+                  <div className="space-y-6 lg:w-[35%] h-full">
+                    <CompetitorNetwork brands={analysis_brands} />
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        </motion.div>
-      </AnimatePresence>
+          </motion.div>
+        </AnimatePresence>
+      </div>
     </div>
   );
 }

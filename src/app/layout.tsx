@@ -65,9 +65,9 @@ export default function RootLayout({
         <ThemeProvider attribute="class" defaultTheme="dark">
         <NextTopLoader color="#7EBDF1" showSpinner={false} height={3} />
           <AuthProvider>
-            {children}
-            <Analytics />
-            <Toaster />
+              {children}
+              <Analytics />
+              <Toaster />
           </AuthProvider>
         </ThemeProvider>
       </body>

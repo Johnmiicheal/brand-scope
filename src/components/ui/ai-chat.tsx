@@ -43,6 +43,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { LoadingState } from "../loading-state";
 import { useBrandData } from "@/contexts/brand-data-context";
 import { domains } from "@/types/domains";
+import { QueryCounter } from "../dashboard/query-counter";
 
 interface UseAutoResizeTextareaProps {
   minHeight: number;
@@ -100,7 +101,7 @@ function useAutoResizeTextarea({
 export function AIChatInterface() {
   const router = useRouter();
   const [value, setValue] = useState("");
-  const { user, session } = useAuth();
+  const { user, session, product, subscription } = useAuth();
   const { brand } = useBrandData();
   const [mode, setMode] = useState<AnalysisMode>("Explorer");
   const [loading, setLoading] = useState(false);
@@ -109,6 +110,7 @@ export function AIChatInterface() {
   const [monitorFrequency, setMonitorFrequency] = useState<"daily" | "weekly">(
     "daily"
   );
+  
   const [open, setOpen] = useState(false);
   const [location, setLocation] = useState("");
   const { textareaRef, adjustHeight } = useAutoResizeTextarea({
@@ -375,7 +377,7 @@ export function AIChatInterface() {
       <h1 className="text-4xl font-regular text-neutral-700 dark:text-white">
         {isMonitoringMode
           ? "Search and Monitor Prompts"
-          : "Let's help you understand your brand"}
+          : "Let's help you understand your prompts"}
       </h1>
 
       <div className="w-full">
@@ -667,6 +669,7 @@ export function AIChatInterface() {
               year: "numeric",
             })}
           />
+          <QueryCounter product={product} subscription={subscription} />
         </div>
       </div>
 
