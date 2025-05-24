@@ -23,6 +23,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { v4 as uuidv4 } from "uuid";
 import {
+  Blocks,
   Check,
   CheckCircle,
   ChevronDown,
@@ -385,6 +386,7 @@ function DashboardContent() {
         setSessionKey(session.access_token || "");
         setUser(session.user);
         setSubsLoading(false);
+        console.log("User session checked and set: ", session.user)
         // Check subscription immediately after setting user
         if (!subscription) {
           await checkSubs(session.user);
@@ -439,7 +441,7 @@ function DashboardContent() {
   const { toast } = useToast();
   useEffect(() => {
     async function fetchScheduledQueries() {
-      if (!sessionKey) return;
+      if (!user) return;
 
       try {
         setLoading(true);
@@ -480,7 +482,7 @@ function DashboardContent() {
     }
 
     fetchScheduledQueries();
-  }, []);
+  }, [user]);
 
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -1254,6 +1256,23 @@ function DashboardContent() {
             </div>
           )}
         </div>
+      </div>
+    );
+  }
+
+  if(error && queries.length <= 0){
+    return (
+      <div className="flex flex-col items-center justify-center h-screen gap-2">
+        <Blocks className="w-6 h-6 text-blue-500" />
+        <div className="text-center text-blue-500 mb-2">
+          No Scheduled Searches
+        </div>
+        <p>
+          You have no scheduled searches. Please create a new search to get started.
+        </p>
+        <Button variant="outline" className="mt-5" onClick={() => window.location.assign("/dashboard/search?monitoring=true")}>
+          Start Monitoring
+        </Button>
       </div>
     );
   }
