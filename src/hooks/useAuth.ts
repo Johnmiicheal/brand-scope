@@ -7,13 +7,14 @@ import { supabase } from '@/lib/supabase';
 import Stripe from 'stripe';
 import { stripe } from '@/lib/stripe';
 
-interface UserSubscription {
+export interface UserSubscription {
   id: string;
   user_id: string;
   subscription_plan_id: string;
   stripe_subscription_id: string;
   status: string;
   query_count: number;
+  monitoring_count: number;
   created_at: string;
   updated_at: string;
 }

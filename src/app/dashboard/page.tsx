@@ -74,8 +74,8 @@ import { useToast } from "@/components/ui/use-toast";
 import { User } from "@supabase/supabase-js";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CheckoutButton } from "@/components/stripe/checkout-button";
-import { CheckoutSuccess } from '@/components/stripe/checkout-success';
-import { stripe } from '@/lib/stripe';
+import { CheckoutSuccess } from "@/components/stripe/checkout-success";
+import { stripe } from "@/lib/stripe";
 import { QueryCounter } from "@/components/dashboard/query-counter";
 import Stripe from "stripe";
 
@@ -118,7 +118,9 @@ function IndustryRankingsTable({ brands }: IndustryRankingsTableProps) {
   return (
     <Card className="bg-background shadow-none border-[#e2e2e2]/70 dark:border-accent text-white">
       <CardHeader>
-        <CardTitle className="text-black dark:text-white">Brand Ranking</CardTitle>
+        <CardTitle className="text-black dark:text-white">
+          Brand Ranking
+        </CardTitle>
         <CardDescription>Brands ranked by visibility score</CardDescription>
       </CardHeader>
       <CardContent>
@@ -157,7 +159,10 @@ function IndustryRankingsTable({ brands }: IndustryRankingsTableProps) {
                   </TableRow>
                 ) : (
                   brands.map((entity, index) => (
-                    <TableRow key={index} className="dark:text-white text-black border-[#e2e2e2]/40 dark:border-accent">
+                    <TableRow
+                      key={index}
+                      className="dark:text-white text-black border-[#e2e2e2]/40 dark:border-accent"
+                    >
                       <TableCell className="font-medium">{index + 1}</TableCell>
                       <TableCell className="flex items-center gap-2">
                         {entity.brand_name}
@@ -191,6 +196,7 @@ interface UserSubscription {
   stripe_subscription_id: string;
   status: string;
   query_count: number;
+  monitoring_count: number;
   created_at: string;
   updated_at: string;
 }
@@ -200,12 +206,16 @@ function DashboardContent() {
   // All state declarations at the top
   const [sessionKey, setSessionKey] = useState("");
   const [user, setUser] = useState<User | null>(null);
-  const [subscription, setSubscription] = useState<UserSubscription | null>(null);
+  const [subscription, setSubscription] = useState<UserSubscription | null>(
+    null
+  );
   const [product, setProduct] = useState<Stripe.Product | null>(null);
-  const [selectedQuery, setSelectedQuery] = useState<ScheduledQuery | null>(null);
+  const [selectedQuery, setSelectedQuery] = useState<ScheduledQuery | null>(
+    null
+  );
   const [currentTime, setCurrentTime] = useState(new Date());
   const [onboardingStep, setOnboardingStep] = useState(0);
-  const [selectedPlan, setSelectedPlan] = useState('');
+  const [selectedPlan, setSelectedPlan] = useState("");
   const [brandName, setBrandName] = useState("");
   const [brandWebsite, setBrandWebsite] = useState("");
   const [brandIndustry, setBrandIndustry] = useState("");
@@ -218,11 +228,12 @@ function DashboardContent() {
   const [brands, setBrands] = useState<Brand[]>([]);
   const [selectedBrand, setSelectedBrand] = useState<Brand | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-
+  const [isLoading, setIsLoading] = useState(false);
+  const [subsLoading, setSubsLoading] = useState(false);
 
   const fetchBrands = async () => {
     try {
-      setLoading(true);
+      setIsLoading(true);
 
       // Get current user
       const {
@@ -231,7 +242,7 @@ function DashboardContent() {
 
       if (!user) {
         console.error("No authenticated user found");
-        setLoading(false);
+        setIsLoading(false);
         return;
       }
 
@@ -245,7 +256,7 @@ function DashboardContent() {
 
       if (error) {
         console.error("Error fetching brands:", error);
-        setLoading(false);
+        setIsLoading(false);
         return;
       }
 
@@ -259,10 +270,10 @@ function DashboardContent() {
         setShowBrandModal(true);
       }
 
-      setLoading(false);
+      setIsLoading(false);
     } catch (error) {
       console.error("Error:", error);
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
@@ -270,54 +281,72 @@ function DashboardContent() {
     fetchBrands();
   }, []);
 
-
-  
   // Plans configuration
   const plans = [
     {
-      id: 'free',
-      name: 'Free Trial',
-      price: '$0',
-      features: ["Country Monitoring", "Company Research", "SEO Keyword Analysis", "Brand Analysis"],
-      searches: '5 Searches',
-      monitoring: '0 Monitoring',
-      frequency: 'N/A',
+      id: "free",
+      name: "Free Trial",
+      price: "$0",
+      features: [
+        "Country Monitoring",
+        "Company Research",
+        "SEO Keyword Analysis",
+        "Brand Analysis",
+      ],
+      searches: "5 Searches",
+      monitoring: "0 Monitoring",
+      frequency: "N/A",
       recommended: false,
-      product_id: ''
+      product_id: "",
     },
     {
-      id: 'pro',
-      name: 'Pro Plan',
-      price: '$29/month',
-      features: ["Country Monitoring", "Company Research", "SEO Keyword Analysis", "Brand Analysis"],
-      searches: '30 Searches',
-      monitoring: '10 Monitoring',
-      frequency: '(Weekly only)',
+      id: "pro",
+      name: "Pro Plan",
+      price: "$29/month",
+      features: [
+        "Country Monitoring",
+        "Company Research",
+        "SEO Keyword Analysis",
+        "Brand Analysis",
+      ],
+      searches: "30 Searches",
+      monitoring: "10 Monitoring",
+      frequency: "(Weekly only)",
       recommended: false,
-      product_id: "price_1RRP3EFQrMIDoBVCh5GyR8s6"
+      product_id: "price_1RRP3EFQrMIDoBVCh5GyR8s6",
     },
     {
-      id: 'plus',
-      name: 'Plus Plan',
-      price: '$189/month',
-      features: ["Country Monitoring", "Company Research", "SEO Keyword Analysis", "Brand Analysis"],
-      searches: '300 Searches',
-      monitoring: '100 Monitoring',
-      frequency: '(Daily + Weekly)',
+      id: "plus",
+      name: "Plus Plan",
+      price: "$189/month",
+      features: [
+        "Country Monitoring",
+        "Company Research",
+        "SEO Keyword Analysis",
+        "Brand Analysis",
+      ],
+      searches: "300 Searches",
+      monitoring: "100 Monitoring",
+      frequency: "(Daily + Weekly)",
       recommended: true,
-      product_id: "price_1RRfOsFQrMIDoBVCpnaAjkZX"
+      product_id: "price_1RRfOsFQrMIDoBVCpnaAjkZX",
     },
     {
-      id: 'premium',
-      name: 'Premium Plan',
-      price: '$300/month',
-      features: ["Country Monitoring", "Company Research", "SEO Keyword Analysis", "Brand Analysis"],
-      searches: '900 Searches',
-      monitoring: '300 Monitoring',
-      frequency: '(Daily + Weekly)',
+      id: "premium",
+      name: "Premium Plan",
+      price: "$300/month",
+      features: [
+        "Country Monitoring",
+        "Company Research",
+        "SEO Keyword Analysis",
+        "Brand Analysis",
+      ],
+      searches: "900 Searches",
+      monitoring: "300 Monitoring",
+      frequency: "(Daily + Weekly)",
       recommended: false,
-      product_id: "price_1RRtvLFQrMIDoBVCxNAAW9sM"
-    }
+      product_id: "price_1RRtvLFQrMIDoBVCxNAAW9sM",
+    },
   ];
 
   // Update time every second
@@ -331,66 +360,76 @@ function DashboardContent() {
 
   useEffect(() => {
     const checkAuth = async () => {
+      setSubsLoading(true);
       const {
         data: { session },
         error,
       } = await supabase.auth.getSession();
-  
+
       if (error) {
         setUser(null);
         setSubscription(null);
+        setSubsLoading(false);
         return;
       }
-  
+
       if (!session) {
         if (window.location.pathname !== "/login") {
           router.push("/login");
         }
         setUser(null);
         setSubscription(null);
+        setSubsLoading(false);
       } else {
         setSessionKey(session.access_token || "");
         setUser(session.user);
-        
+        setSubsLoading(false);
         // Check subscription immediately after setting user
-        if(!subscription){
+        if (!subscription) {
           await checkSubs(session.user);
         }
       }
     };
-  
+
     const checkSubs = async (currentUser: User | null) => {
       if (!currentUser) return;
-      
+      setSubsLoading(true);
       try {
-        const { data: fetchedSubscriptionData, error: subscriptionError } = await supabase
-          .from("user_subscriptions")
-          .select("*")
-          .eq("user_id", currentUser.id)
-          .single();
-  
+        const { data: fetchedSubscriptionData, error: subscriptionError } =
+          await supabase
+            .from("user_subscriptions")
+            .select("*")
+            .eq("user_id", currentUser.id)
+            .single();
+
         if (subscriptionError) {
-          if (subscriptionError.code === 'PGRST116') {
+          if (subscriptionError.code === "PGRST116") {
             setSubscription(null);
           } else {
             setSubscription(null);
           }
+          setSubsLoading(false);
         } else {
           setSubscription(fetchedSubscriptionData);
-          const stripePrice = await stripe.prices.retrieve(fetchedSubscriptionData.price_id);
-          const stripeProduct = await stripe.products.retrieve(stripePrice.product as string)
+          const stripePrice = await stripe.prices.retrieve(
+            fetchedSubscriptionData.price_id
+          );
+          const stripeProduct = await stripe.products.retrieve(
+            stripePrice.product as string
+          );
           setProduct(stripeProduct);
           console.log("Product: ", stripeProduct);
+          setSubsLoading(false);
         }
       } catch (e) {
         setSubscription(null);
+      } finally {
+        setSubsLoading(false);
       }
     };
-  
+
     checkAuth();
   }, []);
-
-
 
   // Function to fetch scheduled queries for the dashboard
   const [queries, setQueries] = useState<ScheduledQuery[]>([]);
@@ -406,7 +445,9 @@ function DashboardContent() {
         const response = await fetch(`/api/monitoring?user_id=${user?.id}`);
 
         if (!response.ok) {
-          setError(`We could not fetch your scheduled queries. Please try again later.`);
+          setError(
+            `We could not fetch your scheduled queries. Please try again later.`
+          );
           throw new Error(
             `Error fetching scheduled queries: ${response.statusText}`
           );
@@ -421,7 +462,9 @@ function DashboardContent() {
           setQueries([]);
         }
       } catch (error) {
-        setError(`We could not fetch your scheduled queries. Please try again later.`);
+        setError(
+          `We could not fetch your scheduled queries. Please try again later.`
+        );
         console.error("Failed to fetch scheduled queries:", error);
         toast({
           title: "Error",
@@ -543,8 +586,7 @@ function DashboardContent() {
           // Filter by model if a specific model is selected
           ?.filter(
             (modelResult: { llm_name: string }) =>
-              selectedModel === "all" ||
-              modelResult.llm_name === selectedModel
+              selectedModel === "all" || modelResult.llm_name === selectedModel
           )
           // Extract brands from filtered model results
           .flatMap(
@@ -666,11 +708,7 @@ function DashboardContent() {
 
   // Effect to update analysis_brands based on selectedBrand
   useEffect(() => {
-    if (
-      !selectedModel ||
-      selectedModel === "all" ||
-      selectedModel === ""
-    ) {
+    if (!selectedModel || selectedModel === "all" || selectedModel === "") {
       setAnalysisBrands(allAnalysisBrands);
     } else {
       setAnalysisBrands(filteredAnalysisBrands);
@@ -692,7 +730,7 @@ function DashboardContent() {
     }
   }, [selectedQuery]);
 
-  if (loading) {
+  if (loading || subsLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="w-full max-w-3xl">
@@ -710,26 +748,21 @@ function DashboardContent() {
     );
   }
 
-
   const handleNextStep = () => {
-    setOnboardingStep(prev => prev + 1);
+    setOnboardingStep((prev) => prev + 1);
   };
 
   const handleSkip = () => {
     if (onboardingStep === 0) {
-      setSelectedPlan('free');
+      setSelectedPlan("free");
     }
-    setOnboardingStep(prev => prev + 1);
+    setOnboardingStep((prev) => prev + 1);
   };
 
   const handleStartSearching = () => {
     // Handle subscription creation with selected plan
-    router.push('/dashboard/search');
+    router.push("/dashboard/search");
   };
-
-
-
-
 
   const handleCreateBrand = async () => {
     if (!brandName || !brandWebsite || !brandIndustry) {
@@ -799,8 +832,6 @@ function DashboardContent() {
     }
   };
 
-  
-
   const analyzeBrand = async (brandId: string) => {
     try {
       setIsAnalyzing(true);
@@ -827,9 +858,11 @@ function DashboardContent() {
       }
       toast({
         title: "Brand analysis completed",
-        description: "We've analyzed your brand and you can view the results in the dashboard",
+        description:
+          "We've analyzed your brand and you can view the results in the dashboard",
         duration: 5000,
       });
+      setOnboardingStep((prev) => prev + 1);
       setIsAnalyzing(false);
     } catch (error) {
       console.error("Error analyzing brand:", error);
@@ -839,7 +872,7 @@ function DashboardContent() {
 
   // const handleAnalyze = async () => {
   //   if (!brand) return;
-    
+
   //   console.log("Selected Monitoring Frequency:", monitoringFrequency);
 
   //   setIsAnalyzing(true);
@@ -927,24 +960,28 @@ function DashboardContent() {
     }
   };
 
-  if (!loading && error && !subscription) {
+  if (!subsLoading && !loading && !subscription) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="w-full max-w-7xl p-8 bg-transparent rounded-lg shadow-lg">
           <div className="flex justify-between mb-16">
             {[1, 2, 3].map((step) => (
               <div key={step} className="flex flex-col items-center">
-                <div 
+                <div
                   className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 ${
-                    onboardingStep >= step - 1 
-                      ? 'bg-blue-500 text-white' 
-                      : 'bg-gray-800 text-gray-300'
+                    onboardingStep >= step - 1
+                      ? "bg-blue-500 text-white"
+                      : "bg-gray-800 text-gray-300"
                   }`}
                 >
                   {step}
                 </div>
                 <span className="text-sm text-gray-400">
-                  {step === 1 ? 'Select Plan' : step === 2 ? 'Your Brand' : 'Get Started'}
+                  {step === 1
+                    ? "Select Plan"
+                    : step === 2
+                    ? "Your Brand"
+                    : "Get Started"}
                 </span>
               </div>
             ))}
@@ -952,19 +989,27 @@ function DashboardContent() {
 
           {onboardingStep === 0 && (
             <div className="text-center">
-              <h2 className="text-3xl font-bold text-gray-200 mb-2">Choose Your Plan</h2>
-              <p className="text-gray-400 mb-18">Select the plan that best fits your needs</p>
-              
+              <h2 className="text-3xl font-bold text-gray-200 mb-2">
+                Choose Your Plan
+              </h2>
+              <p className="text-gray-400 mb-18">
+                Select the plan that best fits your needs
+              </p>
+
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 mb-8">
                 {plans.map((plan) => (
-                  <div 
+                  <div
                     key={plan.id}
                     className={`border border-neutral-600 rounded-lg p-4 transition-all hover:translate-y-[-5px] cursor-pointer relative ${
-                      selectedPlan === plan.product_id 
-                        ? 'outline-2 outline-blue-500 outline-offset-2' 
-                        : ''
-                    } ${plan.recommended ? 'bg-gradient-to-b from-background to-blue-500/50' : ''}`}
-                    onClick={() => setSelectedPlan(plan?.product_id || '')}
+                      selectedPlan === plan.product_id
+                        ? "outline-2 outline-blue-500 outline-offset-2"
+                        : ""
+                    } ${
+                      plan.recommended
+                        ? "bg-gradient-to-b from-background to-blue-500/50"
+                        : ""
+                    }`}
+                    onClick={() => setSelectedPlan(plan?.product_id || "")}
                   >
                     {plan.recommended && (
                       <div className="bg-blue-500 text-white text-xs font-bold px-3 py-1 rounded-t-full inline-block absolute top-0 left-0 right-0 -mt-4">
@@ -992,12 +1037,16 @@ function DashboardContent() {
                   </div>
                 ))}
               </div>
-              
+
               <div className="flex justify-between mt-8">
                 <Button variant="ghost" onClick={handleSkip}>
                   Skip for now (Free Trial)
                 </Button>
-                <Button className="bg-blue-600 hover:bg-blue-700" onClick={handleNextStep} disabled={!selectedPlan}>
+                <Button
+                  className="bg-blue-600 hover:bg-blue-700"
+                  onClick={handleNextStep}
+                  disabled={!selectedPlan}
+                >
                   Continue
                 </Button>
               </div>
@@ -1006,77 +1055,91 @@ function DashboardContent() {
 
           {onboardingStep === 1 && (
             <div className="text-center">
-              <h2 className="text-3xl font-bold text-gray-800 mb-2">Tell Us About Your Brand</h2>
-              <p className="text-gray-600 mb-8">This helps us personalize your experience (optional)</p>
-              
-              <div className="max-w-md mx-auto mb-8">
-              <div className="sm:max-w-[500px] overflow-hidden border-accent">
+              <h2 className="text-3xl font-bold text-gray-200 mb-2">
+                Tell Us About Your Brand
+              </h2>
+              <p className="text-gray-400 mb-8">
+                This helps us personalize your experience (optional)
+              </p>
 
-            <div className="p-6">
-              <div className="grid gap-6">
-                <div className="grid gap-2">
-                  <Label htmlFor="name">Name</Label>
-                  <Input
-                    id="name"
-                    value={brandName}
-                    placeholder="Acme Corporation"
-                    onChange={(e) => setBrandName(e.target.value)}
-                    className="bg-zinc-800"
-                    required
-                  />
-                </div>
+              {isAnalyzing ? (
+                   <div className="flex items-center justify-center min-h-[400px]">
+                   <div className="w-full max-w-3xl">
+                     <h1 className="text-2xl font-bold mb-6 text-center">
+                       Creating Brand Analysis
+                     </h1>
+                     <p className="text-muted-foreground mb-8 text-center">Analyzing...</p>
+                     <LoadingState />
+                   </div>
+                 </div>
+              ) : (
+<div className="max-w-md mx-auto mb-8">
+                <div className="sm:max-w-[500px] overflow-hidden border-accent">
+                  <div className="p-6">
+                    <div className="grid gap-6">
+                      <div className="grid gap-2">
+                        <Label htmlFor="name">Name</Label>
+                        <Input
+                          id="name"
+                          value={brandName}
+                          placeholder="Acme Corporation"
+                          onChange={(e) => setBrandName(e.target.value)}
+                          className="bg-zinc-800"
+                          required
+                        />
+                      </div>
 
-                <div className="grid gap-2">
-                  <Label htmlFor="website">Website</Label>
-                  <Input
-                    id="website"
-                    value={brandWebsite}
-                    onChange={(e) => setBrandWebsite(e.target.value)}
-                    className="bg-zinc-800"
-                    placeholder="https://example.com"
-                    required
-                  />
-                </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="website">Website</Label>
+                        <Input
+                          id="website"
+                          value={brandWebsite}
+                          onChange={(e) => setBrandWebsite(e.target.value)}
+                          className="bg-zinc-800"
+                          placeholder="https://example.com"
+                          required
+                        />
+                      </div>
 
-                <div className="grid gap-2">
-                  <Label htmlFor="industry">Industry</Label>
-                  <Select
-                    value={brandIndustry}
-                    onValueChange={setBrandIndustry}
-                  >
-                    <SelectTrigger className="bg-zinc-800 w-full">
-                      <SelectValue placeholder="Select industry" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {INDUSTRIES.map((industry) => (
-                        <SelectItem key={industry} value={industry}>
-                          {industry}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="industry">Industry</Label>
+                        <Select
+                          value={brandIndustry}
+                          onValueChange={setBrandIndustry}
+                        >
+                          <SelectTrigger className="bg-zinc-800 w-full">
+                            <SelectValue placeholder="Select industry" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {INDUSTRIES.map((industry) => (
+                              <SelectItem key={industry} value={industry}>
+                                {industry}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
 
-                <div className="grid gap-2">
-                  <Label htmlFor="logo">Logo</Label>
-                  <div className="flex items-center gap-4">
-                    <input
-                      ref={fileInputRef}
-                      id="logo"
-                      type="file"
-                      accept="image/*"
-                      onChange={handleFileChange}
-                      className="hidden"
-                    />
+                      <div className="grid gap-2">
+                        <Label htmlFor="logo">Logo</Label>
+                        <div className="flex items-center gap-4">
+                          <input
+                            ref={fileInputRef}
+                            id="logo"
+                            type="file"
+                            accept="image/*"
+                            onChange={handleFileChange}
+                            className="hidden"
+                          />
 
-                    {!brandLogoPreview ? (
-                      <div
-                        onClick={openFileDialog}
-                        onDragEnter={handleDragEnter}
-                        onDragOver={handleDragOver}
-                        onDragLeave={handleDragLeave}
-                        onDrop={handleFileDrop}
-                        className={`
+                          {!brandLogoPreview ? (
+                            <div
+                              onClick={openFileDialog}
+                              onDragEnter={handleDragEnter}
+                              onDragOver={handleDragOver}
+                              onDragLeave={handleDragLeave}
+                              onDrop={handleFileDrop}
+                              className={`
                           h-32 w-full rounded-md border-2 border-dashed 
                           flex flex-col items-center justify-center p-4 
                           cursor-pointer transition-all duration-200
@@ -1086,68 +1149,75 @@ function DashboardContent() {
                               : "border-zinc-700 bg-zinc-800 hover:border-zinc-500"
                           }
                         `}
-                      >
-                        <div className="flex flex-col items-center text-center">
-                          <CloudUpload className="w-5 h-5 text-zinc-400 mb-2" />
-                          <div className="font-medium text-sm mb-1">
-                            Click to upload
-                          </div>
-                          <div className="text-xs text-zinc-400">
-                            or drag and drop your logo here
-                          </div>
-                          <div className="text-[10px] text-zinc-500 mt-3">
-                            PNG, JPG or SVG (max 5MB)
-                          </div>
+                            >
+                              <div className="flex flex-col items-center text-center">
+                                <CloudUpload className="w-5 h-5 text-zinc-400 mb-2" />
+                                <div className="font-medium text-sm mb-1">
+                                  Click to upload
+                                </div>
+                                <div className="text-xs text-zinc-400">
+                                  or drag and drop your logo here
+                                </div>
+                                <div className="text-[10px] text-zinc-500 mt-3">
+                                  PNG, JPG or SVG (max 5MB)
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="w-full flex flex-col items-center">
+                              <div className="w-28 h-28 p-3 rounded-md overflow-hidden bg-zinc-700 flex items-center justify-center mb-3">
+                                <Image
+                                  src={brandLogoPreview}
+                                  alt="Preview"
+                                  width={50}
+                                  height={50}
+                                  className="w-full h-full object-contain"
+                                />
+                              </div>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={openFileDialog}
+                                className="mt-2"
+                              >
+                                <CloudUpload className="w-4 h-4 mr-2" />
+                                Change Logo
+                              </Button>
+                            </div>
+                          )}
                         </div>
                       </div>
-                    ) : (
-                      <div className="w-full flex flex-col items-center">
-                        <div className="w-28 h-28 p-3 rounded-md overflow-hidden bg-zinc-700 flex items-center justify-center mb-3">
-                          <Image
-                            src={brandLogoPreview}
-                            alt="Preview"
-                            width={50}
-                            height={50}
-                            className="w-full h-full object-contain"
-                          />
-                        </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={openFileDialog}
-                          className="mt-2"
-                        >
-                          <CloudUpload className="w-4 h-4 mr-2" />
-                          Change Logo
-                        </Button>
-                      </div>
-                    )}
+                    </div>
+                  </div>
+
+                  <div className="px-6 py-4">
+                    <Button
+                      onClick={handleCreateBrand}
+                      disabled={submitting}
+                      className="w-full"
+                    >
+                      {submitting ? "Creating..." : "Create Brand"}
+                    </Button>
                   </div>
                 </div>
               </div>
-            </div>
-
-            <div className="px-6 py-4">
-              <Button
-                onClick={handleCreateBrand}
-                disabled={submitting}
-                className="w-full"
-              >
-                {submitting ? "Creating..." : "Create Brand"}
-              </Button>
-            </div>
-          </div>
-              </div>
+              )}
               
+
+
               <div className="flex justify-between mt-8">
-                <Button variant="outline" onClick={() => setOnboardingStep(0)}>
+                <Button variant="outline" onClick={() => setOnboardingStep(0)} disabled={isAnalyzing}>
                   Back
                 </Button>
                 <div className="space-x-4">
-                  <Button variant="ghost" onClick={handleSkip}>
+                  <Button variant="ghost" onClick={handleSkip} disabled={isAnalyzing}>
                     Skip
                   </Button>
-                  <Button className="bg-blue-600 hover:bg-blue-700" onClick={handleNextStep}>
+                  <Button
+                    className="bg-blue-600 hover:bg-blue-700"
+                    onClick={handleNextStep}
+                    disabled={isAnalyzing}
+                  >
                     Continue
                   </Button>
                 </div>
@@ -1156,26 +1226,27 @@ function DashboardContent() {
           )}
 
           {onboardingStep === 2 && (
-            <div className="text-center">
-              <div className="bg-green-50 text-green-700 p-4 rounded-lg inline-block mb-6">
-                <div className="flex items-center">
-                  <CheckCircle className="w-6 h-6 mr-2" />
-                  <span className="font-medium">You&apos;re all set!</span>
-                </div>
-              </div>
-              
-              <h2 className="text-3xl font-bold text-gray-800 mb-4">Ready to Get Started?</h2>
-              <p className="text-gray-600 mb-8 max-w-2xl mx-auto">
-                You&apos;ve chosen the <span className="font-semibold">
-                  {plans.find(p => p.id === selectedPlan)?.name}
-                </span> plan. You can always upgrade or change your plan later in settings.
+            <div className="text-center items-center flex flex-col">
+              <h2 className="text-3xl font-bold text-gray-300 mb-4">
+                Ready to Get Started?
+              </h2>
+              <p className="text-gray-500 mb-8 max-w-2xl mx-auto">
+                You&apos;ve chosen the{" "}
+                <span className="font-bold">
+                  {plans.find((p) => p.product_id === selectedPlan)?.name}
+                </span>{" "}
+                plan. You can always upgrade or change your plan later in
+                settings.
               </p>
-              
-              <div className="space-y-4 max-w-md mx-auto">
-                <CheckoutButton priceId={selectedPlan || ''} userId={user?.id || ''} buttonText="Continue to payments" />
-                <Button 
-                  variant="outline" 
-                  className="w-full"
+
+              <div className="max-w-md mx-auto flex gap-4">
+                <CheckoutButton
+                  priceId={selectedPlan || ""}
+                  userId={user?.id || ""}
+                  buttonText="Continue to payments"
+                />
+                <Button
+                  variant="outline"
                   onClick={handleStartSearching}
                 >
                   Try BrandScope for free
@@ -1188,13 +1259,28 @@ function DashboardContent() {
     );
   }
 
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen gap-4">
+        <div className="text-center text-red-500">
+          Error fetching Dashboard Data
+        </div>
+        <p>
+          We apologize but at the moment, we were unable to fetch your dashboard
+          data. Please try again later.
+        </p>
+        <Button variant="outline" onClick={() => router.refresh()}>
+          Refresh
+        </Button>
+      </div>
+    );
+  }
   return (
     <div className="flex flex-col h-full">
       <CheckoutSuccess />
 
-
       <div className="container mx-auto px-4 py-4">
-      <QueryCounter product={product} subscription={subscription} />
+        <QueryCounter product={product} subscription={subscription} />
         <AnimatePresence mode="wait">
           <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -1240,7 +1326,7 @@ function DashboardContent() {
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="outline" className="w-fit">
-                          {getDisplayValue()} 
+                          {getDisplayValue()}
                           <span>
                             <ChevronDown className="w-4 h-4 opacity-40" />
                           </span>
@@ -1336,7 +1422,10 @@ function DashboardContent() {
                   )}
                 </AnimatePresence>
 
-                <MetricsHeader brands={brandMentionsInSummaries} selectedBrand={selectedBrands} />
+                <MetricsHeader
+                  brands={brandMentionsInSummaries}
+                  selectedBrand={selectedBrands}
+                />
                 {/* Industry Ranking Table - Full width */}
                 <div className="lg:col-span-2">
                   <IndustryRankingsTable brands={brandMentionsInSummaries} />

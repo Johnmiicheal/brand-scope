@@ -58,7 +58,6 @@ interface ChartData {
 }
 
 interface SearchResults {
-  search_id: string;
   mode: string;
   mode_id: string;
   ai_rankings: AIRanking[];
@@ -144,9 +143,6 @@ const searchRequestSchema = z.object({
   mode: z.enum(analysisModes),
   user_id: z.string().uuid(),
   query: z.string(),
-  brand_name: z.string(),
-  brand_industry: z.string(),
-  brand_id: z.string().uuid(),
   location: z.string().optional(),
 });
 
@@ -236,7 +232,7 @@ serve(async (req) => {
     const body = await req.json();
     
     // Validate request body
-    const { mode, user_id, query, brand_name, brand_industry, brand_id, location } =
+    const { mode, user_id, query, location } =
       searchRequestSchema.parse(body);
 
     // Generate shared IDs for this search session
@@ -246,17 +242,17 @@ serve(async (req) => {
     // Run mode-specific analysis
     let results;
     try {
+      if(!mode_id){
+        throw new Error("Mode ID is required");
+      }
+      
       if (mode === "Voyager") {
-        results = await voyagerAnalysis(user_id, query, mode_id, search_id, location);
+        results = await voyagerAnalysis(user_id, query, mode_id, location);
       } else if (mode === "Explorer") {
         results = await explorerAnalysis(
           user_id,
           query,
           mode_id,
-          search_id,
-          brand_name,
-          brand_industry,
-          brand_id,
           location
         );
       } else {
@@ -429,12 +425,11 @@ export async function explorerAnalysis(
   user_id: string, 
   query: string,
   mode_id: string,
-  search_id: string,
-  brand_name: string,
-  brand_industry: string,
-  brand_id: string,
   location: string  
 ): Promise<SearchResults> {
+  if(!mode_id){
+    throw new Error("Mode ID is required - Cannot be undefined");
+  }
   // Call the search-google endpoint after mode_id is defined
   await callSearchGoogleEndpoint(query, mode_id, user_id, location);
   
@@ -752,7 +747,6 @@ export async function explorerAnalysis(
 
   // 6. Return results
   return {
-    search_id,
     mode: "Explorer",
     mode_id,
     ai_rankings: finalRankings, // Use the rankings derived from text extraction
@@ -821,10 +815,6 @@ serve(async (req) => {
       user_id,
       query,
       mode_id,
-      search_id,
-      brand_name,
-      brand_industry,
-      brand_id,
     } = await req.json();
     
     if (!user_id || !query || !brand_name) {
@@ -841,10 +831,6 @@ serve(async (req) => {
       user_id,
       query,
       mode_id,
-      search_id,
-      brand_name,
-      brand_industry,
-      brand_id
     );
 
     return new Response(JSON.stringify(results), { headers });
@@ -862,9 +848,11 @@ export async function voyagerAnalysis(
   user_id: string, 
   query: string,
   mode_id: string,
-  search_id: string, 
   location: string
 ): Promise<SearchResults> {
+  if(!mode_id){
+    throw new Error("Mode ID is required - Cannot be undefined");
+  }
   // Call the search-google endpoint after mode_id is defined
   await callSearchGoogleEndpoint(query, mode_id, user_id, location);
   
@@ -1168,7 +1156,6 @@ export async function voyagerAnalysis(
   }
 
   return {
-    search_id,
     mode: "Voyager",
     mode_id,
     ai_rankings: rankings,

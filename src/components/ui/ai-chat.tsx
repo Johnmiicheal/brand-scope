@@ -14,6 +14,7 @@ import {
   Search,
   Repeat,
   MapPin,
+  Loader2,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "@/components/ui/use-toast";
@@ -39,11 +40,14 @@ import {
 } from "@/components/ui/popover";
 import { Button } from "./button";
 import { motion } from "framer-motion";
-import { useAuth } from "@/hooks/useAuth";
+import { UserSubscription } from "@/hooks/useAuth";
 import { LoadingState } from "../loading-state";
 import { useBrandData } from "@/contexts/brand-data-context";
 import { domains } from "@/types/domains";
 import { QueryCounter } from "../dashboard/query-counter";
+import { User } from "@supabase/supabase-js";
+import Stripe from "stripe";
+import { getConstraints } from "@/lib/constraints";
 
 interface UseAutoResizeTextareaProps {
   minHeight: number;
@@ -98,10 +102,18 @@ function useAutoResizeTextarea({
   return { textareaRef, adjustHeight };
 }
 
-export function AIChatInterface() {
+interface AIChatInterfaceProps {
+  user: User | null;
+  session: string;
+  product: Stripe.Product | null;
+  subscription: UserSubscription | null;
+  isLoading: boolean;
+}
+
+export function AIChatInterface({ user, session, product, subscription, isLoading }: AIChatInterfaceProps) {
   const router = useRouter();
   const [value, setValue] = useState("");
-  const { user, session, product, subscription } = useAuth();
+
   const { brand } = useBrandData();
   const [mode, setMode] = useState<AnalysisMode>("Explorer");
   const [loading, setLoading] = useState(false);
@@ -110,7 +122,6 @@ export function AIChatInterface() {
   const [monitorFrequency, setMonitorFrequency] = useState<"daily" | "weekly">(
     "daily"
   );
-  
   const [open, setOpen] = useState(false);
   const [location, setLocation] = useState("");
   const { textareaRef, adjustHeight } = useAutoResizeTextarea({
@@ -157,6 +168,27 @@ export function AIChatInterface() {
     }
   };
 
+  const updateQueryCount = async () => {
+    if(!subscription) return;
+
+    const updatedSubscription = await fetch("/api/update-query-count", {
+      method: "POST",
+      body: JSON.stringify({
+        user: user,
+        subscription: subscription,
+        isMonitoringMode: isMonitoringMode,
+      }),
+    })
+
+    if(!updatedSubscription.ok){
+      toast({
+        title: "Error",
+        description: "Failed to update query count. Please try again later.",
+        variant: "destructive",
+      });
+    }
+  }
+
   const handleSubmit = async () => {
     if (!value.trim()) {
       toast({
@@ -178,6 +210,52 @@ export function AIChatInterface() {
       return;
     }
 
+    if (!subscription) {
+      toast({
+        title: "Error",
+        description: "Subscription plan could not be found. Please contact support or try again later.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (subscription.status !== "active") {
+      toast({
+        title: "Error",
+        description: "Your subscription is not active or has expired. Please upgrade to continue.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if(!product){
+      toast({
+        title: "Error",
+        description: "Subscription plan could not be found. Please contact support or try again later.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const userConstraint = getConstraints(product.name)
+
+    if(subscription.query_count >= userConstraint.max_queries){
+      toast({
+        title: "Error",
+        description: "You have reached the maximum number of queries for your plan. Please upgrade to continue.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if(isMonitoringMode && subscription.monitoring_count >= userConstraint.max_scheduled_queries){
+      toast({
+        title: "Error",
+        description: "You have reached the maximum number of scheduled queries for your plan. Please upgrade to continue.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
       setLoading(true);
@@ -212,8 +290,9 @@ export function AIChatInterface() {
           title: "Query Scheduled",
           description: `Your query has been scheduled for ${monitorFrequency} monitoring. Check the Monitoring tab for details.`,
         });
+        updateQueryCount();
         setTimeout(() => {
-          router.push(`/dashboard/library`);
+          window.location.assign(`/dashboard/library`);
         }, 400);
         setValue(""); // Clear input
         adjustHeight(true);
@@ -230,9 +309,9 @@ export function AIChatInterface() {
             mode,
             user_id: user.id,
             query: value.trim(),
-            brand_name: brand?.name, // Use optional chaining
-            brand_industry: brand?.industry, // Use optional chaining
-            brand_id: brand?.id, // Use optional chaining
+            brand_name: brand?.name || "No Brand Name", // Use optional chaining
+            brand_industry: brand?.industry || "No Brand Industry", // Use optional chaining
+            brand_id: brand?.id || "No Brand ID", // Use optional chaining
             location: location,
           }),
         });
@@ -249,7 +328,7 @@ export function AIChatInterface() {
             throw new Error(`HTTP error! status: ${response.status}`);
           }
         }
-
+        updateQueryCount();
         // Handle streaming response (or adjust if backend changes)
         const reader = response.body?.getReader();
         if (!reader) {
@@ -669,7 +748,7 @@ export function AIChatInterface() {
               year: "numeric",
             })}
           />
-          <QueryCounter product={product} subscription={subscription} />
+          {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <QueryCounter product={product} subscription={subscription} isMonitoringMode={isMonitoringMode} />}
         </div>
       </div>
 

@@ -9,6 +9,7 @@ interface UserSubscription {
     stripe_subscription_id: string;
     status: string;
     query_count: number;
+    monitoring_count: number;
     created_at: string;
     updated_at: string;
   }
@@ -16,9 +17,10 @@ interface UserSubscription {
 interface QueryCounterProps {
     product: Stripe.Product | null;
     subscription: UserSubscription | null;
+    isMonitoringMode?: boolean;
 }
 
-export const QueryCounter = ({ product, subscription }: QueryCounterProps) => {
+export const QueryCounter = ({ product, subscription, isMonitoringMode=true }: QueryCounterProps) => {
     if (!product || !subscription) {
         return null;
     }
@@ -26,13 +28,14 @@ export const QueryCounter = ({ product, subscription }: QueryCounterProps) => {
     const productName = product.name;
     const constraints = getConstraints(productName);
     const userCount = subscription.query_count
+    const monitoringCount = subscription.monitoring_count
 
     return(
         <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between w-full">
                 <div className="flex gap-1 items-center">
                     {[...Array(5)].map((_, index) => {
-                        const percentage = (userCount / constraints.max_scheduled_queries) * 100;
+                        const percentage = (isMonitoringMode ? monitoringCount : userCount / (isMonitoringMode ? constraints.max_scheduled_queries : constraints.max_queries)) * 100;
                         const barFillPercentage = (percentage / 100) * 5;
                         const isActive = index < barFillPercentage;
                         
@@ -46,7 +49,7 @@ export const QueryCounter = ({ product, subscription }: QueryCounterProps) => {
                         );
                     })}
                     <p className="text-sm text-gray-500 dark:text-gray-400 ml-2">
-                        {userCount} of {constraints.max_scheduled_queries} prompts used
+                        {isMonitoringMode ? monitoringCount : userCount} of {isMonitoringMode ? constraints.max_scheduled_queries : constraints.max_queries} prompts used
                     </p>
                 </div>
             </div>

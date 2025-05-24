@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
-import { Loader2 } from 'lucide-react';
+import { CreditCard, Loader2 } from 'lucide-react';
 
 interface CheckoutButtonProps {
   priceId: string;
@@ -64,7 +64,9 @@ export function CheckoutButton({
       onClick={handleCheckout}
       disabled={isLoading}
       variant={variant}
+      className="bg-blue-600 hover:bg-blue-700"
     >
+      <CreditCard className="h-4 w-4" />
       {isLoading ? (
         <>
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />

@@ -4,12 +4,14 @@ import { useState, useEffect } from "react";
 import { useBrandData } from "@/contexts/brand-data-context";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { BicepsFlexed, Lightbulb, RefreshCcw, SquareArrowOutUpRight, TrendingDown, Zap } from "lucide-react";
+import { BicepsFlexed, Info, Lightbulb, RefreshCcw, SquareArrowOutUpRight, TrendingDown, Zap } from "lucide-react";
 import { LoadingState } from "@/components/loading-state";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Skeleton } from "@/components/ui/skeleton";
 import Image from "next/image";
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { CreateBrandModal } from "@/components/dashboard/create-brand-modal";
 
 // Define the structure for a single AI suggestion
 interface AISuggestion {
@@ -24,7 +26,7 @@ export default function BrandImprovementPage() {
   const [suggestions, setSuggestions] = useState<AISuggestion[]>([]);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const [suggestionsError, setSuggestionsError] = useState<string | null>(null);
-
+  const [showBrandModal, setShowBrandModal] = useState(false);
   useEffect(() => {
     if (metrics && metrics.strengths && metrics.weaknesses && metrics.opportunities) {
       const fetchSuggestions = async () => {
@@ -68,7 +70,23 @@ export default function BrandImprovementPage() {
 
   // Handle error state for metrics
   if (metricsError || !metrics) {
-    return <div className="text-center text-red-500">Error loading brand data: {metricsError || "Metrics not available"}</div>;
+   return(
+    <div className="flex flex-col items-center justify-center h-screen gap-4">
+    <div className="text-center text-red-500">
+      Error loading brand data:{" "}
+      {metricsError || "Metrics or Brand not available"}
+    </div>
+    <h2 className="text-muted-foreground flex items-center gap-2">
+      <Info className="w-4 h-4" />
+      You might not have any brands created yet. Create a new brand to get
+      started.
+    </h2>
+    <Button variant="outline" className="mt-4" onClick={() => setShowBrandModal(true)}>
+      Create Brand
+    </Button>
+    <CreateBrandModal showBrandModal={showBrandModal} setShowBrandModal={setShowBrandModal} />
+  </div>
+   )
   }
 
   const { strengths, weaknesses, opportunities } = metrics;

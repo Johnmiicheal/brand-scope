@@ -2,7 +2,7 @@ import Stripe from 'stripe';
 
 // Check for environment variables at runtime, not during module initialization
 export const getStripe = () => {
-  const key = process.env.STRIPE_SECRET_KEY! as string;
+  const key = process.env.NEXT_PUBLIC_STRIPE_SECRET_KEY!
   if (!key) {
     throw new Error('STRIPE_SECRET_KEY is not defined in environment variables');
   }
