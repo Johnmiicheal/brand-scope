@@ -97,7 +97,7 @@ export function useAuth() {
     return () => {
       authListener?.subscription.unsubscribe();
     };
-  }, [subscription, user]);
+  }, []);
 
   return { user, session, isLoading, product, subscription };
 } 

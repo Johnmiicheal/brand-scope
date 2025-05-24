@@ -468,7 +468,7 @@ export async function GET(request: NextRequest) {
       return new Response(`
         <html>
           <head>
-            <title>Brand Scope API - Search</title>
+            <title>AI Rankia API - Search</title>
             <style>
               body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif; line-height: 1.6; color: #333; max-width: 800px; margin: 0 auto; padding: 20px; }
               pre { background: #f4f4f4; padding: 15px; border-radius: 5px; overflow-x: auto; }
@@ -477,7 +477,7 @@ export async function GET(request: NextRequest) {
             </style>
           </head>
           <body>
-            <h1>Brand Scope API - Search Endpoint</h1>
+            <h1>AI Rankia API - Search Endpoint</h1>
             <p>This is a REST API endpoint that requires authentication. You cannot access it directly from a browser.</p>
             
             <h2>How to use this API:</h2>

@@ -231,55 +231,55 @@ function DashboardContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [subsLoading, setSubsLoading] = useState(false);
 
-  const fetchBrands = async () => {
-    try {
-      setIsLoading(true);
+  // const fetchBrands = async () => {
+  //   try {
+  //     setIsLoading(true);
 
-      // Get current user
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+  //     // Get current user
+  //     const {
+  //       data: { user },
+  //     } = await supabase.auth.getUser();
 
-      if (!user) {
-        console.error("No authenticated user found");
-        setIsLoading(false);
-        return;
-      }
+  //     if (!user) {
+  //       console.error("No authenticated user found");
+  //       setIsLoading(false);
+  //       return;
+  //     }
 
-      // Fetch brands where user_id matches and website and logo are not empty
-      const { data, error } = await supabase
-        .from("brands")
-        .select("*")
-        .eq("user_id", user.id)
-        .not("website", "is", null)
-        .not("logo_url", "is", null);
+  //     // Fetch brands where user_id matches and website and logo are not empty
+  //     const { data, error } = await supabase
+  //       .from("brands")
+  //       .select("*")
+  //       .eq("user_id", user.id)
+  //       .not("website", "is", null)
+  //       .not("logo_url", "is", null);
 
-      if (error) {
-        console.error("Error fetching brands:", error);
-        setIsLoading(false);
-        return;
-      }
+  //     if (error) {
+  //       console.error("Error fetching brands:", error);
+  //       setIsLoading(false);
+  //       return;
+  //     }
 
-      setBrands(data || []);
+  //     setBrands(data || []);
 
-      // Set the first brand as selected if available
-      if (data && data.length > 0) {
-        setSelectedBrand(data[0]);
-      } else {
-        // Show brand creation modal if no valid brands exist
-        setShowBrandModal(true);
-      }
+  //     // Set the first brand as selected if available
+  //     if (data && data.length > 0) {
+  //       setSelectedBrand(data[0]);
+  //     } else {
+  //       // Show brand creation modal if no valid brands exist
+  //       setShowBrandModal(true);
+  //     }
 
-      setIsLoading(false);
-    } catch (error) {
-      console.error("Error:", error);
-      setIsLoading(false);
-    }
-  };
+  //     setIsLoading(false);
+  //   } catch (error) {
+  //     console.error("Error:", error);
+  //     setIsLoading(false);
+  //   }
+  // };
 
-  useEffect(() => {
-    fetchBrands();
-  }, []);
+  // useEffect(() => {
+  //   fetchBrands();
+  // }, []);
 
   // Plans configuration
   const plans = [
@@ -819,8 +819,6 @@ function DashboardContent() {
       setBrandIndustry("");
       setBrandLogo(null);
       setBrandLogoPreview(null);
-
-      fetchBrands();
 
       // Trigger brand analysis
       await analyzeBrand(brandId);

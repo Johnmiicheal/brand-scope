@@ -111,7 +111,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   <Command className="size-4" />
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">Brand Scope</span>
+                  <span className="truncate font-medium">AI Rankia</span>
                   <span className="truncate text-xs">AI-Powered Analytics</span>
                 </div>
               </a>

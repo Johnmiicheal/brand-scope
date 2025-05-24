@@ -37,7 +37,7 @@ export default function Home() {
       <div className="max-w-[1920px] flex flex-col relative h-full items-center mx-auto">
         <header className="bg-background container mx-auto py-6 flex justify-between items-center">
           <div className="flex items-center gap-2">
-            <span className="text-xl font-bold">Brand Scope</span>
+            <span className="text-xl font-bold">AI Rankia</span>
           </div>
           <div className="flex gap-4 items-center">
             <Link href="/login" className="text-sm font-medium hover:underline">
@@ -93,7 +93,7 @@ export default function Home() {
                 src="/bs-hero-dash.png"
                 width={2400}
                 height={1350}
-                alt="Brand Scope Dashboard"
+                alt="AI Rankia Dashboard"
                 className="w-full relative"
               />
               <div
@@ -263,7 +263,7 @@ export default function Home() {
                 src="/mask-ship-new.png"
                 width={800}
                 height={1080}
-                alt="brand scope"
+                alt="AI Rankia"
                 className="opacity-70"
               />
             </motion.div>
@@ -548,7 +548,7 @@ export default function Home() {
                 </AccordionItem>
                 <AccordionItem value="item-2" className="">
                   <AccordionTrigger className="text-left hover:no-underline text-base md:text-lg">
-                    How does Brand Scope analyze my brand?
+                    How does AI Rankia analyze my brand?
                   </AccordionTrigger>
                   <AccordionContent className="text-neutral-400 text-sm md:text-base">
                     We use multiple leading AI models to simulate user queries
@@ -585,7 +585,7 @@ export default function Home() {
           <section className="py-20 text-center relative overflow-hidden">
             <div className=" w-full bg-background flex flex-col items-center justify-center overflow-hidden rounded-md">
               <h1 className="md:text-7xl text-3xl lg:text-9xl font-bold text-center text-white relative z-20">
-                Brand Scope
+                AI Rankia
               </h1>
               <div className="w-[40rem] h-40 relative">
                 {/* Gradients */}
@@ -615,7 +615,7 @@ export default function Home() {
         <footer className="w-full border-t  py-6">
           <div className="container mx-auto flex flex-col md:flex-row justify-between items-center text-sm text-neutral-500">
             <span>
-              &copy; {new Date().getFullYear()} Brand Scope. All rights
+              &copy; {new Date().getFullYear()} AI Rankia. All rights
               reserved.
             </span>
             <div className="flex space-x-4 mt-4 md:mt-0">
