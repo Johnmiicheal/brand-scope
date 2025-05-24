@@ -108,9 +108,10 @@ interface AIChatInterfaceProps {
   product: Stripe.Product | null;
   subscription: UserSubscription | null;
   isLoading: boolean;
+  monitoring?: string | null;
 }
 
-export function AIChatInterface({ user, session, product, subscription, isLoading }: AIChatInterfaceProps) {
+export function AIChatInterface({ user, session, product, subscription, isLoading, monitoring }: AIChatInterfaceProps) {
   const router = useRouter();
   const [value, setValue] = useState("");
 
@@ -118,7 +119,7 @@ export function AIChatInterface({ user, session, product, subscription, isLoadin
   const [mode, setMode] = useState<AnalysisMode>("Explorer");
   const [loading, setLoading] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [isMonitoringMode, setIsMonitoringMode] = useState(false);
+  const [isMonitoringMode, setIsMonitoringMode] = useState(monitoring === "true" ? true : false);
   const [monitorFrequency, setMonitorFrequency] = useState<"daily" | "weekly">(
     "daily"
   );

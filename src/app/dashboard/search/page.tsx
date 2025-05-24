@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Settings } from "lucide-react";
 import { AIChatInterface } from "@/components/ui/ai-chat";
 import { useAuth } from "@/hooks/useAuth";
+import { useSearchParams } from "next/navigation";
 
 const fadeIn = {
   initial: { opacity: 0, y: 10 },
@@ -14,6 +15,8 @@ const fadeIn = {
 
 export default function AISearchPage() {
   const { user, session, product, subscription, isLoading } = useAuth();
+  const searchParams = useSearchParams();
+  const monitoring = searchParams.get("monitoring");
   return (
     <div className="h-full text-white">
       <div className="relative">
@@ -72,7 +75,7 @@ export default function AISearchPage() {
               }}
               className="relative"
             >
-              <AIChatInterface user={user} session={session} product={product} subscription={subscription} isLoading={isLoading} />
+              <AIChatInterface user={user} session={session} product={product} subscription={subscription} isLoading={isLoading} monitoring={monitoring} />
             </motion.div>
           </div>
         </div>

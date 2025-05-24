@@ -29,6 +29,7 @@ import {
   Clock9,
   CloudUpload,
   RefreshCcw,
+  Settings,
   SquareArrowOutUpRight,
   Star,
 } from "lucide-react";
@@ -1278,7 +1279,14 @@ function DashboardContent() {
       <CheckoutSuccess />
 
       <div className="container mx-auto px-4 py-4">
-        <QueryCounter product={product} subscription={subscription} />
+        <div className="flex justify-between items-center">
+          <QueryCounter product={product} subscription={subscription} />
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => window.location.assign("/dashboard/search?monitoring=true")}>
+              Start Monitoring
+            </Button>
+          </div>
+        </div>
         <AnimatePresence mode="wait">
           <motion.div
             initial={{ opacity: 0, y: 10 }}
