@@ -1,5 +1,5 @@
 {
-  "name": "brand-scope",
+  "name": "airankia",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -69,6 +69,8 @@
     "react-spring": "^9.7.5",
     "react-tweet": "^3.2.2",
     "recharts": "^2.15.1",
+    "remark-gfm": "^4.0.1",
+    "sonner": "^2.0.3",
     "stripe": "^18.1.1",
     "supabase": "^2.20.5",
     "tailwind-merge": "^3.0.2",

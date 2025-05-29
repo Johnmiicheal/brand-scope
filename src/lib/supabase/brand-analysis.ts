@@ -1,9 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || 'mock-supabase-url',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || 'mock-service-role-key'
-);
+import { supabase } from '@/lib/supabase';
 
 export type AnalysisMode = 'DeepFocus' | 'Voyager' | 'Explorer';
 
@@ -31,7 +26,7 @@ export interface CompetitorAnalysis {
   sentiment: SentimentScore;
 }
 
-export interface BrandAnalysis {
+export interface BrandAnalysis extends Record<string, unknown> {
   id?: string;
   brand_id: string;
   user_id: string;

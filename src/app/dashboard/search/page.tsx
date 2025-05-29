@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from 'react';
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Settings } from "lucide-react";
@@ -13,10 +14,19 @@ const fadeIn = {
   exit: { opacity: 0, y: -10 },
 };
 
-export default function AISearchPage() {
+function SearchContent() {
   const { user, session, product, subscription, isLoading } = useAuth();
   const searchParams = useSearchParams();
   const monitoring = searchParams.get("monitoring");
+
+  if (isLoading) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="h-full text-white">
       <div className="relative">
@@ -75,11 +85,31 @@ export default function AISearchPage() {
               }}
               className="relative"
             >
-              <AIChatInterface user={user} session={session} product={product} subscription={subscription} isLoading={isLoading} monitoring={monitoring} />
+              <AIChatInterface 
+                user={user} 
+                session={session} 
+                product={product} 
+                subscription={subscription} 
+                isLoading={isLoading} 
+                monitoring={monitoring} 
+              />
             </motion.div>
           </div>
+          
         </div>
       </div>
     </div>
+  );
+}
+
+export default function AISearchPage() {
+  return (
+    <Suspense fallback={
+      <div className="h-full flex items-center justify-center">
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    }>
+      <SearchContent />
+    </Suspense>
   );
 }

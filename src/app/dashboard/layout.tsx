@@ -1,7 +1,6 @@
 "use client";
 
 import { ReactNode, useEffect } from "react";
-import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { AppSidebar } from "@/components/app-sidebar";
 import {
   Breadcrumb,
@@ -36,14 +35,14 @@ function BreadcrumbNav() {
 
         return (
           <div key={path} className="flex items-center">
-            <BreadcrumbItem className="hidden md:block">
+            <BreadcrumbItem className="hidden md:flex">
               {isLast ? (
                 <BreadcrumbPage>{formattedSegment}</BreadcrumbPage>
               ) : (
                 <BreadcrumbLink href={path}>{formattedSegment}</BreadcrumbLink>
               )}
             </BreadcrumbItem>
-            {!isLast && <BreadcrumbSeparator className="hidden md:block" />}
+            {!isLast && <BreadcrumbSeparator className="hidden md:flex" />}
           </div>
         );
       })}
@@ -69,7 +68,6 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         // Handle potential errors (excluding 'not found')
         if (userError && userError.code !== "PGRST116") {
           console.error("Error checking user existence:", userError);
-          // Maybe show a toast notification
           return;
         }
 
@@ -100,7 +98,6 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     checkAndCreateUser();
   }, []);
   return (
-    <ProtectedRoute>
       <SidebarProvider className="!bg-white dark:!bg-background">
         <AppSidebar />
         <SidebarInset className="border border-[#e2e2e2]/70 dark:border-accent overflow-hidden bg-white dark:bg-background">
@@ -120,12 +117,11 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             </div> */}
           </header>
           <BrandDataProvider>
-            <ScrollArea className="h-full bg-gradient-to-b from-background dark:to-zinc-900 to-neutral-100">
+            <ScrollArea className="h-full bg-gradient-to-b from-background dark:to-[#000108] to-neutral-100">
               {children}
             </ScrollArea>
           </BrandDataProvider>
         </SidebarInset>
       </SidebarProvider>
-    </ProtectedRoute>
   );
 }

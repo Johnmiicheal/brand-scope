@@ -41,7 +41,7 @@ export function NavMain({
                 tooltip={item.title}
                 className={`transition-colors duration-200 dark:hover:bg-gray-800/30 font-medium ${
                   pathname === item.url 
-                    ? "bg-blue-500/20 border border-blue-500/20" 
+                    ? "border-1 border-[#00173A] text-blue-500/70 bg-gradient-to-r from-background to-blue-600/50 hover:from-background hover:border-[#002661] hover:text-blue-500 hover:to-blue-600/70" 
                     : "dark:text-white/40 text-black/40"
                 }`}
               >
@@ -65,8 +65,8 @@ export function NavMain({
                 tooltip={item.title}
                 className={`transition-colors duration-200 dark:hover:bg-gray-800/30 font-medium ${
                   pathname === item.url 
-                    ? "bg-blue-900/10 border border-blue-500/20" 
-                    : "dark:text-white/40 text-black/40"
+                  ? "border-1 border-[#00173A] text-blue-500/70 bg-gradient-to-r from-background to-blue-600/50 hover:from-background hover:border-[#002661] hover:text-blue-500 hover:to-blue-600/70" 
+                  : "dark:text-white/40 text-black/40"
                 }`}
               >
                 <Link href={item.url}>

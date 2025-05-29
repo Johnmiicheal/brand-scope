@@ -69,14 +69,14 @@ export default function LibraryPage() {
             reasoning
           `)
           .eq('user_id', user.id)
-          .order('analyzed_at', { ascending: false })
+          .order('analyzed_at', { ascending: false }) as { data: SearchRecord[] | null; error: Error | null };
 
           const { data: scheduledData, error: scheduledError } = await supabase
           .from('scheduled_queries')
           .select(`*`)
           .eq('user_id', user.id)
           .order('last_analysis_at', { ascending: false })
-          .limit(100);
+          .limit(100) as { data: ScheduledQuery[] | null; error: Error | null };
         
         if (error) {
           console.error("Error fetching search history:", error);
@@ -165,11 +165,13 @@ export default function LibraryPage() {
   // Add delete thread function
   const deleteThread = async (modeId: string) => {
     try {
+      if (!user?.id) return;
+
       const { error } = await supabase
         .from('ai_rankings')
         .delete()
         .eq('mode_id', modeId)
-        .eq('user_id', user?.id);
+        .eq('user_id', user.id);
 
       // Also delete related search results
       if (modeId) {

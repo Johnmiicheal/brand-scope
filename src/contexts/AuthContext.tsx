@@ -8,10 +8,15 @@ import { useRouter } from 'next/navigation'
 import { User, Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import { toast } from '@/components/ui/use-toast'
+import { UserSubscription } from '@/hooks/useAuth'
+import Stripe from 'stripe'
+import { stripe } from '@/lib/stripe'
 
 // Simple type for auth context
 type AuthContextType = {
   user: User | null
+  user_subscriptions: UserSubscription | null
+  product: Stripe.Product | null
   session: Session | null
   isLoading: boolean
   signIn: (email: string, password: string) => Promise<void>
@@ -26,6 +31,8 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 // Auth provider component
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
+  const [user_subscriptions, setUserSubscriptions] = useState<UserSubscription | null>(null)
+  const [product, setProduct] = useState<Stripe.Product | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
@@ -275,9 +282,60 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  useEffect(() => {
+    const fetchUserSubscription = async (userId: string) => {
+      try {
+        const { data: subscriptionData, error: subscriptionError } = await supabase
+          .from('user_subscriptions')
+          .select('*')
+          .eq('user_id', userId)
+          .single();
+
+        if (subscriptionError) {
+          if (subscriptionError.code === 'PGRST116') {
+            // No subscription found
+            return null;
+          }
+          throw subscriptionError;
+        }
+
+        // If subscription exists, get the associated Stripe product details
+        if (subscriptionData?.price_id) {
+          setUserSubscriptions(subscriptionData)
+          try {
+            const stripePrice = await stripe.prices.retrieve(subscriptionData.price_id);
+            const stripeProduct = await stripe.products.retrieve(stripePrice.product as string);
+            setProduct(stripeProduct)
+          } catch (stripeError) {
+            console.error('Error fetching Stripe details:', stripeError);
+            // Return subscription data even if Stripe fetch fails
+            return subscriptionData;
+          }
+        }
+
+        return subscriptionData;
+      } catch (error) {
+        console.error('Error fetching user subscription:', error);
+        toast({
+          title: "Error fetching subscription",
+          description: "Failed to load subscription details",
+          variant: "destructive",
+          duration: 3000,
+        });
+        return null;
+      }
+    }
+
+    if (user) {
+      fetchUserSubscription(user.id);
+    }
+  }, [user]);
+
   // Auth context value
   const value = {
     user,
+    user_subscriptions,
+    product,
     session,
     isLoading,
     signIn,

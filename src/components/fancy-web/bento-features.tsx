@@ -10,9 +10,9 @@ import { TiltedScroll, TiltedScrollItem } from "./tilted-scroll";
 export function BentoFeatures() {
   const features = [
     {
-      title: "Brand Analysis and Monitoring",
+      title: "Native AI and Google Search Engine Analytics",
       description:
-        "Dive deep with our comprehensive analysis tools to understand how AI perceives your brand, and uncover actionable insights to enhance your presence.",
+        "Analyze how AI Search Engines like ChatGPT, Perplexity, Gemini and Claude perceive your brand, and get actionable insights to enhance your presence.",
       skeleton: <SkeletonOne />,
       className:
         "col-span-1 md:col-span-4 lg:col-span-4 border-b md:border-r border-[#1D1D1D]",
@@ -109,7 +109,7 @@ const FeatureDescription = ({ children }: { children?: React.ReactNode }) => {
 export const SkeletonOne = () => {
   return (
     <div className="relative flex py-8 px-2 h-full">
-        <Image src="/bs-hero-dash.png" alt="dashboard" width={1080} height={2000} className="h-[450px]"  />
+        <Image src="/air-google.png" alt="dashboard" width={1080} height={2000} className="h-[450px]"  />
     </div>
   );
 };

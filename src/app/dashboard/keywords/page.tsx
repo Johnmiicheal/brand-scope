@@ -110,13 +110,6 @@ export default function KeywordResearchPage() {
     }
 
     try {
-      console.log("Submitting request with data:", {
-        keywords: keywordsList,
-        brandName: formData.brandName,
-        domain: formData.domain,
-        intent: formData.intent,
-      });
-
       const response = await fetch('/api/keywords/research', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -129,10 +122,6 @@ export default function KeywordResearchPage() {
         }),
       });
 
-      // Log the response for debugging
-      console.log("Response status:", response.status);
-      console.log("Response headers:", Object.fromEntries([...response.headers.entries()]));
-      
       // Check if the response is JSON
       const contentType = response.headers.get('content-type');
       if (!contentType || !contentType.includes('application/json')) {
@@ -144,7 +133,6 @@ export default function KeywordResearchPage() {
 
       // Parse the JSON response
       const data = await response.json();
-      console.log("API response data:", data);
 
       if (!response.ok) {
         throw new Error(data.error || `Request failed with status ${response.status}`);

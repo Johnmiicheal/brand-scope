@@ -463,7 +463,7 @@ export function AIChatInterface({ user, session, product, subscription, isLoadin
       <div className="w-full">
         <div
           className={cn(
-            "relative bg-[#e2e2e2]/20 dark:bg-neutral-900 rounded-xl border border-[#e2e2e2]/20 hover:border-[#e2e2e2]/40 dark:border-neutral-800",
+            "relative bg-[#e2e2e2]/20 dark:bg-neutral-900/10 rounded-xl border border-[#e2e2e2]/20 hover:border-[#e2e2e2]/40 dark:border-neutral-800",
             isMonitoringMode &&
               "ring-3 ring-blue-500 ring-offset-2 ring-offset-background dark:ring-offset-neutral-950"
           )}
@@ -554,10 +554,10 @@ export function AIChatInterface({ user, session, product, subscription, isLoadin
 
               {/* Analysis Mode Dropdown */}
               <DropdownMenu>
-                <div className="inline-flex bg-blue-500/20 text-primary dark:text-white/70 -space-x-px divide-x divide-primary/30 dark:divide-primary-foreground/30 rounded-full rtl:space-x-reverse">
+                <div className="inline-flex bg-blue-500/40 text-primary dark:text-white/60 -space-x-px divide-x divide-primary/30 dark:divide-blue-500/20 rounded-full rtl:space-x-reverse">
                   <Button
                     variant="outline"
-                    className="rounded-none shadow-none first:rounded-s-full last:rounded-e-full focus-visible:z-10 text-[12px] overflow-hidden border-primary/30 dark:border-primary-foreground/30 text-primary dark:text-white hover:bg-primary/20 dark:hover:bg-transparent"
+                    className="rounded-none shadow-none first:rounded-s-full last:rounded-e-full focus-visible:z-10 text-[12px] overflow-hidden border-primary/30 dark:border-blue-500/20 hover:bg-primary/20 dark:hover:bg-transparent"
                   >
                     <Telescope
                       className="opacity-60 w-4 h-4"
@@ -580,7 +580,7 @@ export function AIChatInterface({ user, session, product, subscription, isLoadin
                   <DropdownMenuTrigger className="focus-visible:ring-0 focus-visible:ring-offset-0 focus:outline-none">
                     <Button
                       variant="outline"
-                      className="rounded-none shadow-none focus-visible:z-10 focus-visible:ring-0 focus-visible:ring-offset-0 focus:outline-none focus-visible:outline-none last:rounded-e-full border-primary/30 dark:border-primary-foreground/30 text-primary dark:text-white hover:bg-primary/20 dark:hover:bg-transparent"
+                      className="rounded-none shadow-none focus-visible:z-10 focus-visible:ring-0 focus-visible:ring-offset-0 focus:outline-none focus-visible:outline-none last:rounded-e-full border-primary/30 dark:border-blue-500/20 hover:bg-primary/20 dark:hover:bg-transparent"
                       size="icon"
                       aria-label="Options"
                     >
@@ -593,11 +593,11 @@ export function AIChatInterface({ user, session, product, subscription, isLoadin
                     </Button>
                   </DropdownMenuTrigger>
                 </div>
-                <DropdownMenuContent className="p-2">
+                <DropdownMenuContent className="p-2 pb-[9.5px] md:ml-52 rounded-xl">
                   {modes.map((item) => (
                     <DropdownMenuItem
                       key={item.key}
-                      className="cursor-pointer"
+                      className="cursor-pointer rounded-[8px] hover:!bg-blue-500/10"
                       onClick={() => setMode(item.key as AnalysisMode)}
                     >
                       <div className="flex gap-2 items-center">
@@ -618,7 +618,7 @@ export function AIChatInterface({ user, session, product, subscription, isLoadin
               {isMonitoringMode && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="rounded-full text-xs text-muted-foreground dark:text-muted-foreground">
+                    <Button variant="outline" className="rounded-full border-[#e2e2e2]/20 dark:border-accent text-xs text-muted-foreground dark:text-muted-foreground">
                       <Repeat className="w-3 h-3 mr-2" />
                       {monitorFrequency === "daily" ? "Daily" : "Weekly"}
                       <ChevronDown className="w-3 h-3 ml-1" />
@@ -661,12 +661,12 @@ export function AIChatInterface({ user, session, product, subscription, isLoadin
               {/* Country Selector Dropdown */}
 
               {/* Search/Monitor Toggle */}
-              <div className="flex items-center space-x-2 bg-background dark:bg-neutral-800/60 p-1 rounded-full">
+              <div className="flex items-center space-x-2 bg-background dark:bg-neutral-800/40 p-1 rounded-full">
                 <Button
                   variant={!isMonitoringMode ? "secondary" : "ghost"}
                   size="sm"
                   onClick={() => setIsMonitoringMode(false)}
-                  className={`rounded-full h-7 px-3 text-xs hover:bg-transparent hover:text-muted-foreground/50 text-muted-foreground/50 dark:text-muted-foreground/50 ${!isMonitoringMode && "bg-neutral-100 dark:bg-neutral-800 text-[#7a7a7a] dark:text-muted-foreground hover:dark:bg-neutral-800 hover:bg-neutral-100"}`}
+                  className={`rounded-full h-7 px-3 text-xs hover:!bg-transparent hover:!text-blue-500/50 text-muted-foreground/50 dark:text-muted-foreground/50 ${!isMonitoringMode && "!bg-neutral-100 dark:!bg-neutral-800/70 !text-[#7a7a7a] dark:!text-muted-foreground hover:dark:!bg-neutral-800 hover:!bg-neutral-100"}`}
                 >
                   <Search className="w-3 h-3 mr-1" />
                   Search
@@ -675,8 +675,8 @@ export function AIChatInterface({ user, session, product, subscription, isLoadin
                   variant={isMonitoringMode ? "secondary" : "ghost"}
                   size="sm"
                   onClick={() => setIsMonitoringMode(true)}
-                  className={`rounded-full h-7 px-3 text-xs text-muted-foreground/50 dark:text-muted-foreground/50 ${
-                    isMonitoringMode ? "bg-primary hover:bg-primary dark:bg-blue-600 dark:hover:bg-blue-600 text-primary-foreground dark:text-white" : ""
+                  className={`rounded-full h-7 px-3 text-xs text-muted-foreground/50 dark:text-muted-foreground/50 hover:!bg-transparent hover:!text-blue-500/50 ${
+                    isMonitoringMode && "!bg-primary hover:!bg-primary dark:!bg-blue-600 dark:hover:!bg-blue-600 !text-accent dark:!text-white"
                   }`}
                 >
                   <Repeat className="w-3 h-3 mr-1" />
@@ -690,7 +690,7 @@ export function AIChatInterface({ user, session, product, subscription, isLoadin
                 onClick={handleSubmit}
                 disabled={loading || !value.trim()}
                 className={cn(
-                  "p-2 active:scale-95 rounded-full text-sm -rotate-45 cursor-pointer hover:rotate-0 transition-all ease-in-out duration-300 border hover:bg-accent flex items-center justify-center", // Centered icon
+                  "p-2 active:scale-95 rounded-full text-sm -rotate-45 cursor-pointer hover:rotate-0 transition-all ease-in-out duration-300 border hover:bg-muted flex items-center justify-center", // Centered icon
                   value.trim() ? "bg-foreground text-background dark:bg-white dark:text-black border-foreground dark:border-zinc-700 hover:border-foreground/80 dark:hover:border-zinc-600" : "text-muted-foreground dark:text-zinc-400 border-border dark:border-zinc-700"
                 )}
                 aria-label={
@@ -755,7 +755,7 @@ export function AIChatInterface({ user, session, product, subscription, isLoadin
 
       {/* Search Mode Tips */}
       <div className="w-full max-w-4xl mt-8">
-        <div className="bg-[#e2e2e2]/20 dark:bg-neutral-900/50 rounded-xl border border-[#e2e2e2]/20 dark:border-neutral-800 p-5">
+        <div className="bg-[#e2e2e2]/20 dark:bg-neutral-900/10 rounded-xl border border-[#e2e2e2]/20 dark:border-neutral-800 p-5">
           <h3 className="text-lg font-medium mb-3 flex items-center gap-2 text-neutral-700 dark:text-foreground">
             <Lightbulb className="w-5 h-5 text-yellow-400" />
             Search Mode Tips
@@ -812,7 +812,7 @@ function ActionButton({ icon, label }: ActionButtonProps) {
   return (
     <button
       type="button"
-      className="flex group items-center gap-2 px-4 py-2 bg-neutral-100 hover:bg-accent/80 dark:bg-neutral-900 dark:hover:bg-neutral-800 rounded-full border border-[#e2e2e2]/40 dark:border-neutral-800 text-muted-foreground hover:text-accent-foreground dark:text-neutral-400 dark:hover:text-white transition-colors"
+      className="flex group items-center gap-2 px-4 py-2 bg-neutral-100 hover:bg-accent/80 dark:bg-neutral-900/20 dark:hover:bg-neutral-800 rounded-full border border-[#e2e2e2]/40 dark:border-neutral-800 text-muted-foreground hover:text-accent-foreground dark:text-neutral-400 dark:hover:text-white transition-colors"
     >
       {icon}
       <span className="text-xs">{label}</span>

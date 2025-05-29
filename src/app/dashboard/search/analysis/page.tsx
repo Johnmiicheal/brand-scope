@@ -1,10 +1,10 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable @next/next/no-img-element */
 /* eslint-disable @typescript-eslint/ban-ts-comment */
+/* eslint-disable @typescript-eslint/no-unused-vars */
+// @ts-nocheck
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -60,6 +60,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Claude, Gemini, OpenAI, Perplexity } from "@lobehub/icons";
 import { GoogleResults } from "@/components/ui/google-results";
+import remarkGfm from 'remark-gfm';
 
 // Type for brand data
 interface Brand {
@@ -76,7 +77,7 @@ interface Citation {
   };
 }
 
-export default function AnalysisPage() {
+function AnalysisContent() {
   const searchParams = useSearchParams();
   const searchId = searchParams.get("search_id");
   const modeId = searchParams.get("mode_id");
@@ -386,6 +387,14 @@ export default function AnalysisPage() {
   );
 }
 
+export default function AnalysisPage() {
+  return (
+    <Suspense fallback={<AnalysisLoadingState />}>
+      <AnalysisContent />
+    </Suspense>
+  );
+}
+
 // Loading state component
 function AnalysisLoadingState() {
   return (
@@ -663,8 +672,42 @@ function SummaryTabContent({ item }: { item: Summary | null }) {
               </div>
             </div>
 
-            <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap">
-              <ReactMarkdown>{item.summary}</ReactMarkdown>
+            <div className="prose whitespace-pre-wrap dark:prose-invert max-w-none 
+              prose-headings:font-bold prose-h1:text-2xl prose-h2:text-xl prose-h3:text-lg
+              prose-a:text-blue-500 prose-a:no-underline hover:prose-a:text-blue-400
+              prose-p:text-base prose-p:leading-7 prose-p:my-4
+              prose-ul:list-disc prose-ul:ml-6 prose-li:my-1
+              prose-ol:list-decimal prose-ol:ml-6
+              prose-strong:text-white prose-strong:font-semibold
+              prose-code:bg-neutral-800 prose-code:p-1 prose-code:rounded-md prose-code:text-sm
+              prose-blockquote:border-l-4 prose-blockquote:border-neutral-500 prose-blockquote:pl-4 prose-blockquote:italic
+              prose-table:table-auto prose-td:border prose-td:border-neutral-800 prose-td:p-2 
+              prose-th:border prose-th:border-neutral-800 prose-th:p-2 prose-table:border-collapse"
+            >
+              <ReactMarkdown 
+                remarkPlugins={[remarkGfm]}
+                components={{
+                  table: ({ node, ...props }) => (
+                    <table className="border border-neutral-800 w-full" {...props} />
+                  ),
+                  th: ({ node, ...props }) => (
+                    <th className="border border-neutral-800 bg-neutral-900/50 p-2 text-left" {...props} />
+                  ),
+                  td: ({ node, ...props }) => (
+                    <td className="border border-neutral-800 p-2" {...props} />
+                  ),
+                  a: ({ node, ...props }) => (
+                    <a className="text-blue-500 hover:text-blue-400 transition-colors" {...props} />
+                  ),
+                  code: ({ node, inline, ...props }) => (
+                    inline ? 
+                    <code className="bg-neutral-800 px-1 py-0.5 rounded text-sm" {...props} /> :
+                    <code className="block bg-neutral-800 p-4 rounded-lg text-sm my-4 overflow-auto" {...props} />
+                  )
+                }}
+              >
+                {item.summary}
+              </ReactMarkdown>
             </div>
 
             {parseReasoning &&

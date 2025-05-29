@@ -5,9 +5,8 @@
 import { useState } from 'react'
 import { LogOut } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
-import { Button, ButtonProps } from '@/components/ui/button'
 
-interface SignOutButtonProps extends ButtonProps {
+interface SignOutButtonProps  {
   label?: string
 }
 
@@ -30,12 +29,10 @@ export function SignOutButton({
   }
 
   return (
-    <Button
-      variant="ghost"
-      size="sm"
+    <div
       onClick={handleSignOut}
       disabled={isLoading}
-      className={className}
+      className={`flex items-center ${className}`}
       {...props}
     >
       {isLoading ? "Signing out..." : (
@@ -44,6 +41,6 @@ export function SignOutButton({
           {label}
         </>
       )}
-    </Button>
+    </div>
   )
 } 

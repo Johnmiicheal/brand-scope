@@ -4,6 +4,7 @@ import { ReactNode, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
 
 type PublicRouteProps = {
   children: ReactNode
@@ -24,6 +25,7 @@ export function PublicRoute({
   useEffect(() => {
     // Only redirect after auth state is determined
     if (!isLoading && user) {
+      toast.success("You are already logged in. Redirecting to dashboard...")
       router.push(redirectTo)
     }
   }, [user, isLoading, router, redirectTo])

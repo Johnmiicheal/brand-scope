@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
-import { Toaster } from "@/components/ui/toaster";
+import { Toaster } from "sonner";
 import { Analytics } from '@vercel/analytics/next';
 import { ThemeProvider } from "@/components/theme-provider";
 import NextTopLoader from "nextjs-toploader";
@@ -14,20 +14,20 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "AI Rankia - AI-Powered Brand Insights & SEO Analytics",
-  description: "Optimize your brand's visibility in AI search results. Get insights from LLMs like DeepSeek, Llama, and xAI, and improve your ranking with data-driven recommendations.",
+  title: "AI Rankia - AI-Powered Brand Insights & AI Search Engine Analytics",
+  description: "Optimize your brand's visibility in AI search results. Get insights from AI Search Engines like ChatGPT, Perplexity, Gemini, Claude, and xAI, and improve your ranking with data-driven recommendations.",
   openGraph: {
-    title: "AI Rankia - AI-Powered Brand Insights & SEO Analytics",
-    description: "Optimize your brand's visibility in AI search results.",
+    title: "AI Rankia - AI-Powered Brand Insights & AI Search Engine Analytics",
+    description: "Optimize your brand's visibility in AI search results. Get insights from AI Search Engines like ChatGPT, Perplexity, Gemini, Claude, and xAI, and improve your ranking with data-driven recommendations.",
     url: "https://airankia.com",
-    images: ["/bs-seo.png"],
+    images: ["/air-seo.png"],
     siteName: "AI Rankia",
   },
   twitter: {
     card: "summary_large_image",
-    title: "AI Rankia - AI-Powered Brand Insights & SEO Analytics",
-    description: "Optimize your brand's visibility in AI search results.",
-    images: "/bs-seo.png",
+    title: "AI Rankia - AI-Powered Brand Insights & AI Search Engine Analytics",
+    description: "Optimize your brand's visibility in AI search results. Get insights from AI Search Engines like ChatGPT, Perplexity, Gemini, Claude, and xAI, and improve your ranking with data-driven recommendations.",
+    images: "/air-seo.png",
   },
   icons: {
     icon: "/icons/favicon.png",
@@ -44,20 +44,20 @@ export default function RootLayout({
       <head>
         <meta charSet="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <meta name="description" content="Optimize your brand's visibility in AI search results. Get insights from LLMs like DeepSeek, Llama, and xAI, and improve your ranking with data-driven recommendations." />
-        <meta name="keywords" content="AI, Brand Insights, SEO, Analytics, AI Rankia, Brand" />
+        <meta name="description" content="Optimize your brand's visibility in AI search results. Get insights from AI Search Engines like ChatGPT, Perplexity, Gemini, Claude, and xAI, and improve your ranking with data-driven recommendations." />
+        <meta name="keywords" content="AI, Brand Insights, SEO, Analytics, AI Rankia, Brand, AI Search Engine, chatgpt, perplexity, gemini, claude, llama, deepseek, xai" />
         <meta name="author" content="Johnmicheal Elijah" />
         <link rel="icon" href="/icons/favicon.png" />
         <link rel="apple-touch-icon" href="/icons/favicon.png" />
-        <meta property="og:title" content="AI Rankia - AI-Powered Brand Insights & SEO Analytics" />
-        <meta property="og:description" content="Optimize your brand's visibility in AI search results." />
+        <meta property="og:title" content="AI Rankia - AI-Powered Brand Insights & AI Search Engine Analytics" />
+        <meta property="og:description" content="Optimize your brand's visibility in AI search results. Get insights from AI Search Engines like ChatGPT, Perplexity, Gemini, Claude, and xAI, and improve your ranking with data-driven recommendations." />
         <meta property="og:url" content="https://airankia.com" />
-        <meta property="og:image" content="/bs-seo.png" />
+        <meta property="og:image" content="/air-seo.png" />
         <meta property="og:site_name" content="AI Rankia" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="AI Rankia - AI-Powered Brand Insights & SEO Analytics" />
-        <meta name="twitter:description" content="Optimize your brand's visibility in AI search results." />
-        <meta name="twitter:image" content="/bs-seo.png" />
+        <meta name="twitter:title" content="AI Rankia - AI-Powered Brand Insights & AI Search Engine Analytics" />
+        <meta name="twitter:description" content="Optimize your brand's visibility in AI search results. Get insights from AI Search Engines like ChatGPT, Perplexity, Gemini, Claude, and xAI, and improve your ranking with data-driven recommendations." />
+        <meta name="twitter:image" content="/air-seo.png" />
       </head>
       <body
         className={`${inter.variable} antialiased bg-background text-foreground`}

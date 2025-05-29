@@ -4,7 +4,7 @@
 
 "use client";
 
-import { useEffect, useState, useRef, useMemo } from "react";
+import { useEffect, useState, useRef, useMemo, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import {
@@ -102,6 +102,7 @@ interface IndustryRankingsTableProps {
   brands: {
     brand_name: string;
     gpt_mentions: number;
+    gpt_search_mentions: number;
     claude_mentions: number;
     perplexity_mentions: number;
     gemini_mentions: number;
@@ -116,7 +117,15 @@ function IndustryRankingsTable({ brands }: IndustryRankingsTableProps) {
     (acc, brand) => acc + brand.total_mentions,
     0
   );
-
+  const maxMentions = Math.max(...brands.map((brand) => brand.total_mentions));
+  const maxModels = 5;
+  const getCoverageRatio = (brand: any) => {
+    const totalMentionsPerModel = (brand.gpt_mentions > 0 ? 1 : 0) + (brand.claude_mentions > 0 ? 1 : 0) + (brand.perplexity_mentions > 0 ? 1 : 0) + (brand.gemini_mentions > 0 ? 1 : 0);
+    return (totalMentionsPerModel / maxModels);
+  }
+  const getMentionsIndex = (brand: any) => {
+    return (brand.total_mentions / maxMentions);
+  }
   return (
     <Card className="bg-background shadow-none border-[#e2e2e2]/70 dark:border-accent text-white">
       <CardHeader>
@@ -140,6 +149,9 @@ function IndustryRankingsTable({ brands }: IndustryRankingsTableProps) {
                   </TableHead>
                   <TableHead className="sticky top-0 bg-background">
                     Entity
+                  </TableHead>
+                  <TableHead className="text-right sticky top-0 bg-background">
+                    Coverage
                   </TableHead>
                   <TableHead className="text-right sticky top-0 bg-background">
                     Visibility %
@@ -170,14 +182,14 @@ function IndustryRankingsTable({ brands }: IndustryRankingsTableProps) {
                         {entity.brand_name}
                       </TableCell>
                       <TableCell className="text-right">
-                        {(
-                          (entity.total_mentions / all_total_mentions) *
-                          100
-                        ).toFixed(1)}
+                        ⌀ {getCoverageRatio(entity).toFixed(2)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {(100 * (getCoverageRatio(entity) + getMentionsIndex(entity)) / 2).toFixed(1)}
                         %
                       </TableCell>
                       <TableCell className="text-right">
-                        {entity.total_mentions}
+                        {entity.total_mentions} 
                       </TableCell>
                     </TableRow>
                   ))
@@ -285,22 +297,22 @@ function DashboardContent() {
 
   // Plans configuration
   const plans = [
-    {
-      id: "free",
-      name: "Free Trial",
-      price: "$0",
-      features: [
-        "Country Monitoring",
-        "Company Research",
-        "SEO Keyword Analysis",
-        "Brand Analysis",
-      ],
-      searches: "5 Searches",
-      monitoring: "0 Monitoring",
-      frequency: "N/A",
-      recommended: false,
-      product_id: "",
-    },
+    // {
+    //   id: "free",
+    //   name: "Free Trial",
+    //   price: "$0",
+    //   features: [
+    //     "Country Monitoring",
+    //     "Company Research",
+    //     "SEO Keyword Analysis",
+    //     "Brand Analysis",
+    //   ],
+    //   searches: "5 Searches",
+    //   monitoring: "0 Monitoring",
+    //   frequency: "N/A",
+    //   recommended: false,
+    //   product_id: "",
+    // },
     {
       id: "pro",
       name: "Pro Plan",
@@ -386,7 +398,6 @@ function DashboardContent() {
         setSessionKey(session.access_token || "");
         setUser(session.user);
         setSubsLoading(false);
-        console.log("User session checked and set: ", session.user)
         // Check subscription immediately after setting user
         if (!subscription) {
           await checkSubs(session.user);
@@ -413,15 +424,14 @@ function DashboardContent() {
           }
           setSubsLoading(false);
         } else {
-          setSubscription(fetchedSubscriptionData);
+          setSubscription(fetchedSubscriptionData as unknown as UserSubscription);
           const stripePrice = await stripe.prices.retrieve(
-            fetchedSubscriptionData.price_id
+            fetchedSubscriptionData.price_id as string
           );
           const stripeProduct = await stripe.products.retrieve(
             stripePrice.product as string
           );
           setProduct(stripeProduct);
-          console.log("Product: ", stripeProduct);
           setSubsLoading(false);
         }
       } catch (e) {
@@ -432,7 +442,7 @@ function DashboardContent() {
     };
 
     checkAuth();
-  }, []);
+  }, [router, subscription]);
 
   // Function to fetch scheduled queries for the dashboard
   const [queries, setQueries] = useState<ScheduledQuery[]>([]);
@@ -461,13 +471,16 @@ function DashboardContent() {
         if (data && data.monitoring) {
           setQueries(data.monitoring);
           setSelectedQuery(data.monitoring[0]);
+          setIsLoading(false);
         } else {
           setQueries([]);
+          setIsLoading(false);
         }
       } catch (error) {
         setError(
           `We could not fetch your scheduled queries. Please try again later.`
         );
+        setIsLoading(false);
         console.error("Failed to fetch scheduled queries:", error);
         toast({
           title: "Error",
@@ -482,7 +495,7 @@ function DashboardContent() {
     }
 
     fetchScheduledQueries();
-  }, [user]);
+  }, [toast, user]);
 
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -649,6 +662,7 @@ function DashboardContent() {
         claude_mentions: 0,
         perplexity_mentions: 0,
         gemini_mentions: 0,
+        gpt_search_mentions: 0,
       };
 
       // Process each model's results
@@ -675,7 +689,7 @@ function DashboardContent() {
               }
 
               // Assign mentions to the appropriate model
-              if (modelName.includes("gpt")) {
+              if (modelName.includes("4.1")) {
                 mentions.gpt_mentions += mentionCount;
               } else if (modelName.includes("claude")) {
                 mentions.claude_mentions += mentionCount;
@@ -683,6 +697,8 @@ function DashboardContent() {
                 mentions.perplexity_mentions += mentionCount;
               } else if (modelName.includes("gemini")) {
                 mentions.gemini_mentions += mentionCount;
+              } else if (modelName.includes("search")) {
+                mentions.gpt_search_mentions += mentionCount;
               }
             }
           }
@@ -733,7 +749,7 @@ function DashboardContent() {
     }
   }, [selectedQuery]);
 
-  if (loading || subsLoading) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="w-full max-w-3xl">
@@ -741,6 +757,24 @@ function DashboardContent() {
             <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
             <ShinyText
               text="Fetching your latest data..."
+              disabled={false}
+              speed={3}
+              className="font-medium text-sm"
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (subsLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="w-full max-w-3xl">
+          <div className="flex flex-col items-center justify-center">
+            <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+            <ShinyText
+              text="Checking your profile status..."
               disabled={false}
               speed={3}
               className="font-medium text-sm"
@@ -961,7 +995,7 @@ function DashboardContent() {
     }
   };
 
-  if (!subsLoading && !loading && !subscription) {
+  if (!subsLoading && !subscription && !loading && !queries) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="w-full max-w-7xl p-8 bg-transparent rounded-lg shadow-lg">
@@ -997,7 +1031,7 @@ function DashboardContent() {
                 Select the plan that best fits your needs
               </p>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 mb-8">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-8">
                 {plans.map((plan) => (
                   <div
                     key={plan.id}
@@ -1317,7 +1351,7 @@ function DashboardContent() {
             <div className="min-h-screen flex-1">
               <div className="space-y-6">
                 <motion.div
-                  className="w-full flex justify-between rounded-md p-3 items-center bg-accent border-dashed border-1 cursor-pointer hover:bg-accent/80 transition duration-300"
+                  className="w-full flex justify-between rounded-md p-3 items-center bg-blue-500/10 border-dashed border-1 border-blue-500/20 cursor-pointer hover:bg-blue-500/20 transition duration-300"
                   onClick={() => setIsExpanded(!isExpanded)}
                   whileTap={{ scale: 0.98 }}
                 >
@@ -1350,7 +1384,7 @@ function DashboardContent() {
                   <div className="flex flex-col md:flex-row gap-4 w-full">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="outline" className="w-fit">
+                        <Button variant="outline" className="w-fit !border !border-accent">
                           {getDisplayValue()}
                           <span>
                             <ChevronDown className="w-4 h-4 opacity-40" />
@@ -1394,7 +1428,7 @@ function DashboardContent() {
                       defaultValue={selectedDate || "latest"}
                       onValueChange={(value) => setSelectedDate(value)}
                     >
-                      <SelectTrigger className="w-fit">
+                      <SelectTrigger className="w-fit !border !border-accent">
                         <SelectValue placeholder="Select date" />
                       </SelectTrigger>
                       <SelectContent>
@@ -1411,7 +1445,7 @@ function DashboardContent() {
                       defaultValue={selectedModel || "all"}
                       onValueChange={(value) => setSelectedModel(value)}
                     >
-                      <SelectTrigger className="w-fit">
+                      <SelectTrigger className="w-fit !border !border-accent">
                         <SelectValue placeholder="Select models" />
                       </SelectTrigger>
                       <SelectContent>
@@ -1460,14 +1494,10 @@ function DashboardContent() {
                 <div className="flex flex-col lg:flex-row w-full gap-6 h-full">
                   {/* Left column - Make keyword cloud take full width */}
                   {keywords && (
-                    <div className="space-y-6 lg:w-[65%] h-full">
+                    <div className="space-y-6 w-full h-full">
                       <KeywordCloud keywords={keywords} />
                     </div>
                   )}
-
-                  <div className="space-y-6 lg:w-[35%] h-full">
-                    <CompetitorNetwork brands={analysis_brands} />
-                  </div>
                 </div>
               </div>
             </div>
@@ -1481,7 +1511,23 @@ function DashboardContent() {
 export default function DashboardPage() {
   return (
     <BrandDataProvider>
-      <DashboardContent />
+      <Suspense fallback={(
+         <div className="flex items-center justify-center min-h-screen">
+         <div className="w-full max-w-3xl">
+           <div className="flex flex-col items-center justify-center">
+             <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+             <ShinyText
+               text="Fetching your latest data..."
+               disabled={false}
+               speed={3}
+               className="font-medium text-sm"
+             />
+           </div>
+         </div>
+       </div>
+      )}>
+        <DashboardContent />
+      </Suspense>
     </BrandDataProvider>
   );
 }

@@ -1,11 +1,6 @@
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '@/lib/supabase';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || 'mock-supabase-url',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || 'mock-service-role-key'
-);
-
-export interface AIRanking {
+export interface AIRanking extends Record<string, unknown> {
   entity_id: string;
   entity_type: 'brand' | 'competitor';
   llm_name: string;

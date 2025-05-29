@@ -26,7 +26,7 @@ function MetricCard({
 
   return (
     <motion.div
-      className={cn("p-6 bg-card border-r border-[#e2e2e2]/70 dark:border-accent", className)}
+      className={cn("p-6 bg-card/5 border-r border-[#e2e2e2]/70 dark:border-accent", className)}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
@@ -72,6 +72,7 @@ function MetricCard({
 interface Brand {
   brand_name: string;
   gpt_mentions: number;
+  gpt_search_mentions: number;
   claude_mentions: number;
   perplexity_mentions: number;
   gemini_mentions: number;
@@ -98,6 +99,16 @@ export function MetricsHeader({ brands, selectedBrand }: MetricsHeaderProps) {
   const total_mentions = selectedBrandsData.reduce((acc, b) => acc + (b?.total_mentions || 0), 0);
   const visibilityScore = total_mentions / all_total_mentions || 0;
   const mentions = total_mentions || 0;
+  const maxModels = 5;
+  const getCoverageRatio = (brands: Brand[]) => {
+    const totalMentionsPerModel = brands.reduce((acc, brand) => {
+      return acc + (brand.gpt_mentions > 0 ? 1 : 0) + 
+                  (brand.claude_mentions > 0 ? 1 : 0) + 
+                  (brand.perplexity_mentions > 0 ? 1 : 0) + 
+                  (brand.gemini_mentions > 0 ? 1 : 0);
+    }, 0);
+    return `⌀ ${(totalMentionsPerModel / (maxModels * brands.length)).toFixed(2)}`;
+  }
 
   return (
     <div>
@@ -105,16 +116,14 @@ export function MetricsHeader({ brands, selectedBrand }: MetricsHeaderProps) {
         <MetricCard
           title="Visibility Score"
           value={`${Math.round(visibilityScore * 100)}%`}
-          trend={0.05}
-          className="border-b-4 border-b-[hsl(var(--brand-primary))]"
+          className="border-b-4 !border-b-blue-500"
         />
 
-        {/* <MetricCard title="Detection Rate" value={negative} trend={0.04} /> */}
+        <MetricCard title="Coverage Ratio" value={getCoverageRatio(selectedBrandsData)} />
 
         <MetricCard 
           title="Mentions" 
           value={mentions} 
-          trend={0.04} 
         />
 
         {/* <MetricCard

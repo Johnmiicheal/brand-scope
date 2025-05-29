@@ -4,10 +4,9 @@
 "use client"
 
 import {
-  BadgeCheck,
-  Bell,
   ChevronsUpDown,
   CreditCard,
+  HelpCircle,
 } from "lucide-react"
 
 import {
@@ -32,10 +31,12 @@ import {
 } from "@/components/ui/sidebar"
 import { useAuth } from "@/contexts/AuthContext"
 import { SignOutButton } from "@/components/auth/SignOutButton"
+import { stripe } from "@/lib/stripe"
 
 export function NavUser() {
   const { isMobile } = useSidebar()
-  const { user, isLoading } = useAuth()
+  const { user, user_subscriptions, isLoading } = useAuth()
+
   
   // If loading or no user, show loading or login state
   if (isLoading) {
@@ -86,6 +87,16 @@ export function NavUser() {
   const avatarUrl = user.user_metadata?.avatar_url || null
   const initial = name.charAt(0).toUpperCase()
 
+  const handleOpenBillingPortal = async () => {
+    const session = await stripe.billingPortal.sessions.create({
+      customer: user_subscriptions?.stripe_customer_id,
+      return_url: 'https://ai-rankia.com/dashboard',
+    });
+    if (session) {
+      window.location.href = session.url
+    }
+  }
+
   return (
     <SidebarMenu>
       <SidebarMenuItem>
@@ -126,28 +137,28 @@ export function NavUser() {
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem asChild>
-                <a href="/profile">
+              {/* <DropdownMenuItem asChild>
+                <div className="flex items-center">
                   <BadgeCheck className="mr-2 h-4 w-4" />
                   Profile
-                </a>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <a href="/settings">
+                </div>
+              </DropdownMenuItem> */}
+              <DropdownMenuItem asChild className="cursor-pointer" onClick={handleOpenBillingPortal}>
+                <div className="flex items-center">
                   <CreditCard className="mr-2 h-4 w-4" />
-                  Settings
-                </a>
+                  Billing
+                </div>
               </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <a href="/notifications">
-                  <Bell className="mr-2 h-4 w-4" />
-                  Notifications
-                </a>
+              <DropdownMenuItem asChild className="cursor-pointer">
+                <div className="flex items-center">
+                  <HelpCircle className="mr-2 h-4 w-4" />
+                  Support
+                </div>
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
-              <SignOutButton className="flex w-full items-center justify-start p-0" />
+            <DropdownMenuItem className="hover:!bg-red-500/10 hover:!text-red-500 cursor-pointer">
+              <SignOutButton />
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

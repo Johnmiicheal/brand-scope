@@ -113,8 +113,8 @@ export function LoginForm({
               Or
             </span>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Button 
+          <div className="grid gap-4">
+            {/* <Button 
               variant="outline" 
               type="button" 
               className="w-full"
@@ -128,7 +128,7 @@ export function LoginForm({
                 />
               </svg>
               Continue with Apple
-            </Button>
+            </Button> */}
             <Button 
               variant="outline" 
               type="button" 

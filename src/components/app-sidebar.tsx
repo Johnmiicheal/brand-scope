@@ -1,14 +1,14 @@
+/* eslint-disable @next/next/no-img-element */
 "use client"
 
 import * as React from "react"
 import {
   BookOpen,
-  Command,
   LifeBuoy,
 } from "lucide-react"
 
 import { NavMain } from "@/components/nav-main"
-import { NavSecondary } from "@/components/nav-secondary"
+// import { NavSecondary } from "@/components/nav-secondary"
 import { NavUser } from "@/components/nav-user"
 import {
   Sidebar,
@@ -20,6 +20,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 import { TbAt, TbBookmarks, TbBuildings, TbLayoutGridAdd, TbListSearch, TbSquareLetterA, TbTrendingUp } from "react-icons/tb";
+import { RankiaIcon } from "./icon-rankia"
 
 
 const data = {
@@ -105,14 +106,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarHeader className="bg-white dark:bg-background">
         <SidebarMenu className="bg-white dark:bg-background">
           <SidebarMenuItem className="bg-white dark:bg-background">
-            <SidebarMenuButton size="lg" asChild>
+            <SidebarMenuButton size="lg" asChild className="group">
               <a href="/dashboard">
-                <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
-                  <Command className="size-4" />
+                <div className="bg-blue-500/10 text-blue-500/70 border-1 border-blue-500/20 flex aspect-square size-8 items-center justify-center rounded-lg">
+                  <RankiaIcon className="w-full h-full object-contain text-blue-500/50 group-hover:animate-[spin_4s_linear_infinite]" />
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">AI Rankia</span>
-                  <span className="truncate text-xs">AI-Powered Analytics</span>
+                  <span className="truncate font-bold ">AI Rankia</span>
+                  <span className="truncate text-[10px]">AI-Powered Prompt Analysis</span>
                 </div>
               </a>
             </SidebarMenuButton>
@@ -121,7 +122,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent className="bg-white dark:bg-background">
         <NavMain items={data.navMain} />
-        <NavSecondary items={data.navSecondary} className="mt-auto" />
+        {/* <NavSecondary items={data.navSecondary} className="mt-auto" /> */}
       </SidebarContent>
       <SidebarFooter className="bg-white dark:bg-background">
         <NavUser />

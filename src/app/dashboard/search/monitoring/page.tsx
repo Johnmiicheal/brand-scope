@@ -1,9 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @next/next/no-img-element */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
 "use client";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   Card,
@@ -44,6 +43,7 @@ import { GoogleSearchResult, Search } from "@/types/search";
 import { GoogleSearch } from "@/types/search";
 import { GoogleResults } from "@/components/ui/google-results";
 import { Globe } from "lucide-react";
+import type { ReactElement } from "react";
 
 // --- Zod Schemas ---
 const BrandResultSchema = z.object({
@@ -116,8 +116,8 @@ const formatRelativeDate = (dateString: string | null): string => {
   }
 };
 
-// --- Component Definition ---
-export default function ScheduledQueryDetailPage() {
+// --- MonitoringContent Component ---
+function MonitoringContent() {
   const searchParams = useSearchParams();
   const queryId = searchParams.get("mode_id");
   const { session, user } = useAuth();
@@ -287,7 +287,7 @@ export default function ScheduledQueryDetailPage() {
   }, [analysisRun]);
 
   // --- Render Logic ---
-  if (loading) return <AnalysisLoadingState />;
+  if (loading) return <MonitoringLoadingState />;
   if (error)
     return (
       <div className="container mx-auto p-4">
@@ -455,6 +455,43 @@ export default function ScheduledQueryDetailPage() {
   );
 }
 
+// --- Main Page Component ---
+export default function MonitoringPage() {
+  return (
+    <Suspense fallback={<MonitoringLoadingState />}>
+      <MonitoringContent />
+    </Suspense>
+  );
+}
+
+// --- Loading State Component ---
+function MonitoringLoadingState() {
+  return (
+    <div className="mx-auto p-2 sm:p-4 w-full h-full">
+      <div className="rounded-lg p-3 sm:p-6 border border-accent">
+        <div className="mb-4 sm:mb-6">
+          <Skeleton className="h-8 sm:h-10 w-[180px] sm:w-[250px] mb-2 bg-zinc-800" />
+          <Skeleton className="h-4 sm:h-5 w-[120px] sm:w-[150px] bg-zinc-800" />
+        </div>
+        <div className="space-y-4">
+          {Array(3)
+            .fill(0)
+            .map((_, i) => (
+              <Card key={i} className="bg-zinc-800/50 border-accent">
+                <CardHeader>
+                  <Skeleton className="h-6 sm:h-7 w-[150px] sm:w-[200px] mb-2 bg-zinc-700" />
+                </CardHeader>
+                <CardContent>
+                  <Skeleton className="h-12 w-full bg-zinc-700" />
+                </CardContent>
+              </Card>
+            ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // --- AnalysisRunDetailsContent Component ---
 function AnalysisRunDetailsContent({
   modelResults,
@@ -463,12 +500,12 @@ function AnalysisRunDetailsContent({
   searchResults,
   rankings,
 }: {
-  modelResults: z.infer<typeof AnalysisRunSchema>["model_results"];
-  modelSummary: z.infer<typeof AnalysisModelSummarySchema>;
+  modelResults: NonNullable<z.infer<typeof AnalysisRunSchema>["model_results"]>;
+  modelSummary: z.infer<typeof AnalysisModelSummarySchema> | null;
   selectedModel: string | null;
-  searchResults: GoogleSearchResult;
-  rankings: any;
-}) {
+  searchResults: GoogleSearchResult | undefined;
+  rankings: unknown;
+}): ReactElement {
   // Filter logic
   const filteredResults = useMemo(() => {
     return selectedModel === "__all__"
@@ -476,8 +513,7 @@ function AnalysisRunDetailsContent({
       : modelResults?.filter((r) => r.llm_name === selectedModel);
   }, [modelResults, selectedModel]);
 
-  const citations: Citation[] | null = modelSummary?.model === selectedModel ? modelSummary?.reasoning : null;
-  const citationsLinks = citations 
+  const citations = modelSummary?.model === selectedModel ? modelSummary?.reasoning : null;
 
   if (!filteredResults || filteredResults.length === 0) {
     return (
@@ -534,15 +570,15 @@ function AnalysisRunDetailsContent({
       </TabsContent>
 
       <TabsContent value="summary" className="space-y-4">
-        <SummaryTabContent item={modelSummary} />
+        {modelSummary && <SummaryTabContent item={modelSummary} />}
       </TabsContent>
 
       <TabsContent value="citations" className="space-y-4">
-            <CitationsTabContent citations={citationsLinks} />
-          </TabsContent>
+        <CitationsTabContent citations={citations} />
+      </TabsContent>
 
       <TabsContent value="google" className="space-y-4">
-        <GoogleResults googleResults={searchResults} rankings={rankings} />
+        {searchResults && <GoogleResults googleResults={searchResults} rankings={rankings} />}
       </TabsContent>
     </Tabs>
   );
@@ -588,8 +624,8 @@ interface Citation {
 function CitationsTabContent({
   citations,
 }: {
-  citations: Citation[] | null;
-}) {
+  citations: z.infer<typeof AnalysisModelSummarySchema>["reasoning"] | null;
+}): ReactElement {
   if (!citations || citations.length === 0) {
     return (
       <div className="flex items-center justify-center p-8">
@@ -665,12 +701,11 @@ function CitationsTabContent({
   );
 }
 
-
 function RankingsTabContent({
   rankings,
 }: {
-  rankings: z.infer<typeof AnalysisRunSchema>["model_results"];
-}) {
+  rankings: NonNullable<z.infer<typeof AnalysisRunSchema>["model_results"]>;
+}): ReactElement {
   return (
     <div>
       <div className="gap-6">
@@ -752,8 +787,8 @@ function RankingsTabContent({
 function SummaryTabContent({
   item,
 }: {
-  item: z.infer<typeof AnalysisModelSummarySchema>;
-}) {
+  item: NonNullable<z.infer<typeof AnalysisModelSummarySchema>>;
+}): ReactElement {
   return (
     <motion.div
       initial={{ opacity: 0 }}

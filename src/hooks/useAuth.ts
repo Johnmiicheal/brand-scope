@@ -12,6 +12,7 @@ export interface UserSubscription {
   user_id: string;
   subscription_plan_id: string;
   stripe_subscription_id: string;
+  price_id: string;
   status: string;
   query_count: number;
   monitoring_count: number;
@@ -45,8 +46,8 @@ export function useAuth() {
             setSubscription(null);
           }
         } else {
-          setSubscription(fetchedSubscriptionData);
-          const stripePrice = await stripe.prices.retrieve(fetchedSubscriptionData.price_id);
+          setSubscription(fetchedSubscriptionData as unknown as UserSubscription);
+          const stripePrice = await stripe.prices.retrieve(fetchedSubscriptionData.price_id as string);
           const stripeProduct = await stripe.products.retrieve(stripePrice.product as string)
           setProduct(stripeProduct);
           console.log("Product: ", stripeProduct);

@@ -159,19 +159,19 @@ export function SignupForm({
                   <div className="flex gap-3">
                     <Button
                       type="button"
-                      variant={formData.userType === 'brand' ? 'default' : 'outline'}
+                      variant={formData.userType === 'brand' ? 'outline' : 'ghost'}
                       onClick={() => setFormData({ ...formData, userType: 'brand' })}
                       disabled={isLoading}
-                      className="flex-1"
+                      className={`flex-1 ${formData.userType === 'brand' ? 'text-blue-400' : ''}`}
                     >
                       Brand
                     </Button>
                     <Button
                       type="button"
-                      variant={formData.userType === 'researcher' ? 'default' : 'outline'}
+                      variant={formData.userType === 'researcher' ? 'outline' : 'ghost'}
                       onClick={() => setFormData({ ...formData, userType: 'researcher' })}
                       disabled={isLoading}
-                      className="flex-1"
+                      className={`flex-1 ${formData.userType === 'researcher' ? 'text-blue-400' : ''}`}
                     >
                       Researcher
                     </Button>

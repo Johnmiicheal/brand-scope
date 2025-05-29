@@ -83,11 +83,11 @@ export const CreateBrandModal = ({ showBrandModal, setShowBrandModal }: CreateBr
         return;
       }
 
-      setBrands(data || []);
+      setBrands(data as unknown as Brand[]);
 
       // Set the first brand as selected if available
       if (data && data.length > 0) {
-        setSelectedBrand(data[0]);
+        setSelectedBrand(data[0] as unknown as Brand);
       } else {
         // Show brand creation modal if no valid brands exist
         setShowBrandModal(true);
