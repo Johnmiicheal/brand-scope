@@ -10,7 +10,7 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY!
 );
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 const openRouterApiKey = process.env.OPENROUTER_API_KEY;
 const openrouter = createOpenRouter({ apiKey: openRouterApiKey });

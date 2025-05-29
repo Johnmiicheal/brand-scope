@@ -9,7 +9,7 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY!
 );
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 
 const openRouterApiKey = process.env.OPENROUTER_API_KEY;
@@ -17,7 +17,7 @@ const openrouter = createOpenRouter({ apiKey: openRouterApiKey });
 
 
 // Maximum number of queries to process in a single run
-const BATCH_SIZE = 10;
+const BATCH_SIZE = 5;
 // Maximum number of concurrent requests
 const CONCURRENCY_LIMIT = 3;
 
