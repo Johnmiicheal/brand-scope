@@ -29,6 +29,7 @@ import {
   ChevronDown,
   Clock9,
   CloudUpload,
+  Info,
   RefreshCcw,
   Settings,
   SquareArrowOutUpRight,
@@ -80,6 +81,8 @@ import { CheckoutSuccess } from "@/components/stripe/checkout-success";
 import { stripe } from "@/lib/stripe";
 import { QueryCounter } from "@/components/dashboard/query-counter";
 import Stripe from "stripe";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 const INDUSTRIES = [
   "Technology",
@@ -119,13 +122,21 @@ function IndustryRankingsTable({ brands }: IndustryRankingsTableProps) {
   );
   const maxMentions = Math.max(...brands.map((brand) => brand.total_mentions));
   const maxModels = 5;
-  const getCoverageRatio = (brand: any) => {
-    const totalMentionsPerModel = (brand.gpt_mentions > 0 ? 1 : 0) + (brand.claude_mentions > 0 ? 1 : 0) + (brand.perplexity_mentions > 0 ? 1 : 0) + (brand.gemini_mentions > 0 ? 1 : 0);
-    return (totalMentionsPerModel / maxModels);
-  }
+  const getCoverageRatio = (brand: any, type: "ratio" | "count") => {
+    const totalMentionsPerModel =
+      (brand.gpt_mentions > 0 ? 1 : 0) +
+      (brand.claude_mentions > 0 ? 1 : 0) +
+      (brand.perplexity_mentions > 0 ? 1 : 0) +
+      (brand.gemini_mentions > 0 ? 1 : 0);
+    if (type === "ratio") {
+      return `${totalMentionsPerModel} / ${maxModels}`;
+    } else {
+      return (totalMentionsPerModel / maxModels).toFixed(2);
+    }
+  };
   const getMentionsIndex = (brand: any) => {
-    return (brand.total_mentions / maxMentions);
-  }
+    return brand.total_mentions / maxMentions;
+  };
   return (
     <Card className="bg-background shadow-none border-[#e2e2e2]/70 dark:border-accent text-white">
       <CardHeader>
@@ -150,13 +161,27 @@ function IndustryRankingsTable({ brands }: IndustryRankingsTableProps) {
                   <TableHead className="sticky top-0 bg-background">
                     Entity
                   </TableHead>
-                  <TableHead className="text-right sticky top-0 bg-background">
-                    Coverage
+                  <TableHead className="sticky top-0 bg-background">
+                    <span className="flex items-center gap-2">
+                      Coverage
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <Info className="w-4 h-4 text-accent-foreground" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>
+                             This measures the ratio of models that mentioned<br/> the entity in the summaries.
+                            </p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </span>
                   </TableHead>
-                  <TableHead className="text-right sticky top-0 bg-background">
+                  <TableHead className="sticky top-0 bg-background">
                     Visibility %
                   </TableHead>
-                  <TableHead className="text-right sticky top-0 bg-background">
+                  <TableHead className="sticky top-0 bg-background">
                     Mentions
                   </TableHead>
                 </TableRow>
@@ -181,15 +206,20 @@ function IndustryRankingsTable({ brands }: IndustryRankingsTableProps) {
                       <TableCell className="flex items-center gap-2">
                         {entity.brand_name}
                       </TableCell>
-                      <TableCell className="text-right">
-                        ⌀ {getCoverageRatio(entity).toFixed(2)}
+                      <TableCell>
+                        ⌀ {getCoverageRatio(entity, "ratio")}
                       </TableCell>
-                      <TableCell className="text-right">
-                        {(100 * (getCoverageRatio(entity) + getMentionsIndex(entity)) / 2).toFixed(1)}
+                      <TableCell>
+                        {(
+                          (100 *
+                            (Number(getCoverageRatio(entity, "count")) +
+                              getMentionsIndex(entity))) /
+                          2
+                        ).toFixed(1)}
                         %
                       </TableCell>
-                      <TableCell className="text-right">
-                        {entity.total_mentions} 
+                      <TableCell>
+                        {entity.total_mentions}
                       </TableCell>
                     </TableRow>
                   ))
@@ -424,7 +454,9 @@ function DashboardContent() {
           }
           setSubsLoading(false);
         } else {
-          setSubscription(fetchedSubscriptionData as unknown as UserSubscription);
+          setSubscription(
+            fetchedSubscriptionData as unknown as UserSubscription
+          );
           const stripePrice = await stripe.prices.retrieve(
             fetchedSubscriptionData.price_id as string
           );
@@ -1098,83 +1130,85 @@ function DashboardContent() {
               </p>
 
               {isAnalyzing ? (
-                   <div className="flex items-center justify-center min-h-[400px]">
-                   <div className="w-full max-w-3xl">
-                     <h1 className="text-2xl font-bold mb-6 text-center">
-                       Creating Brand Analysis
-                     </h1>
-                     <p className="text-muted-foreground mb-8 text-center">Analyzing...</p>
-                     <LoadingState />
-                   </div>
-                 </div>
+                <div className="flex items-center justify-center min-h-[400px]">
+                  <div className="w-full max-w-3xl">
+                    <h1 className="text-2xl font-bold mb-6 text-center">
+                      Creating Brand Analysis
+                    </h1>
+                    <p className="text-muted-foreground mb-8 text-center">
+                      Analyzing...
+                    </p>
+                    <LoadingState />
+                  </div>
+                </div>
               ) : (
-<div className="max-w-md mx-auto mb-8">
-                <div className="sm:max-w-[500px] overflow-hidden border-accent">
-                  <div className="p-6">
-                    <div className="grid gap-6">
-                      <div className="grid gap-2">
-                        <Label htmlFor="name">Name</Label>
-                        <Input
-                          id="name"
-                          value={brandName}
-                          placeholder="Acme Corporation"
-                          onChange={(e) => setBrandName(e.target.value)}
-                          className="bg-zinc-800"
-                          required
-                        />
-                      </div>
-
-                      <div className="grid gap-2">
-                        <Label htmlFor="website">Website</Label>
-                        <Input
-                          id="website"
-                          value={brandWebsite}
-                          onChange={(e) => setBrandWebsite(e.target.value)}
-                          className="bg-zinc-800"
-                          placeholder="https://example.com"
-                          required
-                        />
-                      </div>
-
-                      <div className="grid gap-2">
-                        <Label htmlFor="industry">Industry</Label>
-                        <Select
-                          value={brandIndustry}
-                          onValueChange={setBrandIndustry}
-                        >
-                          <SelectTrigger className="bg-zinc-800 w-full">
-                            <SelectValue placeholder="Select industry" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {INDUSTRIES.map((industry) => (
-                              <SelectItem key={industry} value={industry}>
-                                {industry}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="grid gap-2">
-                        <Label htmlFor="logo">Logo</Label>
-                        <div className="flex items-center gap-4">
-                          <input
-                            ref={fileInputRef}
-                            id="logo"
-                            type="file"
-                            accept="image/*"
-                            onChange={handleFileChange}
-                            className="hidden"
+                <div className="max-w-md mx-auto mb-8">
+                  <div className="sm:max-w-[500px] overflow-hidden border-accent">
+                    <div className="p-6">
+                      <div className="grid gap-6">
+                        <div className="grid gap-2">
+                          <Label htmlFor="name">Name</Label>
+                          <Input
+                            id="name"
+                            value={brandName}
+                            placeholder="Acme Corporation"
+                            onChange={(e) => setBrandName(e.target.value)}
+                            className="bg-zinc-800"
+                            required
                           />
+                        </div>
 
-                          {!brandLogoPreview ? (
-                            <div
-                              onClick={openFileDialog}
-                              onDragEnter={handleDragEnter}
-                              onDragOver={handleDragOver}
-                              onDragLeave={handleDragLeave}
-                              onDrop={handleFileDrop}
-                              className={`
+                        <div className="grid gap-2">
+                          <Label htmlFor="website">Website</Label>
+                          <Input
+                            id="website"
+                            value={brandWebsite}
+                            onChange={(e) => setBrandWebsite(e.target.value)}
+                            className="bg-zinc-800"
+                            placeholder="https://example.com"
+                            required
+                          />
+                        </div>
+
+                        <div className="grid gap-2">
+                          <Label htmlFor="industry">Industry</Label>
+                          <Select
+                            value={brandIndustry}
+                            onValueChange={setBrandIndustry}
+                          >
+                            <SelectTrigger className="bg-zinc-800 w-full">
+                              <SelectValue placeholder="Select industry" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {INDUSTRIES.map((industry) => (
+                                <SelectItem key={industry} value={industry}>
+                                  {industry}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="grid gap-2">
+                          <Label htmlFor="logo">Logo</Label>
+                          <div className="flex items-center gap-4">
+                            <input
+                              ref={fileInputRef}
+                              id="logo"
+                              type="file"
+                              accept="image/*"
+                              onChange={handleFileChange}
+                              className="hidden"
+                            />
+
+                            {!brandLogoPreview ? (
+                              <div
+                                onClick={openFileDialog}
+                                onDragEnter={handleDragEnter}
+                                onDragOver={handleDragOver}
+                                onDragLeave={handleDragLeave}
+                                onDrop={handleFileDrop}
+                                className={`
                           h-32 w-full rounded-md border-2 border-dashed 
                           flex flex-col items-center justify-center p-4 
                           cursor-pointer transition-all duration-200
@@ -1184,68 +1218,74 @@ function DashboardContent() {
                               : "border-zinc-700 bg-zinc-800 hover:border-zinc-500"
                           }
                         `}
-                            >
-                              <div className="flex flex-col items-center text-center">
-                                <CloudUpload className="w-5 h-5 text-zinc-400 mb-2" />
-                                <div className="font-medium text-sm mb-1">
-                                  Click to upload
-                                </div>
-                                <div className="text-xs text-zinc-400">
-                                  or drag and drop your logo here
-                                </div>
-                                <div className="text-[10px] text-zinc-500 mt-3">
-                                  PNG, JPG or SVG (max 5MB)
-                                </div>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="w-full flex flex-col items-center">
-                              <div className="w-28 h-28 p-3 rounded-md overflow-hidden bg-zinc-700 flex items-center justify-center mb-3">
-                                <Image
-                                  src={brandLogoPreview}
-                                  alt="Preview"
-                                  width={50}
-                                  height={50}
-                                  className="w-full h-full object-contain"
-                                />
-                              </div>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={openFileDialog}
-                                className="mt-2"
                               >
-                                <CloudUpload className="w-4 h-4 mr-2" />
-                                Change Logo
-                              </Button>
-                            </div>
-                          )}
+                                <div className="flex flex-col items-center text-center">
+                                  <CloudUpload className="w-5 h-5 text-zinc-400 mb-2" />
+                                  <div className="font-medium text-sm mb-1">
+                                    Click to upload
+                                  </div>
+                                  <div className="text-xs text-zinc-400">
+                                    or drag and drop your logo here
+                                  </div>
+                                  <div className="text-[10px] text-zinc-500 mt-3">
+                                    PNG, JPG or SVG (max 5MB)
+                                  </div>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="w-full flex flex-col items-center">
+                                <div className="w-28 h-28 p-3 rounded-md overflow-hidden bg-zinc-700 flex items-center justify-center mb-3">
+                                  <Image
+                                    src={brandLogoPreview}
+                                    alt="Preview"
+                                    width={50}
+                                    height={50}
+                                    className="w-full h-full object-contain"
+                                  />
+                                </div>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={openFileDialog}
+                                  className="mt-2"
+                                >
+                                  <CloudUpload className="w-4 h-4 mr-2" />
+                                  Change Logo
+                                </Button>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
 
-                  <div className="px-6 py-4">
-                    <Button
-                      onClick={handleCreateBrand}
-                      disabled={submitting}
-                      className="w-full"
-                    >
-                      {submitting ? "Creating..." : "Create Brand"}
-                    </Button>
+                    <div className="px-6 py-4">
+                      <Button
+                        onClick={handleCreateBrand}
+                        disabled={submitting}
+                        className="w-full"
+                      >
+                        {submitting ? "Creating..." : "Create Brand"}
+                      </Button>
+                    </div>
                   </div>
                 </div>
-              </div>
               )}
-              
-
 
               <div className="flex justify-between mt-8">
-                <Button variant="outline" onClick={() => setOnboardingStep(0)} disabled={isAnalyzing}>
+                <Button
+                  variant="outline"
+                  onClick={() => setOnboardingStep(0)}
+                  disabled={isAnalyzing}
+                >
                   Back
                 </Button>
                 <div className="space-x-4">
-                  <Button variant="ghost" onClick={handleSkip} disabled={isAnalyzing}>
+                  <Button
+                    variant="ghost"
+                    onClick={handleSkip}
+                    disabled={isAnalyzing}
+                  >
                     Skip
                   </Button>
                   <Button
@@ -1280,10 +1320,7 @@ function DashboardContent() {
                   userId={user?.id || ""}
                   buttonText="Continue to payments"
                 />
-                <Button
-                  variant="outline"
-                  onClick={handleStartSearching}
-                >
+                <Button variant="outline" onClick={handleStartSearching}>
                   Try BrandScope for free
                 </Button>
               </div>
@@ -1294,7 +1331,7 @@ function DashboardContent() {
     );
   }
 
-  if(error && queries.length <= 0){
+  if (error && queries.length <= 0) {
     return (
       <div className="flex flex-col items-center justify-center h-screen gap-2">
         <Blocks className="w-6 h-6 text-blue-500" />
@@ -1302,9 +1339,16 @@ function DashboardContent() {
           No Scheduled Searches
         </div>
         <p>
-          You have no scheduled searches. Please create a new search to get started.
+          You have no scheduled searches. Please create a new search to get
+          started.
         </p>
-        <Button variant="outline" className="mt-5" onClick={() => window.location.assign("/dashboard/search?monitoring=true")}>
+        <Button
+          variant="outline"
+          className="mt-5"
+          onClick={() =>
+            window.location.assign("/dashboard/search?monitoring=true")
+          }
+        >
           Start Monitoring
         </Button>
       </div>
@@ -1331,11 +1375,16 @@ function DashboardContent() {
     <div className="flex flex-col h-full">
       <CheckoutSuccess />
 
-      <div className="container mx-auto px-4 py-4">
-        <div className="flex justify-between items-center">
+      <div className="w-full mx-auto px-4 py-4">
+        <div className="w-full flex md:flex-row flex-col md:justify-between justify-start md:items-center gap-4">
           <QueryCounter product={product} subscription={subscription} />
           <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={() => window.location.assign("/dashboard/search?monitoring=true")}>
+            <Button
+              variant="outline"
+              onClick={() =>
+                window.location.assign("/dashboard/search?monitoring=true")
+              }
+            >
               Start Monitoring
             </Button>
           </div>
@@ -1348,10 +1397,10 @@ function DashboardContent() {
             transition={{ duration: 0.2 }}
             className="mt-4"
           >
-            <div className="min-h-screen flex-1">
+            <div className="min-h-screen ">
               <div className="space-y-6">
                 <motion.div
-                  className="w-full flex justify-between rounded-md p-3 items-center bg-blue-500/10 border-dashed border-1 border-blue-500/20 cursor-pointer hover:bg-blue-500/20 transition duration-300"
+                  className="w-fit md:w-full flex md:flex-row flex-col md:justify-between justify-start md:items-center gap-2 rounded-md p-3 md:items-center bg-blue-500/10 border-dashed border-1 border-blue-500/20 cursor-pointer hover:bg-blue-500/20 transition duration-300"
                   onClick={() => setIsExpanded(!isExpanded)}
                   whileTap={{ scale: 0.98 }}
                 >
@@ -1381,10 +1430,13 @@ function DashboardContent() {
                   transition={{ duration: 0.3 }}
                   className="w-full"
                 >
-                  <div className="flex flex-col md:flex-row gap-4 w-full">
+                  <div className="flex md:flex-row flex-col md:justify-between justify-start md:items-center gap-4 w-full">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="outline" className="w-fit !border !border-accent">
+                        <Button
+                          variant="outline"
+                          className="w-fit !border !border-accent"
+                        >
                           {getDisplayValue()}
                           <span>
                             <ChevronDown className="w-4 h-4 opacity-40" />
@@ -1393,7 +1445,6 @@ function DashboardContent() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent className="w-56">
                         {" "}
-                        {/* Adjust width as needed */}
                         <DropdownMenuLabel>Filter by Brand</DropdownMenuLabel>
                         <DropdownMenuSeparator />
                         <DropdownMenuCheckboxItem
@@ -1412,10 +1463,6 @@ function DashboardContent() {
                               onCheckedChange={(checked) =>
                                 handleCheckedChange(brand.name, checked)
                               }
-                              // If "all" is checked, individual items are conceptually covered by "all".
-                              // You might want to disable them visually, or manage state so "all" overrides.
-                              // Current logic: checking an individual item unchecks "all".
-                              // Checking "all" clears individual items from the active selection set.
                             >
                               {brand.name}
                             </DropdownMenuCheckboxItem>
@@ -1485,20 +1532,13 @@ function DashboardContent() {
                   brands={brandMentionsInSummaries}
                   selectedBrand={selectedBrands}
                 />
-                {/* Industry Ranking Table - Full width */}
-                <div className="lg:col-span-2">
-                  <IndustryRankingsTable brands={brandMentionsInSummaries} />
-                </div>
+                <IndustryRankingsTable brands={brandMentionsInSummaries} />
 
-                {/* Main content grid */}
-                <div className="flex flex-col lg:flex-row w-full gap-6 h-full">
-                  {/* Left column - Make keyword cloud take full width */}
-                  {keywords && (
-                    <div className="space-y-6 w-full h-full">
-                      <KeywordCloud keywords={keywords} />
-                    </div>
-                  )}
-                </div>
+                {keywords && (
+                  <div className="space-y-6 w-full h-full">
+                    <KeywordCloud keywords={keywords} />
+                  </div>
+                )}
               </div>
             </div>
           </motion.div>
@@ -1511,21 +1551,23 @@ function DashboardContent() {
 export default function DashboardPage() {
   return (
     <BrandDataProvider>
-      <Suspense fallback={(
-         <div className="flex items-center justify-center min-h-screen">
-         <div className="w-full max-w-3xl">
-           <div className="flex flex-col items-center justify-center">
-             <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-             <ShinyText
-               text="Fetching your latest data..."
-               disabled={false}
-               speed={3}
-               className="font-medium text-sm"
-             />
-           </div>
-         </div>
-       </div>
-      )}>
+      <Suspense
+        fallback={
+          <div className="flex items-center justify-center min-h-screen">
+            <div className="w-full max-w-3xl">
+              <div className="flex flex-col items-center justify-center">
+                <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+                <ShinyText
+                  text="Fetching your latest data..."
+                  disabled={false}
+                  speed={3}
+                  className="font-medium text-sm"
+                />
+              </div>
+            </div>
+          </div>
+        }
+      >
         <DashboardContent />
       </Suspense>
     </BrandDataProvider>
