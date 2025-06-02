@@ -127,7 +127,8 @@ function IndustryRankingsTable({ brands }: IndustryRankingsTableProps) {
       (brand.gpt_mentions > 0 ? 1 : 0) +
       (brand.claude_mentions > 0 ? 1 : 0) +
       (brand.perplexity_mentions > 0 ? 1 : 0) +
-      (brand.gemini_mentions > 0 ? 1 : 0);
+      (brand.gemini_mentions > 0 ? 1 : 0) +
+      (brand.gpt_search_mentions > 0 ? 1 : 0);
     if (type === "ratio") {
       return `${totalMentionsPerModel} / ${maxModels}`;
     } else {
@@ -683,6 +684,12 @@ function DashboardContent() {
       return [];
     }
 
+    // Filter results based on selected date (same logic as filteredAnalysisBrands)
+    const dateFilteredResults =
+      selectedDate === "latest" || selectedDate === ""
+        ? results
+        : results.filter((result) => result.analysis_date === selectedDate);
+
     // Initialize a map to store brand mentions
     const brandMentionsMap = new Map();
 
@@ -697,11 +704,16 @@ function DashboardContent() {
         gpt_search_mentions: 0,
       };
 
-      // Process each model's results
-      results.forEach((result) => {
+      // Process each filtered result
+      dateFilteredResults.forEach((result) => {
         result.model_results?.forEach(
           (modelResult: { llm_name: string; data: { brands: any[] } }) => {
             const modelName = modelResult.llm_name.toLowerCase();
+
+            // Filter by model if a specific model is selected
+            if (selectedModel !== "all" && selectedModel !== "" && modelResult.llm_name !== selectedModel) {
+              return;
+            }
 
             // Count mentions in brand data
             const brandData = modelResult.data?.brands?.find(
@@ -755,7 +767,7 @@ function DashboardContent() {
     return Array.from(brandMentionsMap.values()).sort(
       (a, b) => b.total_mentions - a.total_mentions
     );
-  }, [results, analysis_brands]);
+  }, [results, analysis_brands, selectedDate, selectedModel]);
 
   // Effect to update analysis_brands based on selectedBrand
   useEffect(() => {
@@ -1430,7 +1442,7 @@ function DashboardContent() {
                   transition={{ duration: 0.3 }}
                   className="w-full"
                 >
-                  <div className="flex md:flex-row flex-col md:justify-between justify-start md:items-center gap-4 w-full">
+                  <div className="flex md:flex-row flex-col justify-start md:items-center gap-4 w-full">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button

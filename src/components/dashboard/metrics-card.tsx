@@ -111,13 +111,14 @@ export function MetricsHeader({ brands, selectedBrand }: MetricsHeaderProps) {
   // const visibilityScore = total_mentions / all_total_mentions || 0;
   const mentions = total_mentions || 0;
   const maxModels = 5;
-  const maxMentions = Math.max(...selectedBrandsData.map((brand) => brand.total_mentions));
+  const maxMentions = Math.max(...brands.map((brand) => brand.total_mentions), 1);
   const getCoverageRatio = (brands: Brand[], type: "ratio" | "count") => {
     const totalMentionsPerModel = brands.reduce((acc, brand) => {
       return acc + (brand.gpt_mentions > 0 ? 1 : 0) + 
                   (brand.claude_mentions > 0 ? 1 : 0) + 
                   (brand.perplexity_mentions > 0 ? 1 : 0) + 
-                  (brand.gemini_mentions > 0 ? 1 : 0);
+                  (brand.gemini_mentions > 0 ? 1 : 0) +
+                  (brand.gpt_search_mentions > 0 ? 1 : 0);
     }, 0);
     if (type === "ratio") {
       return `⌀ ${totalMentionsPerModel} / ${(maxModels * brands.length)}`;
