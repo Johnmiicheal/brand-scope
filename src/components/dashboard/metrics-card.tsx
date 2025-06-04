@@ -90,13 +90,25 @@ interface Brand {
   total_mentions: number;
 }
 
+interface TemporalBrand {
+  brand_name: string;
+  analysis_date: string;
+  gpt_mentions: number;
+  gpt_search_mentions: number;
+  claude_mentions: number;
+  perplexity_mentions: number;
+  gemini_mentions: number;
+  total_mentions: number;
+}
+
 
 interface MetricsHeaderProps {
   brands: Brand[];
+  temporalBrands: TemporalBrand[];
   selectedBrand: Set<string>;
 }
 
-export function MetricsHeader({ brands, selectedBrand }: MetricsHeaderProps) {
+export function MetricsHeader({ brands, temporalBrands, selectedBrand }: MetricsHeaderProps) {
   // Get all selected brands data
   const selectedBrandsData = brands.filter(b => selectedBrand.has(b.brand_name));
 
@@ -162,7 +174,7 @@ export function MetricsHeader({ brands, selectedBrand }: MetricsHeaderProps) {
         /> */}
       </div>
       <CompetitorChart
-        competitors={brands}
+        brandAnalytics={temporalBrands}
         selectedBrands={selectedBrand}
       />
     </div>

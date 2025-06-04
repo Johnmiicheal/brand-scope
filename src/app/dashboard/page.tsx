@@ -674,7 +674,109 @@ function DashboardContent() {
   }, [results]);
 
   // Calculate brand mentions in model summaries
-  const brandMentionsInSummaries = useMemo(() => {
+  const temportalBrandMentionsInSummaries = useMemo(() => {
+    if (
+      !results ||
+      !Array.isArray(results) ||
+      !analysis_brands ||
+      analysis_brands.length === 0
+    ) {
+      return [];
+    }
+
+    // Initialize an array to store brand mentions for each date
+    const brandMentionsArray: any[] = [];
+
+    // Process each result (which represents a different analysis date)
+    results.forEach((result) => {
+      // Initialize a map for this date's brand mentions
+      const brandMentionsMap = new Map();
+
+      // Process each brand
+      analysis_brands.forEach((brand) => {
+        const brandName = brand.name;
+        const mentions = {
+          gpt_mentions: 0,
+          claude_mentions: 0,
+          perplexity_mentions: 0,
+          gemini_mentions: 0,
+          gpt_search_mentions: 0,
+        };
+
+        // Process model results for this date
+        result.model_results?.forEach(
+          (modelResult: { llm_name: string; data: { brands: any[] } }) => {
+            const modelName = modelResult.llm_name.toLowerCase();
+
+            // Filter by model if a specific model is selected
+            if (selectedModel !== "all" && selectedModel !== "" && modelResult.llm_name !== selectedModel) {
+              return;
+            }
+
+            // Count mentions in brand data
+            const brandData = modelResult.data?.brands?.find(
+              (b) => b.name === brandName
+            );
+            if (brandData) {
+              let mentionCount = 1; // Count direct mention in brand analysis
+
+              // Add mentions from reasoning if available
+              if (brandData.reasoning) {
+                const reasoningMatches = brandData.reasoning.match(
+                  new RegExp(`\\b${brandName}\\b`, "gi")
+                );
+                if (reasoningMatches) {
+                  mentionCount += reasoningMatches.length;
+                }
+              }
+
+              // Assign mentions to the appropriate model
+              if (modelName.includes("4.1")) {
+                mentions.gpt_mentions += mentionCount;
+              } else if (modelName.includes("claude")) {
+                mentions.claude_mentions += mentionCount;
+              } else if (modelName.includes("perplexity")) {
+                mentions.perplexity_mentions += mentionCount;
+              } else if (modelName.includes("gemini")) {
+                mentions.gemini_mentions += mentionCount;
+              } else if (modelName.includes("search")) {
+                mentions.gpt_search_mentions += mentionCount;
+              }
+            }
+          }
+        );
+
+        const total_mentions = Object.values(mentions).reduce(
+          (sum, count) => sum + count,
+          0
+        );
+
+        if (total_mentions > 0) {
+          brandMentionsMap.set(brandName, {
+            brand_name: brandName,
+            analysis_date: result.analysis_date,
+            ...mentions,
+            total_mentions,
+          });
+        }
+      });
+
+      // Add this date's brand mentions to the array
+      brandMentionsArray.push(...Array.from(brandMentionsMap.values()));
+    });
+
+    // Sort by date and then by total mentions within each date
+    return brandMentionsArray.sort((a, b) => {
+      const dateCompare = new Date(a.analysis_date).getTime() - new Date(b.analysis_date).getTime();
+      if (dateCompare === 0) {
+        return b.total_mentions - a.total_mentions;
+      }
+      return dateCompare;
+    });
+  }, [results, analysis_brands, selectedModel]);
+
+   // Calculate brand mentions in model summaries
+   const brandMentionsInSummaries = useMemo(() => {
     if (
       !results ||
       !Array.isArray(results) ||
@@ -1542,6 +1644,7 @@ function DashboardContent() {
 
                 <MetricsHeader
                   brands={brandMentionsInSummaries}
+                  temporalBrands={temportalBrandMentionsInSummaries}
                   selectedBrand={selectedBrands}
                 />
                 <IndustryRankingsTable brands={brandMentionsInSummaries} />
