@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable @typescript-eslint/ban-ts-comment */
 
 "use client";
 
@@ -83,6 +82,8 @@ import { QueryCounter } from "@/components/dashboard/query-counter";
 import Stripe from "stripe";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { GoogleResults } from "@/components/ui/google-results";
+import { Gemini } from "@lobehub/icons";
 
 const INDUSTRIES = [
   "Technology",
@@ -275,6 +276,12 @@ function DashboardContent() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [subsLoading, setSubsLoading] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<string>("");
+  const [selectedModel, setSelectedModel] = useState<string>("");
+  const [googleSearchResults, setGoogleSearchResults] = useState<any>(null);
+  const [loadingGoogleResults, setLoadingGoogleResults] = useState(false);
+  const [showGoogleResults, setShowGoogleResults] = useState(false);
+
 
   // const fetchBrands = async () => {
   //   try {
@@ -538,8 +545,6 @@ function DashboardContent() {
   const [selectedBrands, setSelectedBrands] = useState<Set<string>>(
     new Set<string>([])
   );
-  const [selectedDate, setSelectedDate] = useState<string>("");
-  const [selectedModel, setSelectedModel] = useState<string>("");
 
   const handleCheckedChange = (brandName: string, isChecked: boolean) => {
     setSelectedBrands((prevSelected) => {
@@ -903,6 +908,52 @@ function DashboardContent() {
       console.log("Prompt changed, resetting filters");
     }
   }, [selectedQuery]);
+
+  // Fetch Google search results using the monitoring API
+  const fetchGoogleSearchResults = async (mode_id: string, analysisDate?: string) => {
+    if (!mode_id) return;
+    
+    try {
+      setLoadingGoogleResults(true);
+      const response = await fetch(`/api/monitoring?mode_id=${mode_id}`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch Google search results');
+      }
+      
+      const data = await response.json();
+      
+      // Filter search results by analysis date if provided
+      if (analysisDate && analysisDate !== "latest" && analysisDate !== "" && data.search_results) {
+        // Extract just the date part (YYYY-MM-DD) from the analysis date
+        const targetDate = analysisDate.split('T')[0];
+        
+        const filteredResults = data.search_results.filter((result: any) => {
+          if (!result.created_at) return false;
+          // Extract date part from created_at timestamp
+          const resultDate = new Date(result.created_at).toISOString().split('T')[0];
+          return resultDate === targetDate;
+        });
+        
+        data.search_results = filteredResults;
+      }
+      
+      setGoogleSearchResults(data);
+    } catch (error) {
+      console.error('Error fetching Google search results:', error);
+      setGoogleSearchResults(null);
+    } finally {
+      setLoadingGoogleResults(false);
+    }
+  };
+
+  // Effect to fetch Google search results when selected query or date changes
+  useEffect(() => {
+    if (selectedQuery?.mode_id) {
+      fetchGoogleSearchResults(selectedQuery.mode_id, selectedDate);
+    }
+  }, [selectedQuery, selectedDate]);
+  console.log(googleSearchResults);
 
   if (loading) {
     return (
@@ -1627,6 +1678,11 @@ function DashboardContent() {
                         ))}
                       </SelectContent>
                     </Select>
+
+                    <Button onClick={() => setShowGoogleResults(!showGoogleResults)} variant="outline">
+                       <Gemini className="w-4 h-4" />
+                      {showGoogleResults ? "Hide Google Results" : "Show Google Results"}
+                    </Button>
                   </div>
                 </motion.div>
                 <AnimatePresence>
@@ -1656,6 +1712,17 @@ function DashboardContent() {
                   temporalBrands={temportalBrandMentionsInSummaries}
                   selectedBrand={selectedBrands}
                 />
+
+                {/* Google Search Results */}
+                {showGoogleResults && (
+                googleSearchResults && googleSearchResults.search_results && googleSearchResults.search_results.length > 0 && (
+                  <GoogleResults
+                    googleResults={googleSearchResults.search_results[0].results}
+                    rankings={googleSearchResults.search_results[0]?.rankings}
+                  />
+                )
+              )}
+
                 <IndustryRankingsTable brands={brandMentionsInSummaries} />
 
                 {keywords && (

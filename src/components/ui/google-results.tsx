@@ -117,7 +117,13 @@ export function GoogleResults({ googleResults, rankings }: GoogleResultsProps) {
     }
   };
 
-  if (!googleResults) return null;
+  if (!googleResults) {
+    return (
+      <div className="p-6 text-center">
+        <p className="text-white/70">No results available for this search.</p>
+      </div>
+    );
+  }
 
   return (
     <Card className="p-0 overflow-hidden bg-transparent border-none">

@@ -130,7 +130,10 @@ export function MetricsHeader({
     selectedBrand.has(b.brand_name)
   );
 
-  if (!selectedBrandsData.length) {
+  if(selectedBrand.has("all") || selectedBrand.size === 0) return null
+
+
+  if (!selectedBrand.has("all") && selectedBrandsData.length === 0) {
     return (
       <div className="rounded-lg border p-5 ">
         <p className="text-muted-foreground">No brand data available for this filter</p>
@@ -138,10 +141,7 @@ export function MetricsHeader({
     );
   }
 
-  // const all_total_mentions = brands.reduce(
-  //   (acc, brand) => acc + brand.total_mentions,
-  //   0
-  // );
+
 
   const total_mentions = selectedBrandsData.reduce(
     (acc, b) => acc + (b?.total_mentions || 0),
