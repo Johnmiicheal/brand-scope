@@ -4,7 +4,12 @@ import { motion } from "framer-motion";
 import { ArrowUpRight, ArrowDownRight, TrendingUp, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CompetitorChart } from "./competitor-chart";
-import { Tooltip, TooltipTrigger, TooltipProvider, TooltipContent } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipProvider,
+  TooltipContent,
+} from "@/components/ui/tooltip";
 interface MetricCardProps {
   title: string;
   value: string | number;
@@ -22,27 +27,35 @@ function MetricCard({
   trendLabel,
   trendTimeframe = "vs last period",
   className,
-  tooltipLabel
+  tooltipLabel,
 }: MetricCardProps) {
   const showTrend = trend !== undefined;
 
   return (
     <motion.div
-      className={cn("p-6 bg-card/5 border-r border-[#e2e2e2]/70 dark:border-accent", className)}
+      className={cn(
+        "p-6 bg-card/5 border-r border-[#e2e2e2]/70 dark:border-accent",
+        className
+      )}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
     >
-      <div className="text-sm text-muted-foreground mb-1 flex items-center gap-2">{title} {tooltipLabel && <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger>
-            <Info className="w-4 h-4" />
-          </TooltipTrigger>
-          <TooltipContent className="max-w-sm w-full">
-            {tooltipLabel}
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>}</div>
+      <div className="text-sm text-muted-foreground mb-1 flex items-center gap-2">
+        {title}{" "}
+        {tooltipLabel && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger>
+                <Info className="w-4 h-4" />
+              </TooltipTrigger>
+              <TooltipContent className="max-w-sm w-full">
+                {tooltipLabel}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
+      </div>
       <div className="text-2xl font-bold mb-1">{value}</div>
 
       {showTrend && (
@@ -101,45 +114,65 @@ interface TemporalBrand {
   total_mentions: number;
 }
 
-
 interface MetricsHeaderProps {
   brands: Brand[];
   temporalBrands: TemporalBrand[];
   selectedBrand: Set<string>;
 }
 
-export function MetricsHeader({ brands, temporalBrands, selectedBrand }: MetricsHeaderProps) {
+export function MetricsHeader({
+  brands,
+  temporalBrands,
+  selectedBrand,
+}: MetricsHeaderProps) {
   // Get all selected brands data
-  const selectedBrandsData = brands.filter(b => selectedBrand.has(b.brand_name));
+  const selectedBrandsData = brands.filter((b) =>
+    selectedBrand.has(b.brand_name)
+  );
 
-  if(!selectedBrandsData.length) return null;
+  if (!selectedBrandsData.length) {
+    return (
+      <div className="rounded-lg border p-5 ">
+        <p className="text-muted-foreground">No brand data available for this filter</p>
+      </div>
+    );
+  }
 
   // const all_total_mentions = brands.reduce(
   //   (acc, brand) => acc + brand.total_mentions,
   //   0
   // );
 
-  const total_mentions = selectedBrandsData.reduce((acc, b) => acc + (b?.total_mentions || 0), 0);
+  const total_mentions = selectedBrandsData.reduce(
+    (acc, b) => acc + (b?.total_mentions || 0),
+    0
+  );
   // const visibilityScore = total_mentions / all_total_mentions || 0;
   const mentions = total_mentions || 0;
   const maxModels = 5;
-  const maxMentions = Math.max(...brands.map((brand) => brand.total_mentions), 1);
+  const maxMentions = Math.max(...brands.map((brand) => brand.total_mentions));
   const getCoverageRatio = (brands: Brand[], type: "ratio" | "count") => {
     const totalMentionsPerModel = brands.reduce((acc, brand) => {
-      return acc + (brand.gpt_mentions > 0 ? 1 : 0) + 
-                  (brand.claude_mentions > 0 ? 1 : 0) + 
-                  (brand.perplexity_mentions > 0 ? 1 : 0) + 
-                  (brand.gemini_mentions > 0 ? 1 : 0) +
-                  (brand.gpt_search_mentions > 0 ? 1 : 0);
+      return (
+        acc +
+        (brand.gpt_mentions > 0 ? 1 : 0) +
+        (brand.claude_mentions > 0 ? 1 : 0) +
+        (brand.perplexity_mentions > 0 ? 1 : 0) +
+        (brand.gemini_mentions > 0 ? 1 : 0) +
+        (brand.gpt_search_mentions > 0 ? 1 : 0)
+      );
     }, 0);
     if (type === "ratio") {
-      return `⌀ ${totalMentionsPerModel} / ${(maxModels * brands.length)}`;
+      return `⌀ ${totalMentionsPerModel} / ${maxModels * brands.length}`;
     } else {
       return (totalMentionsPerModel / (maxModels * brands.length)).toFixed(2);
     }
-  }
+  };
   const getMentionsIndex = (brands: Brand[]) => {
-    const totalMentions = brands.reduce((acc, brand) => acc + brand.total_mentions, 0);
+    const totalMentions = brands.reduce(
+      (acc, brand) => acc + brand.total_mentions,
+      0
+    );
     return totalMentions / maxMentions;
   };
 
@@ -158,21 +191,21 @@ export function MetricsHeader({ brands, temporalBrands, selectedBrand }: Metrics
           tooltipLabel="The visibility score is a measure of how visible an entity is in the summaries. It is calculated by taking the average of the coverage ratio for each brand and the mentions index."
         />
 
-        <MetricCard title="Coverage Ratio" value={`${(Number(getCoverageRatio(selectedBrandsData, "count")) * 100).toFixed(1)}%`} tooltipLabel="The coverage ratio is a measure of how many models mentioned the entity in the summaries." />
-
-        <MetricCard 
-          title="Mentions" 
-          value={mentions} 
-          tooltipLabel="The mentions are the number of times each entity was mentioned in the summaries. It is calculated by taking the sum of the total mentions for each brand."
+        <MetricCard
+          title="Coverage Ratio"
+          value={`${(
+            Number(getCoverageRatio(selectedBrandsData, "count")) * 100
+          ).toFixed(1)}%`}
+          tooltipLabel="The coverage ratio is a measure of how many models mentioned the entity in the summaries."
         />
 
-        {/* <MetricCard
-          title="Sentiment Score"
-          value={`${Math.round(positive * 100)}%`}
-          trend={-0.02}
-          className="border-r-0"
-        /> */}
+        <MetricCard
+          title="Mentions"
+          value={mentions}
+          tooltipLabel="The mentions are the number of times each entity was mentioned in the summaries. It is calculated by taking the sum of the total mentions for each brand."
+        />
       </div>
+
       <CompetitorChart
         brandAnalytics={temporalBrands}
         selectedBrands={selectedBrand}

@@ -670,7 +670,16 @@ function DashboardContent() {
           )
       )
       .filter(Boolean);
-    return [...new Set(allBrands)];
+    
+    // Deduplicate based on brand name
+    const uniqueBrands = new Map();
+    allBrands.forEach(brand => {
+      if (brand.name && !uniqueBrands.has(brand.name)) {
+        uniqueBrands.set(brand.name, brand);
+      }
+    });
+    
+    return Array.from(uniqueBrands.values());
   }, [results]);
 
   // Calculate brand mentions in model summaries

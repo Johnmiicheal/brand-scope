@@ -72,44 +72,55 @@ export function CompetitorChart({
     selectedBrands.has(b.brand_name)
   );
 
-  if (!selectedBrandData?.length) {
-    return (
-      <div className="rounded-b-lg border p-5 border-t-0">
-        <p className="text-muted-foreground">No competitor data available</p>
-      </div>
-    );
-  }
 
-  // Get max mentions for normalization
-  const maxMentions = Math.max(
-    ...selectedBrandData.map((brand) => brand.total_mentions),
-    1
-  );
   const maxModels = 5;
 
-  // Calculate visibility score for a brand at a point in time
-  const calculateVisibilityScore = (brand: BrandAnalysis) => {
-    const modelCoverage = 
+  const getCoverageRatio = (brand: BrandAnalysis, type: "ratio" | "count") => {
+    const totalMentionsPerModel =
       (brand.gpt_mentions > 0 ? 1 : 0) +
       (brand.claude_mentions > 0 ? 1 : 0) +
       (brand.perplexity_mentions > 0 ? 1 : 0) +
       (brand.gemini_mentions > 0 ? 1 : 0) +
       (brand.gpt_search_mentions > 0 ? 1 : 0);
-    
-    const coverageRatio = modelCoverage / maxModels;
-    const mentionsIndex = brand.total_mentions / maxMentions;
-    
-    return Number(((100 * (coverageRatio + mentionsIndex)) / 2).toFixed(2)) || 0;
+    if (type === "ratio") {
+      return `${totalMentionsPerModel} / ${maxModels}`;
+    } else {
+      return (totalMentionsPerModel / maxModels).toFixed(2);
+    }
+  };
+
+  const getMentionsIndex = (brand: BrandAnalysis, maxMentionsForDate: number) => {
+    return brand.total_mentions / maxMentionsForDate;
+  };
+
+  // Calculate visibility score for a single brand at a point in time
+  const calculateVisibilityScore = (brand: BrandAnalysis, maxMentionsForDate: number) => {
+    return (
+      (100 *
+        (Number(getCoverageRatio(brand, "count")) +
+          getMentionsIndex(brand, maxMentionsForDate))) /
+      2
+    ).toFixed(1);
   };
 
   // Group data by date and create chart data
   const dates = [...new Set(selectedBrandData.map(b => b.analysis_date))].sort();
   const chartData = dates.map(date => {
-    const dataPoint: Record<string, string | number> = { date: new Date(date).toLocaleDateString('en-US', { day: '2-digit', month: 'short' }) };
+    const dataPoint: Record<string, string | number> = { 
+      date: new Date(date).toLocaleDateString('en-US', { day: '2-digit', month: 'short' }) 
+    };
+    
+    // Get all brands for this specific date to calculate maxMentions
+    const brandsForThisDate = brandAnalytics.filter(b => b.analysis_date === date);
+    const maxMentionsForThisDate = Math.max(
+      ...brandsForThisDate.map((brand) => brand.total_mentions),
+      1
+    );
+    
     selectedBrandData
       .filter(b => b.analysis_date === date)
       .forEach(brand => {
-        dataPoint[brand.brand_name] = calculateVisibilityScore(brand);
+        dataPoint[brand.brand_name] = calculateVisibilityScore(brand, maxMentionsForThisDate);
       });
     return dataPoint;
   });
