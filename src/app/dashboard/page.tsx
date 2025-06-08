@@ -84,6 +84,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { GoogleResults } from "@/components/ui/google-results";
 import { Gemini } from "@lobehub/icons";
+import { toast } from "sonner";
 
 const INDUSTRIES = [
   "Technology",
@@ -112,10 +113,11 @@ interface IndustryRankingsTableProps {
     gemini_mentions: number;
     total_mentions: number;
   }[];
+  setSelectedBrand: (brand: Set<string>) => void;
 }
 
 // Updated component for the Industry Rankings Table
-function IndustryRankingsTable({ brands }: IndustryRankingsTableProps) {
+function IndustryRankingsTable({ brands, setSelectedBrand }: IndustryRankingsTableProps) {
   if (!brands) return null;
   const all_total_mentions = brands.reduce(
     (acc, brand) => acc + brand.total_mentions,
@@ -202,7 +204,8 @@ function IndustryRankingsTable({ brands }: IndustryRankingsTableProps) {
                   brands.map((entity, index) => (
                     <TableRow
                       key={index}
-                      className="dark:text-white text-black border-[#e2e2e2]/40 dark:border-accent"
+                      className="dark:text-white text-black border-[#e2e2e2]/40 dark:border-accent cursor-pointer"
+                      onClick={() => {setSelectedBrand(new Set([entity.brand_name])); toast.info(`You have selected ${entity.brand_name}`)}}
                     >
                       <TableCell className="font-medium">{index + 1}</TableCell>
                       <TableCell className="flex items-center gap-2">
@@ -1723,7 +1726,7 @@ function DashboardContent() {
                 )
               )}
 
-                <IndustryRankingsTable brands={brandMentionsInSummaries} />
+                <IndustryRankingsTable brands={brandMentionsInSummaries} setSelectedBrand={setSelectedBrands} />
 
                 {keywords && (
                   <div className="space-y-6 w-full h-full">
