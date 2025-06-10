@@ -68,7 +68,7 @@ export function ScheduledQueriesList({
 }: {
   queries: ScheduledQuery[];
   onSelectQuery?: (query: ScheduledQuery) => void;
-  selectedQuery: string;
+  selectedQuery?: string;
 }) {
   const router = useRouter();
   const [queries, setQueries] = useState<ScheduledQuery[]>(initialQueries);

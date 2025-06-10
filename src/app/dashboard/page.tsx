@@ -1794,7 +1794,7 @@ function DashboardContent() {
                       <Card className="bg-background rounded-md p-4 border-[#e2e2e2]/70 dark:border-accent">
                         <ScheduledQueriesList
                           queries={queries}
-                          selectedQuery={selectedQuery?.query || ""}
+                          selectedQuery={selectedQuery?.query}
                           onSelectQuery={(query) => {
                             setSelectedQuery(query);
                             setIsExpanded(false); // Close the list after selection
