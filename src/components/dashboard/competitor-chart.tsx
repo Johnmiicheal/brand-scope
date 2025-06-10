@@ -61,11 +61,13 @@ const chartConfig = {
 interface CompetitorChartProps {
   brandAnalytics: BrandAnalysis[];
   selectedBrands: Set<string>;
+  selectedModel: Set<string>;
 }
 
 export function CompetitorChart({
   brandAnalytics,
   selectedBrands,
+  selectedModel,
 }: CompetitorChartProps) {
   // Filter to get only selected brands
   const selectedBrandData = brandAnalytics?.filter((b) =>
@@ -73,7 +75,7 @@ export function CompetitorChart({
   );
 
 
-  const maxModels = 5;
+  const maxModels = selectedModel.size === 0 ? 5 : selectedModel.size;
 
   const getCoverageRatio = (brand: BrandAnalysis, type: "ratio" | "count") => {
     const totalMentionsPerModel =

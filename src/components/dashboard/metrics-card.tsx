@@ -117,13 +117,15 @@ interface TemporalBrand {
 interface MetricsHeaderProps {
   brands: Brand[];
   temporalBrands: TemporalBrand[];
-  selectedBrand: Set<string>;
+  selectedBrand: Set<string>; 
+  selectedModel: Set<string>
 }
 
 export function MetricsHeader({
   brands,
   temporalBrands,
   selectedBrand,
+  selectedModel
 }: MetricsHeaderProps) {
   // Get all selected brands data
   const selectedBrandsData = brands.filter((b) =>
@@ -149,7 +151,7 @@ export function MetricsHeader({
   );
   // const visibilityScore = total_mentions / all_total_mentions || 0;
   const mentions = total_mentions || 0;
-  const maxModels = 5;
+  const maxModels = selectedModel.size === 0 ? 5 : selectedModel.size;
   const maxMentions = Math.max(...brands.map((brand) => brand.total_mentions));
   const getCoverageRatio = (brands: Brand[], type: "ratio" | "count") => {
     const totalMentionsPerModel = brands.reduce((acc, brand) => {
@@ -207,6 +209,7 @@ export function MetricsHeader({
       </div>
 
       <CompetitorChart
+        selectedModel={selectedModel}
         brandAnalytics={temporalBrands}
         selectedBrands={selectedBrand}
       />

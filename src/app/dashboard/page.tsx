@@ -120,6 +120,7 @@ interface IndustryRankingsTableProps {
   }[];
   setSelectedBrand: (brand: Set<string>) => void;
   selectedBrand: Set<string>;
+  selectedModel: Set<string>;
 }
 
 // Updated component for the Industry Rankings Table
@@ -127,6 +128,7 @@ function IndustryRankingsTable({
   brands,
   setSelectedBrand,
   selectedBrand,
+  selectedModel,
 }: IndustryRankingsTableProps) {
   if (!brands) return null;
   const all_total_mentions = brands.reduce(
@@ -135,7 +137,7 @@ function IndustryRankingsTable({
   );
 
   const maxMentions = Math.max(...brands.map((brand) => brand.total_mentions));
-  const maxModels = 5;
+  const maxModels = selectedModel.size === 0 ? 5 : selectedModel.size;
   const getCoverageRatio = (brand: any, type: "ratio" | "count") => {
     const totalMentionsPerModel =
       (brand.gpt_mentions > 0 ? 1 : 0) +
@@ -296,7 +298,7 @@ function DashboardContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [subsLoading, setSubsLoading] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string>("");
-  const [selectedModel, setSelectedModel] = useState<string>("");
+  const [selectedModel, setSelectedModel] = useState<Set<string>>(new Set<string>([]));
   const [googleSearchResults, setGoogleSearchResults] = useState<any>(null);
   const [loadingGoogleResults, setLoadingGoogleResults] = useState(false);
   const [showGoogleResults, setShowGoogleResults] = useState(false);
@@ -655,10 +657,10 @@ function DashboardContent() {
     const filteredBrands = dateFilteredResults
       .flatMap((result) =>
         result.model_results
-          // Filter by model if a specific model is selected
+          // Filter by model if specific models are selected
           ?.filter(
             (modelResult: { llm_name: string }) =>
-              selectedModel === "all" || modelResult.llm_name === selectedModel
+              selectedModel.size === 0 || selectedModel.has(modelResult.llm_name)
           )
           // Extract brands from filtered model results
           .flatMap(
@@ -740,11 +742,10 @@ function DashboardContent() {
           (modelResult: { llm_name: string; data: { brands: any[] } }) => {
             const modelName = modelResult.llm_name.toLowerCase();
 
-            // Filter by model if a specific model is selected
+            // Filter by model if specific models are selected
             if (
-              selectedModel !== "all" &&
-              selectedModel !== "" &&
-              modelResult.llm_name !== selectedModel
+              selectedModel.size > 0 &&
+              !selectedModel.has(modelResult.llm_name)
             ) {
               return;
             }
@@ -850,11 +851,10 @@ function DashboardContent() {
           (modelResult: { llm_name: string; data: { brands: any[] } }) => {
             const modelName = modelResult.llm_name.toLowerCase();
 
-            // Filter by model if a specific model is selected
+            // Filter by model if specific models are selected
             if (
-              selectedModel !== "all" &&
-              selectedModel !== "" &&
-              modelResult.llm_name !== selectedModel
+              selectedModel.size > 0 &&
+              !selectedModel.has(modelResult.llm_name)
             ) {
               return;
             }
@@ -913,9 +913,9 @@ function DashboardContent() {
     );
   }, [results, analysis_brands, selectedDate, selectedModel]);
 
-  // Effect to update analysis_brands based on selectedBrand
+  // Effect to update analysis_brands based on selectedModel
   useEffect(() => {
-    if (!selectedModel || selectedModel === "all" || selectedModel === "") {
+    if (selectedModel.size === 0) {
       setAnalysisBrands(allAnalysisBrands);
     } else {
       setAnalysisBrands(filteredAnalysisBrands);
@@ -945,7 +945,7 @@ function DashboardContent() {
   useEffect(() => {
     // Reset filters when the prompt changes
     if (selectedQuery) {
-      setSelectedModel("all");
+      setSelectedModel(new Set<string>([])); // Reset to empty set (show all models)
       setSelectedDate("latest");
       console.log("Prompt changed, resetting filters");
     }
@@ -1714,22 +1714,58 @@ function DashboardContent() {
                       </SelectContent>
                     </Select>
 
-                    <Select
-                      defaultValue={selectedModel || "all"}
-                      onValueChange={(value) => setSelectedModel(value)}
-                    >
-                      <SelectTrigger className="w-fit !border !border-accent">
-                        <SelectValue placeholder="Select models" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Models</SelectItem>
-                        {analysis_models?.map((model: string) => (
-                          <SelectItem key={model} value={model}>
-                            {model}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className="w-fit !border !border-accent"
+                        >
+                          {selectedModel.size === 0 
+                            ? "All Models" 
+                            : selectedModel.size === 1 
+                            ? Array.from(selectedModel)[0]
+                            : `${selectedModel.size} models selected`}
+                          <span>
+                            <ChevronDown className="w-4 h-4 opacity-40" />
+                          </span>
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent className="w-56">
+                        <DropdownMenuLabel>Filter by Model</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuCheckboxItem
+                          checked={selectedModel.size === 0}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setSelectedModel(new Set<string>([]));
+                            }
+                          }}
+                        >
+                          All Models
+                        </DropdownMenuCheckboxItem>
+                        <ScrollArea className="h-[200px]">
+                          {analysis_models?.map((model: string) => (
+                            <DropdownMenuCheckboxItem
+                              key={model}
+                              checked={selectedModel.has(model)}
+                              onCheckedChange={(checked) => {
+                                setSelectedModel((prev) => {
+                                  const newSelection = new Set(prev);
+                                  if (checked) {
+                                    newSelection.add(model);
+                                  } else {
+                                    newSelection.delete(model);
+                                  }
+                                  return newSelection;
+                                });
+                              }}
+                            >
+                              {model}
+                            </DropdownMenuCheckboxItem>
+                          ))}
+                        </ScrollArea>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
 
                     <Button
                       onClick={() => setShowGoogleResults(!showGoogleResults)}
@@ -1767,6 +1803,7 @@ function DashboardContent() {
                   brands={brandMentionsInSummaries}
                   temporalBrands={temportalBrandMentionsInSummaries}
                   selectedBrand={selectedBrands}
+                  selectedModel={selectedModel}
                 />
 
                 {/* Google Search Results */}
@@ -1791,6 +1828,7 @@ function DashboardContent() {
                     brands={brandMentionsInSummaries}
                     setSelectedBrand={setSelectedBrands}
                     selectedBrand={selectedBrands}
+                    selectedModel={selectedModel}
                   />
 
                   {keywords && (
