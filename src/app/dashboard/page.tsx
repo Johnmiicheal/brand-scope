@@ -80,11 +80,16 @@ import { CheckoutSuccess } from "@/components/stripe/checkout-success";
 import { stripe } from "@/lib/stripe";
 import { QueryCounter } from "@/components/dashboard/query-counter";
 import Stripe from "stripe";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { GoogleResults } from "@/components/ui/google-results";
 import { Gemini } from "@lobehub/icons";
 import { toast } from "sonner";
+import { TbStarFilled } from "react-icons/tb";
 
 const INDUSTRIES = [
   "Technology",
@@ -114,15 +119,21 @@ interface IndustryRankingsTableProps {
     total_mentions: number;
   }[];
   setSelectedBrand: (brand: Set<string>) => void;
+  selectedBrand: Set<string>;
 }
 
 // Updated component for the Industry Rankings Table
-function IndustryRankingsTable({ brands, setSelectedBrand }: IndustryRankingsTableProps) {
+function IndustryRankingsTable({
+  brands,
+  setSelectedBrand,
+  selectedBrand
+}: IndustryRankingsTableProps) {
   if (!brands) return null;
   const all_total_mentions = brands.reduce(
     (acc, brand) => acc + brand.total_mentions,
     0
   );
+
   const maxMentions = Math.max(...brands.map((brand) => brand.total_mentions));
   const maxModels = 5;
   const getCoverageRatio = (brand: any, type: "ratio" | "count") => {
@@ -175,7 +186,8 @@ function IndustryRankingsTable({ brands, setSelectedBrand }: IndustryRankingsTab
                           </TooltipTrigger>
                           <TooltipContent>
                             <p>
-                             This measures the ratio of models that mentioned<br/> the entity in the summaries.
+                              This measures the ratio of models that mentioned
+                              <br /> the entity in the summaries.
                             </p>
                           </TooltipContent>
                         </Tooltip>
@@ -205,11 +217,14 @@ function IndustryRankingsTable({ brands, setSelectedBrand }: IndustryRankingsTab
                     <TableRow
                       key={index}
                       className="dark:text-white text-black border-[#e2e2e2]/40 dark:border-accent cursor-pointer"
-                      onClick={() => {setSelectedBrand(new Set([entity.brand_name])); toast.info(`You have selected ${entity.brand_name}`)}}
+                      onClick={() => {
+                        setSelectedBrand(new Set([entity.brand_name]));
+                        toast.info(`You have selected ${entity.brand_name}`);
+                      }}
                     >
                       <TableCell className="font-medium">{index + 1}</TableCell>
                       <TableCell className="flex items-center gap-2">
-                        {entity.brand_name}
+                        {entity.brand_name} {selectedBrand.has(entity.brand_name) ? <TbStarFilled className="w-4 h-4 text-yellow-500" /> : null}
                       </TableCell>
                       <TableCell>
                         ⌀ {getCoverageRatio(entity, "ratio")}
@@ -223,9 +238,7 @@ function IndustryRankingsTable({ brands, setSelectedBrand }: IndustryRankingsTab
                         ).toFixed(1)}
                         %
                       </TableCell>
-                      <TableCell>
-                        {entity.total_mentions}
-                      </TableCell>
+                      <TableCell>{entity.total_mentions}</TableCell>
                     </TableRow>
                   ))
                 )}
@@ -284,7 +297,6 @@ function DashboardContent() {
   const [googleSearchResults, setGoogleSearchResults] = useState<any>(null);
   const [loadingGoogleResults, setLoadingGoogleResults] = useState(false);
   const [showGoogleResults, setShowGoogleResults] = useState(false);
-
 
   // const fetchBrands = async () => {
   //   try {
@@ -678,15 +690,15 @@ function DashboardContent() {
           )
       )
       .filter(Boolean);
-    
+
     // Deduplicate based on brand name
     const uniqueBrands = new Map();
-    allBrands.forEach(brand => {
+    allBrands.forEach((brand) => {
       if (brand.name && !uniqueBrands.has(brand.name)) {
         uniqueBrands.set(brand.name, brand);
       }
     });
-    
+
     return Array.from(uniqueBrands.values());
   }, [results]);
 
@@ -726,7 +738,11 @@ function DashboardContent() {
             const modelName = modelResult.llm_name.toLowerCase();
 
             // Filter by model if a specific model is selected
-            if (selectedModel !== "all" && selectedModel !== "" && modelResult.llm_name !== selectedModel) {
+            if (
+              selectedModel !== "all" &&
+              selectedModel !== "" &&
+              modelResult.llm_name !== selectedModel
+            ) {
               return;
             }
 
@@ -784,7 +800,9 @@ function DashboardContent() {
 
     // Sort by date and then by total mentions within each date
     return brandMentionsArray.sort((a, b) => {
-      const dateCompare = new Date(a.analysis_date).getTime() - new Date(b.analysis_date).getTime();
+      const dateCompare =
+        new Date(a.analysis_date).getTime() -
+        new Date(b.analysis_date).getTime();
       if (dateCompare === 0) {
         return b.total_mentions - a.total_mentions;
       }
@@ -792,8 +810,8 @@ function DashboardContent() {
     });
   }, [results, analysis_brands, selectedModel]);
 
-   // Calculate brand mentions in model summaries
-   const brandMentionsInSummaries = useMemo(() => {
+  // Calculate brand mentions in model summaries
+  const brandMentionsInSummaries = useMemo(() => {
     if (
       !results ||
       !Array.isArray(results) ||
@@ -830,7 +848,11 @@ function DashboardContent() {
             const modelName = modelResult.llm_name.toLowerCase();
 
             // Filter by model if a specific model is selected
-            if (selectedModel !== "all" && selectedModel !== "" && modelResult.llm_name !== selectedModel) {
+            if (
+              selectedModel !== "all" &&
+              selectedModel !== "" &&
+              modelResult.llm_name !== selectedModel
+            ) {
               return;
             }
 
@@ -902,6 +924,16 @@ function DashboardContent() {
     analysis_brands,
   ]);
 
+  // Effect to set default selected brand to first brand in the array
+  useEffect(() => {
+    if (brandMentionsInSummaries && brandMentionsInSummaries.length > 0 && selectedBrands.size === 0) {
+      const firstBrandName = brandMentionsInSummaries[0]?.brand_name;
+      if (firstBrandName) {
+        setSelectedBrands(new Set([firstBrandName]));
+      }
+    }
+  }, [brandMentionsInSummaries]);
+
   // Effect to reset filters when prompt changes
   useEffect(() => {
     // Reset filters when the prompt changes
@@ -913,37 +945,47 @@ function DashboardContent() {
   }, [selectedQuery]);
 
   // Fetch Google search results using the monitoring API
-  const fetchGoogleSearchResults = async (mode_id: string, analysisDate?: string) => {
+  const fetchGoogleSearchResults = async (
+    mode_id: string,
+    analysisDate?: string
+  ) => {
     if (!mode_id) return;
-    
+
     try {
       setLoadingGoogleResults(true);
       const response = await fetch(`/api/monitoring?mode_id=${mode_id}`);
-      
+
       if (!response.ok) {
-        throw new Error('Failed to fetch Google search results');
+        throw new Error("Failed to fetch Google search results");
       }
-      
+
       const data = await response.json();
-      
+
       // Filter search results by analysis date if provided
-      if (analysisDate && analysisDate !== "latest" && analysisDate !== "" && data.search_results) {
+      if (
+        analysisDate &&
+        analysisDate !== "latest" &&
+        analysisDate !== "" &&
+        data.search_results
+      ) {
         // Extract just the date part (YYYY-MM-DD) from the analysis date
-        const targetDate = analysisDate.split('T')[0];
-        
+        const targetDate = analysisDate.split("T")[0];
+
         const filteredResults = data.search_results.filter((result: any) => {
           if (!result.created_at) return false;
           // Extract date part from created_at timestamp
-          const resultDate = new Date(result.created_at).toISOString().split('T')[0];
+          const resultDate = new Date(result.created_at)
+            .toISOString()
+            .split("T")[0];
           return resultDate === targetDate;
         });
-        
+
         data.search_results = filteredResults;
       }
-      
+
       setGoogleSearchResults(data);
     } catch (error) {
-      console.error('Error fetching Google search results:', error);
+      console.error("Error fetching Google search results:", error);
       setGoogleSearchResults(null);
     } finally {
       setLoadingGoogleResults(false);
@@ -1682,9 +1724,14 @@ function DashboardContent() {
                       </SelectContent>
                     </Select>
 
-                    <Button onClick={() => setShowGoogleResults(!showGoogleResults)} variant="outline">
-                       <Gemini className="w-4 h-4" />
-                      {showGoogleResults ? "Hide Google Results" : "Show Google Results"}
+                    <Button
+                      onClick={() => setShowGoogleResults(!showGoogleResults)}
+                      variant="outline"
+                    >
+                      <Gemini className="w-4 h-4" />
+                      {showGoogleResults
+                        ? "Hide Google Results"
+                        : "Show Google Results"}
                     </Button>
                   </div>
                 </motion.div>
@@ -1717,22 +1764,31 @@ function DashboardContent() {
                 />
 
                 {/* Google Search Results */}
-                {showGoogleResults && (
-                googleSearchResults && googleSearchResults.search_results && googleSearchResults.search_results.length > 0 && (
-                  <GoogleResults
-                    googleResults={googleSearchResults.search_results[0].results}
-                    rankings={googleSearchResults.search_results[0]?.rankings}
+                {showGoogleResults &&
+                  googleSearchResults &&
+                  googleSearchResults.search_results &&
+                  googleSearchResults.search_results.length > 0 && (
+                    <GoogleResults
+                      googleResults={
+                        googleSearchResults.search_results[0].results
+                      }
+                      rankings={googleSearchResults.search_results[0]?.rankings}
+                    />
+                  )}
+
+                <div className="flex md:flex-row flex-col gap-4 w-full h-full">
+                  <IndustryRankingsTable
+                    brands={brandMentionsInSummaries}
+                    setSelectedBrand={setSelectedBrands}
+                    selectedBrand={selectedBrands}
                   />
-                )
-              )}
 
-                <IndustryRankingsTable brands={brandMentionsInSummaries} setSelectedBrand={setSelectedBrands} />
-
-                {keywords && (
-                  <div className="space-y-6 w-full h-full">
-                    <KeywordCloud keywords={keywords} />
-                  </div>
-                )}
+                  {keywords && (
+                    <div className="space-y-6 w-full h-full">
+                      <KeywordCloud keywords={keywords} />
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </motion.div>
