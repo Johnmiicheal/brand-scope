@@ -942,7 +942,7 @@ function DashboardContent() {
         setSelectedBrands(new Set([firstBrandName]));
       }
     }
-  }, [brandMentionsInSummaries]);
+  }, [brandMentionsInSummaries, selectedQuery, selectedBrands.size]);
 
   // Effect to reset filters when prompt changes
   useEffect(() => {
@@ -1773,6 +1773,7 @@ function DashboardContent() {
                     <Button
                       onClick={() => setShowGoogleResults(!showGoogleResults)}
                       variant="outline"
+                      className="rounded-full"
                     >
                       <Gemini className="w-4 h-4" />
                       {showGoogleResults
@@ -1793,6 +1794,7 @@ function DashboardContent() {
                       <Card className="bg-background rounded-md p-4 border-[#e2e2e2]/70 dark:border-accent">
                         <ScheduledQueriesList
                           queries={queries}
+                          selectedQuery={selectedQuery?.query || ""}
                           onSelectQuery={(query) => {
                             setSelectedQuery(query);
                             setIsExpanded(false); // Close the list after selection

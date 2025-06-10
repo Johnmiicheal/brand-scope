@@ -5,7 +5,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { toast } from "@/components/ui/use-toast";
 import {
   Table,
   TableBody,
@@ -39,6 +38,8 @@ import {
   AlertDialogTrigger,
 } from "../ui/alert-dialog";
 import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
+import { TbStarFilled } from "react-icons/tb";
 
 type FilterOptions = {
   frequency: "all" | "daily" | "weekly";
@@ -63,9 +64,11 @@ export type ScheduledQuery = {
 export function ScheduledQueriesList({
   queries: initialQueries,
   onSelectQuery,
+  selectedQuery
 }: {
   queries: ScheduledQuery[];
   onSelectQuery?: (query: ScheduledQuery) => void;
+  selectedQuery: string;
 }) {
   const router = useRouter();
   const [queries, setQueries] = useState<ScheduledQuery[]>(initialQueries);
@@ -162,19 +165,10 @@ export function ScheduledQueriesList({
         )
       );
       
-      toast({
-        title: newStatus === 'paused' ? "Prompt Deactivated" : "Prompt Activated",
-        description: newStatus === 'paused'
-          ? "The prompt has been paused and will not be analyzed." 
-          : "The prompt has been activated and will resume analysis.",
-      });
+      toast.info(newStatus === 'paused' ? "Prompt Deactivated" : "Prompt Activated");
     } catch (error) {
       console.error('Error updating prompt status:', error);
-      toast({
-        title: "Error",
-        description: "Failed to update the prompt status. Please try again.",
-        variant: "destructive",
-      });
+      toast.error("Failed to update the prompt status. Please try again.");
     } finally {
       setLoadingStates(prev => ({ ...prev, [query.id]: false }));
     }
@@ -207,17 +201,10 @@ export function ScheduledQueriesList({
         currentQueries.filter(q => q.id !== query.id)
       );
       
-      toast({
-        title: "Prompt Deleted",
-        description: "The prompt has been permanently deleted.",
-      });
+     toast.info("Prompt deleted successfully");
     } catch (error) {
       console.error('Error deleting prompt:', error);
-      toast({
-        title: "Error",
-        description: "Failed to delete the prompt. Please try again.",
-        variant: "destructive",
-      });
+        toast.error("Failed to delete the prompt. Please try again.")
     } finally {
       setLoadingStates(prev => ({ ...prev, [query.id]: false }));
     }
@@ -304,10 +291,11 @@ export function ScheduledQueriesList({
                     animate="visible"
                     exit="hidden"
                     custom={index}
-                    className="hover:bg-muted/40"
+                    className="hover:bg-muted/40 items-center"
+                    onClick={() => {onSelectQuery?.(query); toast.info(`Selected "${query.query}" for view on dashboard`)}}
                   >
-                    <TableCell className="font-medium truncate max-w-xs">
-                      {query.query}
+                    <TableCell className="font-medium truncate max-w-xs flex items-center gap-2">
+                      {query.query} {selectedQuery === query.query && <TbStarFilled className="w-4 h-4 text-yellow-500" />}
                     </TableCell>
                     <TableCell className="capitalize">
                       {query.frequency}
