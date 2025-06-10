@@ -303,7 +303,7 @@ function DashboardContent() {
   );
   const [googleSearchResults, setGoogleSearchResults] = useState<any>(null);
   const [loadingGoogleResults, setLoadingGoogleResults] = useState(false);
-  const [showGoogleResults, setShowGoogleResults] = useState(false);
+  const [showGoogleResults, setShowGoogleResults] = useState(true);
 
   // const fetchBrands = async () => {
   //   try {
@@ -1629,7 +1629,7 @@ function DashboardContent() {
             <div className="min-h-screen ">
               <div className="space-y-6">
                 <motion.div
-                  className="w-fit md:w-full flex md:flex-row flex-col md:justify-between justify-start md:items-center gap-2 rounded-md p-3 md:items-center bg-blue-500/10 border-dashed border-1 border-blue-500/20 cursor-pointer hover:bg-blue-500/20 transition duration-300"
+                  className="w-full flex justify-between items-center gap-2 rounded-md p-3 bg-blue-500/10 border-dashed border-1 border-blue-500/20 cursor-pointer hover:bg-blue-500/20 transition duration-300"
                   onClick={() => setIsExpanded(!isExpanded)}
                   whileTap={{ scale: 0.98 }}
                 >
@@ -1664,7 +1664,7 @@ function DashboardContent() {
                       <DropdownMenuTrigger asChild>
                         <Button
                           variant="outline"
-                          className="w-fit !border !border-accent"
+                          className="w-full !border !border-accent md:w-fit"
                         >
                           {getDisplayValue()}
                           <span>
@@ -1704,12 +1704,12 @@ function DashboardContent() {
                       defaultValue={selectedDate || "latest"}
                       onValueChange={(value) => setSelectedDate(value)}
                     >
-                      <SelectTrigger className="w-fit !border !border-accent">
+                      <SelectTrigger className="w-full !border !border-accent md:w-fit">
                         <SelectValue placeholder="Select date" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="latest">All Analysis</SelectItem>
-                        {analysis_dates?.map((date: string) => (
+                        {analysis_dates?.sort((a, b) => b.localeCompare(a)).map((date: string) => (
                           <SelectItem key={date} value={date}>
                             {date}
                           </SelectItem>
@@ -1721,7 +1721,7 @@ function DashboardContent() {
                       <DropdownMenuTrigger asChild>
                         <Button
                           variant="outline"
-                          className="w-fit !border !border-accent"
+                          className="w-full !border !border-accent md:w-fit"
                         >
                           {selectedModel.size === 0
                             ? "All Models"

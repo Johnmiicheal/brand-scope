@@ -19,7 +19,6 @@ import { Separator } from "@radix-ui/react-separator";
 import { usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { BrandDataProvider } from "@/contexts/brand-data-context";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import Image from "next/image";
 
 function BreadcrumbNav() {
@@ -101,7 +100,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   return (
       <SidebarProvider className="!bg-white dark:!bg-background">
         <AppSidebar />
-        <SidebarInset className="border border-[#e2e2e2]/70 dark:border-accent overflow-hidden bg-white dark:bg-background">
+        <SidebarInset className="border border-[#e2e2e2]/70 dark:border-accent overflow-auto bg-white dark:bg-background">
           <header className="flex h-16 shrink-0 items-center gap-2">
             <div className="flex items-center gap-2 px-4">
               <SidebarTrigger className="-ml-1" />
@@ -119,9 +118,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             </div> */}
           </header>
           <BrandDataProvider>
-            <ScrollArea className="h-full bg-gradient-to-b from-background dark:to-[#000108] to-neutral-100">
+            <div className="h-full bg-gradient-to-b from-background dark:to-[#000108] to-neutral-100">
               {children}
-            </ScrollArea>
+            </div>
           </BrandDataProvider>
         </SidebarInset>
       </SidebarProvider>
