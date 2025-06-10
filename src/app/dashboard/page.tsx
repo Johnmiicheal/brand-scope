@@ -126,7 +126,7 @@ interface IndustryRankingsTableProps {
 function IndustryRankingsTable({
   brands,
   setSelectedBrand,
-  selectedBrand
+  selectedBrand,
 }: IndustryRankingsTableProps) {
   if (!brands) return null;
   const all_total_mentions = brands.reduce(
@@ -224,7 +224,10 @@ function IndustryRankingsTable({
                     >
                       <TableCell className="font-medium">{index + 1}</TableCell>
                       <TableCell className="flex items-center gap-2">
-                        {entity.brand_name} {selectedBrand.has(entity.brand_name) ? <TbStarFilled className="w-4 h-4 text-yellow-500" /> : null}
+                        {entity.brand_name}{" "}
+                        {selectedBrand.has(entity.brand_name) ? (
+                          <TbStarFilled className="w-4 h-4 text-yellow-500" />
+                        ) : null}
                       </TableCell>
                       <TableCell>
                         ⌀ {getCoverageRatio(entity, "ratio")}
@@ -926,7 +929,11 @@ function DashboardContent() {
 
   // Effect to set default selected brand to first brand in the array
   useEffect(() => {
-    if (brandMentionsInSummaries && brandMentionsInSummaries.length > 0 && selectedBrands.size === 0) {
+    if (
+      brandMentionsInSummaries &&
+      brandMentionsInSummaries.length > 0 &&
+      selectedBrands.size === 0
+    ) {
       const firstBrandName = brandMentionsInSummaries[0]?.brand_name;
       if (firstBrandName) {
         setSelectedBrands(new Set([firstBrandName]));
@@ -1756,7 +1763,6 @@ function DashboardContent() {
                     </motion.div>
                   )}
                 </AnimatePresence>
-
                 <MetricsHeader
                   brands={brandMentionsInSummaries}
                   temporalBrands={temportalBrandMentionsInSummaries}
@@ -1768,12 +1774,16 @@ function DashboardContent() {
                   googleSearchResults &&
                   googleSearchResults.search_results &&
                   googleSearchResults.search_results.length > 0 && (
-                    <GoogleResults
-                      googleResults={
-                        googleSearchResults.search_results[0].results
-                      }
-                      rankings={googleSearchResults.search_results[0]?.rankings}
-                    />
+                    <ScrollArea className="h-[500px] w-full">
+                      <GoogleResults
+                        googleResults={
+                          googleSearchResults.search_results[0].results
+                        }
+                        rankings={
+                          googleSearchResults.search_results[0]?.rankings
+                        }
+                      />
+                    </ScrollArea>
                   )}
 
                 <div className="flex md:flex-row flex-col gap-4 w-full h-full">
