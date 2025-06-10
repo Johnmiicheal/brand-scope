@@ -179,7 +179,7 @@ export function MetricsHeader({
   };
 
   return (
-    <div>
+    <div className="max-w-2/3 w-full">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 border rounded-t-lg overflow-hidden dark:border-accent border-[#e2e2e2]/70">
         <MetricCard
           title="Visibility Score"

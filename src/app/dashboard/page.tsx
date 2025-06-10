@@ -170,14 +170,12 @@ function IndustryRankingsTable({
         >
           <ScrollArea className="h-[400px]">
             <Table>
-              <TableHeader>
+              <TableHeader className="sticky top-0 bg-background">
                 <TableRow className="border-[#e2e2e2]/40 dark:border-accent">
                   <TableHead className="w-[100px] sticky top-0 bg-background">
                     Rank
                   </TableHead>
-                  <TableHead className="sticky top-0 bg-background">
-                    Entity
-                  </TableHead>
+                  <TableHead className="bg-background !w-fit">Entity</TableHead>
                   <TableHead className="sticky top-0 bg-background">
                     <span className="flex items-center gap-2">
                       Coverage
@@ -208,7 +206,7 @@ function IndustryRankingsTable({
                 {brands.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={7}
+                      colSpan={5}
                       className="text-center text-muted-foreground"
                     >
                       No ranking data available yet.
@@ -226,10 +224,12 @@ function IndustryRankingsTable({
                     >
                       <TableCell className="font-medium">{index + 1}</TableCell>
                       <TableCell className="flex items-center gap-2">
-                        {entity.brand_name}{" "}
-                        {selectedBrand.has(entity.brand_name) ? (
-                          <TbStarFilled className="w-4 h-4 text-yellow-500" />
-                        ) : null}
+                        <div className="whitespace-normal break-words max-w-[150px]">
+                          {entity.brand_name}{" "}
+                          {selectedBrand.has(entity.brand_name) ? (
+                            <TbStarFilled className="inline w-4 h-4 text-yellow-500" />
+                          ) : null}
+                        </div>
                       </TableCell>
                       <TableCell>
                         ⌀ {getCoverageRatio(entity, "ratio")}
@@ -298,7 +298,9 @@ function DashboardContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [subsLoading, setSubsLoading] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string>("");
-  const [selectedModel, setSelectedModel] = useState<Set<string>>(new Set<string>([]));
+  const [selectedModel, setSelectedModel] = useState<Set<string>>(
+    new Set<string>([])
+  );
   const [googleSearchResults, setGoogleSearchResults] = useState<any>(null);
   const [loadingGoogleResults, setLoadingGoogleResults] = useState(false);
   const [showGoogleResults, setShowGoogleResults] = useState(false);
@@ -660,7 +662,8 @@ function DashboardContent() {
           // Filter by model if specific models are selected
           ?.filter(
             (modelResult: { llm_name: string }) =>
-              selectedModel.size === 0 || selectedModel.has(modelResult.llm_name)
+              selectedModel.size === 0 ||
+              selectedModel.has(modelResult.llm_name)
           )
           // Extract brands from filtered model results
           .flatMap(
@@ -1682,9 +1685,9 @@ function DashboardContent() {
                           All Brands
                         </DropdownMenuCheckboxItem>
                         <ScrollArea className="h-[200px]">
-                          {analysis_brands?.map((brand) => (
+                          {analysis_brands?.map((brand, index) => (
                             <DropdownMenuCheckboxItem
-                              key={brand.id}
+                              key={index}
                               checked={selectedBrands.has(brand.name)}
                               onCheckedChange={(checked) =>
                                 handleCheckedChange(brand.name, checked)
@@ -1720,9 +1723,9 @@ function DashboardContent() {
                           variant="outline"
                           className="w-fit !border !border-accent"
                         >
-                          {selectedModel.size === 0 
-                            ? "All Models" 
-                            : selectedModel.size === 1 
+                          {selectedModel.size === 0
+                            ? "All Models"
+                            : selectedModel.size === 1
                             ? Array.from(selectedModel)[0]
                             : `${selectedModel.size} models selected`}
                           <span>
@@ -1799,37 +1802,38 @@ function DashboardContent() {
                     </motion.div>
                   )}
                 </AnimatePresence>
-                <MetricsHeader
-                  brands={brandMentionsInSummaries}
-                  temporalBrands={temportalBrandMentionsInSummaries}
-                  selectedBrand={selectedBrands}
-                  selectedModel={selectedModel}
-                />
-
-                {/* Google Search Results */}
-                {showGoogleResults &&
-                  googleSearchResults &&
-                  googleSearchResults.search_results &&
-                  googleSearchResults.search_results.length > 0 && (
-                    <ScrollArea className="h-[500px] w-full">
-                      <GoogleResults
-                        googleResults={
-                          googleSearchResults.search_results[0].results
-                        }
-                        rankings={
-                          googleSearchResults.search_results[0]?.rankings
-                        }
-                      />
-                    </ScrollArea>
-                  )}
-
                 <div className="flex md:flex-row flex-col gap-4 w-full h-full">
+                  <MetricsHeader
+                    brands={brandMentionsInSummaries}
+                    temporalBrands={temportalBrandMentionsInSummaries}
+                    selectedBrand={selectedBrands}
+                    selectedModel={selectedModel}
+                  />
                   <IndustryRankingsTable
                     brands={brandMentionsInSummaries}
                     setSelectedBrand={setSelectedBrands}
                     selectedBrand={selectedBrands}
                     selectedModel={selectedModel}
                   />
+                </div>
+
+                <div className="flex md:flex-row flex-col gap-4 w-full h-full">
+                  {/* Google Search Results */}
+                  {showGoogleResults &&
+                    googleSearchResults &&
+                    googleSearchResults.search_results &&
+                    googleSearchResults.search_results.length > 0 && (
+                      <ScrollArea className="h-[500px] w-full">
+                        <GoogleResults
+                          googleResults={
+                            googleSearchResults.search_results[0].results
+                          }
+                          rankings={
+                            googleSearchResults.search_results[0]?.rankings
+                          }
+                        />
+                      </ScrollArea>
+                    )}
 
                   {keywords && (
                     <div className="space-y-6 w-full h-full">

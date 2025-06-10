@@ -170,6 +170,7 @@ export function CompetitorChart({
               axisLine={false}
               tickMargin={8}
               domain={[0, 100]}
+              tickFormatter={(value) => `${value}%`}
               style={{
                 fontSize: '12px',
                 fill: 'var(--muted-foreground)',
@@ -190,13 +191,17 @@ export function CompetitorChart({
                 fontWeight: 500,
                 marginBottom: '4px',
               }}
+              formatter={(value, name) => [`${value}%`, name]}
             />
             <Legend
               verticalAlign="top"
-              height={36}
+              align="left"
+              height={20}
               wrapperStyle={{
-                paddingBottom: '20px',
+                paddingBottom: '60px',
               }}
+              iconType="square"
+              iconSize={10}
               formatter={(value) => (
                 <span style={{ 
                   color: 'var(--foreground)',
