@@ -679,7 +679,7 @@ function DashboardContent() {
     const filteredBrands = dateFilteredResults
       .flatMap((result) => {
         // If AI Overview is selected, return Google brands
-        if (Array.from(selectedModel).some(model => model.toLowerCase() === "ai overview")) {
+        if (Array.from(selectedModel).some(model => model.toLowerCase() === "google ai overview")) {
           return unique_google_overview_brands.map(brand => ({ name: brand }));
         }
 
