@@ -644,7 +644,7 @@ function DashboardContent() {
       (result: { model_results: { llm_name: string }[] }) =>
         result.model_results?.map((r: { llm_name: string }) => r.llm_name) || []
     );
-    allModels.push("AI Overview")
+    allModels.push("Google AI Overview")
     return [...new Set(allModels)];
   }, [results]);
 

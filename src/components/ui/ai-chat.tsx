@@ -781,8 +781,8 @@ export function AIChatInterface({ user, session, product, subscription, isLoadin
                 <div>
                   <h4 className="font-medium text-sm text-neutral-700 dark:text-foreground">Explorer Mode</h4>
                   <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
-                    Our most comprehensive analysis using GPT 4o, Perplexity
-                    Sonar, Gemini 2.0 Flash and Claude 3.5 Extracts brands
+                    Our most comprehensive analysis using GPT 4o Web Search, Perplexity
+                    Sonar, Google AI Overiew, Gemini 2.0 Flash and Claude 3.5 Extracts brands
                     insights from native AI search prompts
                   </p>
                 </div>
