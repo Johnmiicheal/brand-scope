@@ -48,6 +48,7 @@ interface BrandAnalysis {
   perplexity_mentions: number;
   gemini_mentions: number;
   gpt_search_mentions: number;
+  ai_overview_mentions: number;
 }
 
 const chartConfig = {
@@ -75,7 +76,7 @@ export function CompetitorChart({
   );
 
 
-  const maxModels = selectedModel.size === 0 ? 5 : selectedModel.size;
+  const maxModels = selectedModel.size === 0 ? 6 : selectedModel.size;
 
   const getCoverageRatio = (brand: BrandAnalysis, type: "ratio" | "count") => {
     const totalMentionsPerModel =
@@ -83,7 +84,8 @@ export function CompetitorChart({
       (brand.claude_mentions > 0 ? 1 : 0) +
       (brand.perplexity_mentions > 0 ? 1 : 0) +
       (brand.gemini_mentions > 0 ? 1 : 0) +
-      (brand.gpt_search_mentions > 0 ? 1 : 0);
+      (brand.gpt_search_mentions > 0 ? 1 : 0) +
+      (brand.ai_overview_mentions > 0 ? 1 : 0);
     if (type === "ratio") {
       return `${totalMentionsPerModel} / ${maxModels}`;
     } else {

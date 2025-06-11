@@ -101,6 +101,7 @@ interface Brand {
   perplexity_mentions: number;
   gemini_mentions: number;
   total_mentions: number;
+  ai_overview_mentions: number;
 }
 
 interface TemporalBrand {
@@ -112,6 +113,7 @@ interface TemporalBrand {
   perplexity_mentions: number;
   gemini_mentions: number;
   total_mentions: number;
+  ai_overview_mentions: number;
 }
 
 interface MetricsHeaderProps {
@@ -151,7 +153,7 @@ export function MetricsHeader({
   );
   // const visibilityScore = total_mentions / all_total_mentions || 0;
   const mentions = total_mentions || 0;
-  const maxModels = selectedModel.size === 0 ? 5 : selectedModel.size;
+  const maxModels = selectedModel.size === 0 ? 6 : selectedModel.size;
   const maxMentions = Math.max(...brands.map((brand) => brand.total_mentions));
   const getCoverageRatio = (brands: Brand[], type: "ratio" | "count") => {
     const totalMentionsPerModel = brands.reduce((acc, brand) => {
@@ -161,7 +163,8 @@ export function MetricsHeader({
         (brand.claude_mentions > 0 ? 1 : 0) +
         (brand.perplexity_mentions > 0 ? 1 : 0) +
         (brand.gemini_mentions > 0 ? 1 : 0) +
-        (brand.gpt_search_mentions > 0 ? 1 : 0)
+        (brand.gpt_search_mentions > 0 ? 1 : 0) + 
+        (brand.ai_overview_mentions > 0 ? 1 : 0)
       );
     }, 0);
     if (type === "ratio") {

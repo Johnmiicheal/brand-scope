@@ -90,6 +90,7 @@ import { GoogleResults } from "@/components/ui/google-results";
 import { Gemini } from "@lobehub/icons";
 import { toast } from "sonner";
 import { TbStarFilled } from "react-icons/tb";
+import { GoogleSearch, GoogleSearchResult } from "@/types/search";
 
 const INDUSTRIES = [
   "Technology",
@@ -137,14 +138,15 @@ function IndustryRankingsTable({
   );
 
   const maxMentions = Math.max(...brands.map((brand) => brand.total_mentions));
-  const maxModels = selectedModel.size === 0 ? 5 : selectedModel.size;
+  const maxModels = selectedModel.size === 0 ? 6 : selectedModel.size;
   const getCoverageRatio = (brand: any, type: "ratio" | "count") => {
     const totalMentionsPerModel =
       (brand.gpt_mentions > 0 ? 1 : 0) +
       (brand.claude_mentions > 0 ? 1 : 0) +
       (brand.perplexity_mentions > 0 ? 1 : 0) +
       (brand.gemini_mentions > 0 ? 1 : 0) +
-      (brand.gpt_search_mentions > 0 ? 1 : 0);
+      (brand.gpt_search_mentions > 0 ? 1 : 0) +
+      (brand.ai_overview_mentions > 0 ? 1 : 0);
     if (type === "ratio") {
       return `${totalMentionsPerModel} / ${maxModels}`;
     } else {
@@ -642,6 +644,7 @@ function DashboardContent() {
       (result: { model_results: { llm_name: string }[] }) =>
         result.model_results?.map((r: { llm_name: string }) => r.llm_name) || []
     );
+    allModels.push("AI Overview")
     return [...new Set(allModels)];
   }, [results]);
 
@@ -655,34 +658,51 @@ function DashboardContent() {
         ? results
         : results.filter((result) => result.analysis_date === selectedDate);
 
+        const flat_google_overview_brands = googleSearchResults?.search_results
+        ?.flatMap((result: GoogleSearch) => {
+          try {
+            if (!result.rankings) return [];
+            const rankings = typeof result.rankings === 'string' 
+              ? JSON.parse(result.rankings)
+              : result.rankings;
+            return rankings.brands.map((rank: any) => rank.name).filter(Boolean);
+          } catch (e) {
+            console.error('Error parsing rankings:', e);
+            return [];
+          }
+        })
+        .filter(Boolean) || [];
+
+      const unique_google_overview_brands = [...new Set(flat_google_overview_brands)];
+
     // Extract brands from the date-filtered results, considering model filter
     const filteredBrands = dateFilteredResults
-      .flatMap((result) =>
-        result.model_results
-          // Filter by model if specific models are selected
-          ?.filter(
-            (modelResult: { llm_name: string }) =>
-              selectedModel.size === 0 ||
-              selectedModel.has(modelResult.llm_name)
-          )
-          // Extract brands from filtered model results
-          .flatMap(
-            (modelResult: { llm_name: string; data: { brands: any[] } }) =>
-              modelResult.data?.brands || []
-          )
-      )
+      .flatMap((result) => {
+        // If AI Overview is selected, return Google brands
+        if (Array.from(selectedModel).some(model => model.toLowerCase() === "ai overview")) {
+          return unique_google_overview_brands.map(brand => ({ name: brand }));
+        }
+
+        // Otherwise, process model results as before
+        return result.model_results
+          ?.filter((modelResult: { llm_name: string }) => {
+            if (selectedModel.size === 0) return true;
+            return selectedModel.has(modelResult.llm_name);
+          })
+          .flatMap((modelResult: { llm_name: string; data: { brands: any[] } }) => modelResult.data?.brands || [])
+          .filter(Boolean);
+      })
       .filter(Boolean);
 
-    // Create a map to deduplicate brands by id
-    const brandMap = new Map();
+    // Deduplicate based on brand name
+    const uniqueBrands = new Map();
     filteredBrands.forEach((brand) => {
-      if (brand && brand.name) {
-        brandMap.set(brand.name, brand);
+      if (brand.name && !uniqueBrands.has(brand.name)) {
+        uniqueBrands.set(brand.name, brand);
       }
     });
 
-    // Convert map values back to array
-    return Array.from(brandMap.values());
+    return Array.from(uniqueBrands.values());
   }, [results, selectedDate, selectedModel]);
 
   const allAnalysisBrands = useMemo(() => {
@@ -699,6 +719,24 @@ function DashboardContent() {
       )
       .filter(Boolean);
 
+      // Safely extract and parse rankings from Google search results
+      const flat_google_overview_brands = googleSearchResults?.search_results
+        ?.flatMap((result: GoogleSearch) => {
+          try {
+            if (!result.rankings) return [];
+            const rankings = typeof result.rankings === 'string' 
+              ? JSON.parse(result.rankings)
+              : result.rankings;
+            return rankings.brands.map((rank: any) => rank.name).filter(Boolean);
+          } catch (e) {
+            console.error('Error parsing rankings:', e);
+            return [];
+          }
+        })
+        .filter(Boolean) || [];
+
+      const unique_google_overview_brands = [...new Set(flat_google_overview_brands)];
+
     // Deduplicate based on brand name
     const uniqueBrands = new Map();
     allBrands.forEach((brand) => {
@@ -706,9 +744,14 @@ function DashboardContent() {
         uniqueBrands.set(brand.name, brand);
       }
     });
+    unique_google_overview_brands.forEach((brand) => {
+      if (brand && !uniqueBrands.has(brand)) {
+        uniqueBrands.set(brand, { name: brand });
+      }
+    });
 
     return Array.from(uniqueBrands.values());
-  }, [results]);
+  }, [googleSearchResults?.search_results, results]);
 
   // Calculate brand mentions in model summaries
   const temportalBrandMentionsInSummaries = useMemo(() => {
@@ -720,6 +763,8 @@ function DashboardContent() {
     ) {
       return [];
     }
+    const google_overview = googleSearchResults?.search_results.flatMap((result:GoogleSearch) => result.ai_overview)
+
 
     // Initialize an array to store brand mentions for each date
     const brandMentionsArray: any[] = [];
@@ -738,6 +783,7 @@ function DashboardContent() {
           perplexity_mentions: 0,
           gemini_mentions: 0,
           gpt_search_mentions: 0,
+          ai_overview_mentions: 0,
         };
 
         // Process model results for this date
@@ -781,10 +827,20 @@ function DashboardContent() {
                 mentions.gemini_mentions += mentionCount;
               } else if (modelName.includes("search")) {
                 mentions.gpt_search_mentions += mentionCount;
+              } else if (modelName.includes("ai overview")) {
+                mentions.ai_overview_mentions += mentionCount;
               }
             }
           }
         );
+
+        if (google_overview) {
+          google_overview.forEach((overview: any) => {
+            if (overview.includes(brandName)) {
+              mentions.ai_overview_mentions += 1;
+            }
+          });
+        }
 
         const total_mentions = Object.values(mentions).reduce(
           (sum, count) => sum + count,
@@ -827,6 +883,7 @@ function DashboardContent() {
     ) {
       return [];
     }
+    const google_overview = googleSearchResults?.search_results.flatMap((result:GoogleSearch) => result.ai_overview)
 
     // Filter results based on selected date (same logic as filteredAnalysisBrands)
     const dateFilteredResults =
@@ -846,6 +903,7 @@ function DashboardContent() {
         perplexity_mentions: 0,
         gemini_mentions: 0,
         gpt_search_mentions: 0,
+        ai_overview_mentions: 0,
       };
 
       // Process each filtered result
@@ -890,11 +948,21 @@ function DashboardContent() {
                 mentions.gemini_mentions += mentionCount;
               } else if (modelName.includes("search")) {
                 mentions.gpt_search_mentions += mentionCount;
+              } else if (modelName.includes("ai overview")) {
+                mentions.ai_overview_mentions += mentionCount;
               }
             }
           }
         );
       });
+
+      if (google_overview) {
+        google_overview.forEach((overview: any) => {
+          if (overview.includes(brandName)) {
+            mentions.ai_overview_mentions += 1;
+          }
+        });
+      }
 
       const total_mentions = Object.values(mentions).reduce(
         (sum, count) => sum + count,
@@ -914,7 +982,7 @@ function DashboardContent() {
     return Array.from(brandMentionsMap.values()).sort(
       (a, b) => b.total_mentions - a.total_mentions
     );
-  }, [results, analysis_brands, selectedDate, selectedModel]);
+  }, [results, analysis_brands, googleSearchResults?.search_results, selectedDate, selectedModel]);
 
   // Effect to update analysis_brands based on selectedModel
   useEffect(() => {
@@ -932,17 +1000,13 @@ function DashboardContent() {
 
   // Effect to set default selected brand to first brand in the array
   useEffect(() => {
-    if (
-      brandMentionsInSummaries &&
-      brandMentionsInSummaries.length > 0 &&
-      selectedBrands.size === 0
-    ) {
+    if (brandMentionsInSummaries && brandMentionsInSummaries.length > 0) {
       const firstBrandName = brandMentionsInSummaries[0]?.brand_name;
       if (firstBrandName) {
         setSelectedBrands(new Set([firstBrandName]));
       }
     }
-  }, [brandMentionsInSummaries, selectedQuery, selectedBrands.size]);
+  }, [brandMentionsInSummaries]);
 
   // Effect to reset filters when prompt changes
   useEffect(() => {
