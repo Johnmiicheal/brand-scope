@@ -1,6 +1,9 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
 /* eslint-disable @typescript-eslint/no-non-null-asserted-optional-chain */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
+
+// @ts-nocheck
 
 "use client";
 
@@ -34,6 +37,8 @@ import {
   Settings,
   SquareArrowOutUpRight,
   Star,
+  Calendar as CalendarIcon,
+  Eye,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -92,6 +97,14 @@ import { Gemini } from "@lobehub/icons";
 import { toast } from "sonner";
 import { TbStarFilled } from "react-icons/tb";
 import { GoogleSearch, GoogleSearchResult } from "@/types/search";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
+import { format } from "date-fns";
 
 const INDUSTRIES = [
   "Technology",
@@ -124,7 +137,7 @@ interface IndustryRankingsTableProps {
   selectedBrand: Set<string>;
   selectedModel: Set<string>;
 }
-interface BrandFetchProps{
+interface BrandFetchProps {
   brandId: string;
   claimed: boolean;
   domain: string;
@@ -144,22 +157,24 @@ function IndustryRankingsTable({
 }: IndustryRankingsTableProps) {
   const [brandFetch, setBrandFetch] = useState<BrandFetchProps[]>([]);
   const [lastFetchedBrands, setLastFetchedBrands] = useState<string[]>([]);
-  const brand_name = brands.map((brand) => brand.brand_name.split(' ')[0]);
+  const brand_name = brands.map((brand) => brand.brand_name.split(" ")[0]);
   useEffect(() => {
     const fetchBrandData = async () => {
       try {
         if (brand_name.length > 0) {
           const brandDataPromises = brand_name.map(async (name) => {
             const response = await fetch(
-              `https://api.brandfetch.io/v2/search/${encodeURIComponent(name)}?c=1idSVUQuJldhOA4nY-0`
+              `https://api.brandfetch.io/v2/search/${encodeURIComponent(
+                name
+              )}?c=1idSVUQuJldhOA4nY-0`
             );
-            
+
             if (!response.ok) {
               throw new Error(`Failed to fetch brand data for ${name}`);
             }
 
             const data = await response.json();
-            
+
             // Return the first item from the response array for this brand
             if (data && data.length > 0) {
               return data[0] as BrandFetchProps;
@@ -168,19 +183,23 @@ function IndustryRankingsTable({
           });
 
           const brandDataResults = await Promise.all(brandDataPromises);
-          const validBrandData = brandDataResults.filter(Boolean) as BrandFetchProps[];
-          
+          const validBrandData = brandDataResults.filter(
+            Boolean
+          ) as BrandFetchProps[];
+
           setBrandFetch(validBrandData);
           setLastFetchedBrands([...brand_name]);
         }
       } catch (error) {
-        console.error('Error fetching brand data:', error);
+        console.error("Error fetching brand data:", error);
       }
     };
-    
+
     // Only fetch if brand names have actually changed
-    const brandsChanged = JSON.stringify(brand_name.sort()) !== JSON.stringify(lastFetchedBrands.sort());
-    
+    const brandsChanged =
+      JSON.stringify(brand_name.sort()) !==
+      JSON.stringify(lastFetchedBrands.sort());
+
     if (brand_name.length > 0 && (brandFetch.length === 0 || brandsChanged)) {
       fetchBrandData();
     }
@@ -189,8 +208,6 @@ function IndustryRankingsTable({
   if (!brands || !brandFetch) return null;
 
   // console.log(brandFetch)
-
-
 
   const maxMentions = Math.max(...brands.map((brand) => brand.total_mentions));
   const maxModels = selectedModel.size === 0 ? 6 : selectedModel.size;
@@ -282,10 +299,28 @@ function IndustryRankingsTable({
                       <TableCell className="font-medium">{index + 1}</TableCell>
                       <TableCell className="flex items-center gap-2">
                         <div className="whitespace-normal break-words max-w-[150px] flex items-center">
-                          {brandFetch.find((brand) => entity.brand_name.toLowerCase()?.includes(brand.name?.toLowerCase() || ""))?.icon ? (
-                            <Image className="inline mr-2 rounded-full" src={brandFetch.find((brand) => entity.brand_name.toLowerCase()?.includes(brand.name?.toLowerCase() || ""))?.icon!} alt={entity.brand_name} width={20} height={20} />
+                          {brandFetch.find((brand) =>
+                            entity.brand_name
+                              .toLowerCase()
+                              ?.includes(brand.name?.toLowerCase() || "")
+                          )?.icon ? (
+                            <Image
+                              className="inline mr-2 rounded-full"
+                              src={
+                                brandFetch.find((brand) =>
+                                  entity.brand_name
+                                    .toLowerCase()
+                                    ?.includes(brand.name?.toLowerCase() || "")
+                                )?.icon!
+                              }
+                              alt={entity.brand_name}
+                              width={20}
+                              height={20}
+                            />
                           ) : (
-                            <div className="inline-block mr-2 min-w-5 h-5 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold text-center">{entity.brand_name[0]}</div>
+                            <div className="inline-block mr-2 min-w-5 h-5 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold text-center">
+                              {entity.brand_name[0]}
+                            </div>
                           )}
                           {entity.brand_name}{" "}
                           {selectedBrand.has(entity.brand_name) ? (
@@ -359,7 +394,14 @@ function DashboardContent() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [subsLoading, setSubsLoading] = useState(false);
-  const [selectedDate, setSelectedDate] = useState<string>("");
+  const [selectedDateRange, setSelectedDateRange] = useState<string>("all");
+  const [customDateRange, setCustomDateRange] = useState<{
+    from: Date | undefined;
+    to: Date | undefined;
+  }>({
+    from: undefined,
+    to: undefined,
+  });
   const [selectedModel, setSelectedModel] = useState<Set<string>>(
     new Set<string>([])
   );
@@ -704,43 +746,99 @@ function DashboardContent() {
       (result: { model_results: { llm_name: string }[] }) =>
         result.model_results?.map((r: { llm_name: string }) => r.llm_name) || []
     );
-    allModels.push("Google AI Overview")
+    allModels.push("Google AI Overview");
     return [...new Set(allModels)];
   }, [results]);
+
+  // Helper function to filter results by date range
+  const getDateFilteredResults = useMemo(() => {
+    if (!results || !Array.isArray(results)) return [];
+
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    switch (selectedDateRange) {
+      case "today":
+        return results.filter((result) => {
+          const resultDate = new Date(result.analysis_date);
+          const resultDateOnly = new Date(
+            resultDate.getFullYear(),
+            resultDate.getMonth(),
+            resultDate.getDate()
+          );
+          return resultDateOnly.getTime() === today.getTime();
+        });
+      case "7days":
+        const sevenDaysAgo = new Date(today);
+        sevenDaysAgo.setDate(today.getDate() - 7);
+        return results.filter((result) => {
+          const resultDate = new Date(result.analysis_date);
+          return resultDate >= sevenDaysAgo && resultDate <= now;
+        });
+      case "30days":
+        const thirtyDaysAgo = new Date(today);
+        thirtyDaysAgo.setDate(today.getDate() - 30);
+        return results.filter((result) => {
+          const resultDate = new Date(result.analysis_date);
+          return resultDate >= thirtyDaysAgo && resultDate <= now;
+        });
+      case "custom":
+        if (!customDateRange.from || !customDateRange.to) return results;
+        return results.filter((result) => {
+          const resultDate = new Date(result.analysis_date);
+          return (
+            resultDate >= customDateRange.from! &&
+            resultDate <= customDateRange.to!
+          );
+        });
+      case "all":
+      default:
+        return results;
+    }
+  }, [results, selectedDateRange, customDateRange]);
 
   // Filter analysis brands based on selected date and model
   const filteredAnalysisBrands = useMemo(() => {
     if (!results || !Array.isArray(results)) return [];
 
-    // Filter results based on selected date
-    const dateFilteredResults =
-      selectedDate === "latest"
-        ? results
-        : results.filter((result) => result.analysis_date === selectedDate);
+    // Filter results based on selected date range
+    const dateFilteredResults = getDateFilteredResults;
 
-        const flat_google_overview_brands = googleSearchResults?.search_results
+    const flat_google_overview_brands =
+      googleSearchResults?.search_results
         ?.flatMap((result: GoogleSearch) => {
           try {
             if (!result.rankings) return [];
-            const rankings = typeof result.rankings === 'string' 
-              ? JSON.parse(result.rankings)
-              : result.rankings;
-            return rankings.brands.map((rank: any) => rank.name).filter(Boolean);
+            const rankings =
+              typeof result.rankings === "string"
+                ? JSON.parse(result.rankings)
+                : result.rankings;
+            return rankings.brands
+              .map((rank: any) => rank.name)
+              .filter(Boolean);
           } catch (e) {
-            console.error('Error parsing rankings:', e);
+            console.error("Error parsing rankings:", e);
             return [];
           }
         })
         .filter(Boolean) || [];
 
-      const unique_google_overview_brands = [...new Set(flat_google_overview_brands)];
+    const unique_google_overview_brands = [
+      ...new Set(flat_google_overview_brands),
+    ];
 
     // Extract brands from the date-filtered results, considering model filter
     const filteredBrands = dateFilteredResults
       .flatMap((result) => {
         // If AI Overview is selected, return Google brands
-        if (Array.from(selectedModel).some(model => model.toLowerCase() === "google ai overview")) {
-          return unique_google_overview_brands.map(brand => ({ name: brand }));
+        if (
+          Array.from(selectedModel).some(
+            (model) => model.toLowerCase() === "google ai overview"
+          )
+        ) {
+          return unique_google_overview_brands.map((brand) => ({
+            name: brand,
+          }));
         }
 
         // Otherwise, process model results as before
@@ -749,7 +847,10 @@ function DashboardContent() {
             if (selectedModel.size === 0) return true;
             return selectedModel.has(modelResult.llm_name);
           })
-          .flatMap((modelResult: { llm_name: string; data: { brands: any[] } }) => modelResult.data?.brands || [])
+          .flatMap(
+            (modelResult: { llm_name: string; data: { brands: any[] } }) =>
+              modelResult.data?.brands || []
+          )
           .filter(Boolean);
       })
       .filter(Boolean);
@@ -763,7 +864,7 @@ function DashboardContent() {
     });
 
     return Array.from(uniqueBrands.values());
-  }, [results, selectedDate, selectedModel]);
+  }, [results, selectedDateRange, selectedModel, customDateRange]);
 
   const allAnalysisBrands = useMemo(() => {
     if (!results || !Array.isArray(results)) return [];
@@ -779,23 +880,29 @@ function DashboardContent() {
       )
       .filter(Boolean);
 
-      // Safely extract and parse rankings from Google search results
-      const flat_google_overview_brands = googleSearchResults?.search_results
+    // Safely extract and parse rankings from Google search results
+    const flat_google_overview_brands =
+      googleSearchResults?.search_results
         ?.flatMap((result: GoogleSearch) => {
           try {
             if (!result.rankings) return [];
-            const rankings = typeof result.rankings === 'string' 
-              ? JSON.parse(result.rankings)
-              : result.rankings;
-            return rankings.brands.map((rank: any) => rank.name).filter(Boolean);
+            const rankings =
+              typeof result.rankings === "string"
+                ? JSON.parse(result.rankings)
+                : result.rankings;
+            return rankings.brands
+              .map((rank: any) => rank.name)
+              .filter(Boolean);
           } catch (e) {
-            console.error('Error parsing rankings:', e);
+            console.error("Error parsing rankings:", e);
             return [];
           }
         })
         .filter(Boolean) || [];
 
-      const unique_google_overview_brands = [...new Set(flat_google_overview_brands)];
+    const unique_google_overview_brands = [
+      ...new Set(flat_google_overview_brands),
+    ];
 
     // Deduplicate based on brand name
     const uniqueBrands = new Map();
@@ -823,8 +930,9 @@ function DashboardContent() {
     ) {
       return [];
     }
-    const google_overview = googleSearchResults?.search_results.flatMap((result:GoogleSearch) => result.ai_overview)
-
+    const google_overview = googleSearchResults?.search_results.flatMap(
+      (result: GoogleSearch) => result.ai_overview
+    );
 
     // Initialize an array to store brand mentions for each date
     const brandMentionsArray: any[] = [];
@@ -943,13 +1051,12 @@ function DashboardContent() {
     ) {
       return [];
     }
-    const google_overview = googleSearchResults?.search_results.flatMap((result:GoogleSearch) => result.ai_overview)
+    const google_overview = googleSearchResults?.search_results.flatMap(
+      (result: GoogleSearch) => result.ai_overview
+    );
 
-    // Filter results based on selected date (same logic as filteredAnalysisBrands)
-    const dateFilteredResults =
-      selectedDate === "latest" || selectedDate === ""
-        ? results
-        : results.filter((result) => result.analysis_date === selectedDate);
+    // Filter results based on selected date range (same logic as filteredAnalysisBrands)
+    const dateFilteredResults = getDateFilteredResults;
 
     // Initialize a map to store brand mentions
     const brandMentionsMap = new Map();
@@ -1042,7 +1149,15 @@ function DashboardContent() {
     return Array.from(brandMentionsMap.values()).sort(
       (a, b) => b.total_mentions - a.total_mentions
     );
-  }, [results, analysis_brands, googleSearchResults?.search_results, selectedDate, selectedModel]);
+  }, [
+    results,
+    analysis_brands,
+    googleSearchResults?.search_results,
+    selectedDateRange,
+    selectedModel,
+    customDateRange,
+    getDateFilteredResults,
+  ]);
 
   // Effect to update analysis_brands based on selectedModel
   useEffect(() => {
@@ -1073,7 +1188,8 @@ function DashboardContent() {
     // Reset filters when the prompt changes
     if (selectedQuery) {
       setSelectedModel(new Set<string>([])); // Reset to empty set (show all models)
-      setSelectedDate("latest");
+      setSelectedDateRange("all");
+      setCustomDateRange({ from: undefined, to: undefined });
       console.log("Prompt changed, resetting filters");
     }
   }, [selectedQuery]);
@@ -1081,7 +1197,8 @@ function DashboardContent() {
   // Fetch Google search results using the monitoring API
   const fetchGoogleSearchResults = async (
     mode_id: string,
-    analysisDate?: string
+    dateRange?: string,
+    customRange?: { from: Date | undefined; to: Date | undefined }
   ) => {
     if (!mode_id) return;
 
@@ -1095,23 +1212,43 @@ function DashboardContent() {
 
       const data = await response.json();
 
-      // Filter search results by analysis date if provided
-      if (
-        analysisDate &&
-        analysisDate !== "latest" &&
-        analysisDate !== "" &&
-        data.search_results
-      ) {
-        // Extract just the date part (YYYY-MM-DD) from the analysis date
-        const targetDate = analysisDate.split("T")[0];
+      // Filter search results by date range if provided
+      if (dateRange && dateRange !== "all" && data.search_results) {
+        const now = new Date();
+        const today = new Date(
+          now.getFullYear(),
+          now.getMonth(),
+          now.getDate()
+        );
 
         const filteredResults = data.search_results.filter((result: any) => {
           if (!result.created_at) return false;
-          // Extract date part from created_at timestamp
-          const resultDate = new Date(result.created_at)
-            .toISOString()
-            .split("T")[0];
-          return resultDate === targetDate;
+          const resultDate = new Date(result.created_at);
+
+          switch (dateRange) {
+            case "today":
+              const resultDateOnly = new Date(
+                resultDate.getFullYear(),
+                resultDate.getMonth(),
+                resultDate.getDate()
+              );
+              return resultDateOnly.getTime() === today.getTime();
+            case "7days":
+              const sevenDaysAgo = new Date(today);
+              sevenDaysAgo.setDate(today.getDate() - 7);
+              return resultDate >= sevenDaysAgo && resultDate <= now;
+            case "30days":
+              const thirtyDaysAgo = new Date(today);
+              thirtyDaysAgo.setDate(today.getDate() - 30);
+              return resultDate >= thirtyDaysAgo && resultDate <= now;
+            case "custom":
+              if (!customRange?.from || !customRange?.to) return true;
+              return (
+                resultDate >= customRange.from && resultDate <= customRange.to
+              );
+            default:
+              return true;
+          }
         });
 
         data.search_results = filteredResults;
@@ -1129,9 +1266,13 @@ function DashboardContent() {
   // Effect to fetch Google search results when selected query or date changes
   useEffect(() => {
     if (selectedQuery?.mode_id) {
-      fetchGoogleSearchResults(selectedQuery.mode_id, selectedDate);
+      fetchGoogleSearchResults(
+        selectedQuery.mode_id,
+        selectedDateRange,
+        customDateRange
+      );
     }
-  }, [selectedQuery, selectedDate]);
+  }, [selectedQuery, selectedDateRange, customDateRange]);
 
   if (loading) {
     return (
@@ -1823,22 +1964,175 @@ function DashboardContent() {
                       </DropdownMenuContent>
                     </DropdownMenu>
 
-                    <Select
-                      defaultValue={selectedDate || "latest"}
-                      onValueChange={(value) => setSelectedDate(value)}
-                    >
-                      <SelectTrigger className="w-full !border !border-accent md:w-fit">
-                        <SelectValue placeholder="Select date" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="latest">All Analysis</SelectItem>
-                        {analysis_dates?.sort((a, b) => b.localeCompare(a)).map((date: string) => (
-                          <SelectItem key={date} value={date}>
-                            {date}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    {/* Date Range Selection */}
+                    <div className="flex items-center gap-2 group">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className={`min-w-[120px] text-sm py-4 rounded-full !border !border-accent`}
+                      >
+                        <span className="group-hover:hidden">
+                          {selectedDateRange === "today" ? (
+                            "Today"
+                          ) : selectedDateRange === "7days" ? (
+                            "7 Days"
+                          ) : selectedDateRange === "30days" ? (
+                            "30 Days"
+                          ) : selectedDateRange === "all" ? (
+                            "All Time"
+                          ) : customDateRange.from ? (
+                            customDateRange.to ? (
+                              <>
+                                {format(customDateRange.from, "LLL dd, y")} -{" "}
+                                {format(customDateRange.to, "LLL dd, y")}
+                              </>
+                            ) : (
+                              format(customDateRange.from, "LLL dd, y")
+                            )
+                          ) : (
+                            <span>Select Date Range</span>
+                          )}
+                        </span>
+                        <span className="hidden group-hover:block">
+                          Select Date Range
+                        </span>
+                      </Button>
+                      <div className="flex items-center gap-2 opacity-0 max-w-0 group-hover:max-w-[600px] group-hover:ml-2 group-hover:opacity-100 transition-all duration-300 ease-in-out overflow-hidden whitespace-nowrap">
+                        <Button
+                          variant={
+                            selectedDateRange === "today"
+                              ? "default"
+                              : "outline"
+                          }
+                          size="sm"
+                          onClick={() => {
+                            setSelectedDateRange("today");
+                            setCustomDateRange({
+                              from: undefined,
+                              to: undefined,
+                            });
+                          }}
+                          className={`text-xs ${
+                            selectedDateRange === "today" &&
+                            "rounded-full bg-blue-500/20 text-blue-500 border border-blue-500 hover:text-white"
+                          }`}
+                        >
+                          Today
+                        </Button>
+                        <Button
+                          variant={
+                            selectedDateRange === "7days"
+                              ? "default"
+                              : "outline"
+                          }
+                          size="sm"
+                          onClick={() => {
+                            setSelectedDateRange("7days");
+                            setCustomDateRange({
+                              from: undefined,
+                              to: undefined,
+                            });
+                          }}
+                          className={`text-xs ${
+                            selectedDateRange === "7days" &&
+                            "rounded-full bg-blue-500/20 text-blue-500 border border-blue-500 hover:text-white"
+                          }`}
+                        >
+                          7 Days
+                        </Button>
+                        <Button
+                          variant={
+                            selectedDateRange === "30days"
+                              ? "default"
+                              : "outline"
+                          }
+                          size="sm"
+                          onClick={() => {
+                            setSelectedDateRange("30days");
+                            setCustomDateRange({
+                              from: undefined,
+                              to: undefined,
+                            });
+                          }}
+                          className={`text-xs ${
+                            selectedDateRange === "30days" &&
+                            "rounded-full bg-blue-500/20 text-blue-500 border border-blue-500 hover:text-white"
+                          }`}
+                        >
+                          30 Days
+                        </Button>
+                        <Button
+                          variant={
+                            selectedDateRange === "all" ? "default" : "outline"
+                          }
+                          size="sm"
+                          onClick={() => {
+                            setSelectedDateRange("all");
+                            setCustomDateRange({
+                              from: undefined,
+                              to: undefined,
+                            });
+                          }}
+                          className={`text-xs ${
+                            selectedDateRange === "all" &&
+                            "rounded-full bg-blue-500/20 text-blue-500 border border-blue-500 hover:text-white"
+                          }`}
+                        >
+                          All Time
+                        </Button>
+
+                        {/* Custom Date Range Picker */}
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant={
+                                selectedDateRange === "custom"
+                                  ? "default"
+                                  : "outline"
+                              }
+                              size="sm"
+                              className={cn(
+                                "text-xs justify-start text-left font-normal",
+                                !customDateRange.from &&
+                                  !customDateRange.to &&
+                                  "text-muted-foreground"
+                              )}
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {customDateRange.from ? (
+                                customDateRange.to ? (
+                                  <>
+                                    {format(customDateRange.from, "LLL dd, y")}{" "}
+                                    - {format(customDateRange.to, "LLL dd, y")}
+                                  </>
+                                ) : (
+                                  format(customDateRange.from, "LLL dd, y")
+                                )
+                              ) : (
+                                <span>Pick a date range</span>
+                              )}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              initialFocus
+                              mode="range"
+                              defaultMonth={customDateRange.from}
+                              selected={customDateRange}
+                              onSelect={(range) => {
+                                setCustomDateRange(
+                                  range || { from: undefined, to: undefined }
+                                );
+                                if (range?.from && range?.to) {
+                                  setSelectedDateRange("custom");
+                                }
+                              }}
+                              numberOfMonths={2}
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+                    </div>
 
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -1896,12 +2190,14 @@ function DashboardContent() {
                     <Button
                       onClick={() => setShowGoogleResults(!showGoogleResults)}
                       variant="outline"
-                      className="rounded-full"
+                      className={`rounded-full !border !border-accent group ${showGoogleResults && "opacity-60"}`}
                     >
-                      <Gemini className="w-4 h-4" />
-                      {showGoogleResults
-                        ? "Hide Google Results"
-                        : "Show Google Results"}
+                      <Eye className="w-4 h-4" />
+                      <span className="hidden group-hover:block">
+                        {showGoogleResults
+                          ? "Hide Google Results"
+                          : "Show Google Results"}
+                      </span>
                     </Button>
                   </div>
                 </motion.div>

@@ -19,7 +19,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { TbAt, TbBookmarks, TbBuildings, TbLayoutGridAdd, TbListSearch, TbSquareLetterA, TbTrendingUp } from "react-icons/tb";
+import { TbAt, TbBookmarks, TbLayoutGridAdd, TbListSearch, TbSquareLetterA, TbTrendingUp } from "react-icons/tb";
 import { RankiaIcon } from "./icon-rankia"
 
 
@@ -49,12 +49,12 @@ const data = {
     //   icon: TbMessage,
     //   group: "main"
     // },
-    {
-      title: "Research",
-      url: "/dashboard/research",
-      icon: TbBuildings,
-      group: "metrics"
-    },
+    // {
+    //   title: "Research",
+    //   url: "/dashboard/research",
+    //   icon: TbBuildings,
+    //   group: "metrics"
+    // },
     {
       title: "Keywords",
       url: "/dashboard/keywords",

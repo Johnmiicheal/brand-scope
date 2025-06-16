@@ -32,7 +32,6 @@ export const IconMarquee: React.FC = () => {
     { name: "Groq", Icon: Groq.Combine },
     { name: "Vercel", Icon: Vercel.Combine },
     { name: "Exa", Icon: Exa.Combine }
-
   ];
 
   return (
