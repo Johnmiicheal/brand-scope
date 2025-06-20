@@ -132,6 +132,17 @@ export function ScheduledQueriesList({
     }
   };
 
+  const handleViewOnDashboard = (query: ScheduledQuery) => {
+    onSelectQuery?.(query); 
+    if(window.location.pathname === "/dashboard/library") {
+      setTimeout(() => {
+        router.push('/dashboard')
+        onSelectQuery?.(query);
+        toast.info('Redirecting to dashboard page...')
+      }, 1000)
+    }
+  };
+
   // Function to handle row click
   const handleRowClick = (queryId: string) => {
     router.push(`/dashboard/search/monitoring?mode_id=${queryId}`);
@@ -334,7 +345,7 @@ export function ScheduledQueriesList({
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => onSelectQuery?.(query)}>
+                          <DropdownMenuItem onClick={() => handleViewOnDashboard(query)}>
                             View on Dashboard
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => handleRowClick(query?.mode_id!)}>

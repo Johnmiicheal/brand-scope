@@ -86,10 +86,35 @@ export function CompetitorChart({
       (brand.gemini_mentions > 0 ? 1 : 0) +
       (brand.gpt_search_mentions > 0 ? 1 : 0) +
       (brand.ai_overview_mentions > 0 ? 1 : 0);
+       // Check selected models and add to total mentions count
+    let selectedModelTotalMentions = 0;
+    
+    if (selectedModel.has("GPT 4.1") && brand.gpt_mentions > 0) {
+      selectedModelTotalMentions++;
+    }
+    if (selectedModel.has("Claude 3.5 Sonnet") && brand.claude_mentions > 0) {
+      selectedModelTotalMentions++;
+    }
+    if (selectedModel.has("Perplexity Sonar") && brand.perplexity_mentions > 0) {
+      selectedModelTotalMentions++;
+    }
+    if (selectedModel.has("Gemini 2.0 Flash") && brand.gemini_mentions > 0) {
+      selectedModelTotalMentions++;
+    }
+    if (selectedModel.has("GPT 4o Web Search") && brand.gpt_search_mentions > 0) {
+      selectedModelTotalMentions++;
+    }
+    if (selectedModel.has("Google AI Overview") && brand.ai_overview_mentions > 0) {
+      selectedModelTotalMentions++;
+    }
+    
+    // Use selectedModelTotalMentions when filtering is active
+    const finalTotalMentions = selectedModel.size > 0 ? selectedModelTotalMentions : totalMentionsPerModel;
+    const finalMaxModels = selectedModel.size > 0 ? selectedModel.size : maxModels;
     if (type === "ratio") {
-      return `${totalMentionsPerModel} / ${maxModels}`;
+      return `${finalTotalMentions} / ${finalMaxModels}`;
     } else {
-      return (totalMentionsPerModel / maxModels).toFixed(2);
+      return (finalTotalMentions / finalMaxModels).toFixed(2);
     }
   };
 

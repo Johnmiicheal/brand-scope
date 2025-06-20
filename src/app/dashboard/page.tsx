@@ -22,6 +22,7 @@ import { MetricsHeader } from "@/components/dashboard/metrics-card";
 import { KeywordCloud } from "@/components/dashboard/keyword-cloud";
 import { CompetitorNetwork } from "@/components/dashboard/competitor-network";
 import { BrandInsights } from "@/components/dashboard/insights-card";
+import { CitationsCard } from "@/components/dashboard/citations-card";
 import Image from "next/image";
 import Link from "next/link";
 import { v4 as uuidv4 } from "uuid";
@@ -105,6 +106,7 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
+import { useMediaQuery } from "@/hooks/use-mobile";
 
 const INDUSTRIES = [
   "Technology",
@@ -219,10 +221,36 @@ function IndustryRankingsTable({
       (brand.gemini_mentions > 0 ? 1 : 0) +
       (brand.gpt_search_mentions > 0 ? 1 : 0) +
       (brand.ai_overview_mentions > 0 ? 1 : 0);
+    // Check selected models and add to total mentions count
+    let selectedModelTotalMentions = 0;
+    
+    if (selectedModel.has("GPT 4.1") && brand.gpt_mentions > 0) {
+      selectedModelTotalMentions++;
+    }
+    if (selectedModel.has("Claude 3.5 Sonnet") && brand.claude_mentions > 0) {
+      selectedModelTotalMentions++;
+    }
+    if (selectedModel.has("Perplexity Sonar") && brand.perplexity_mentions > 0) {
+      selectedModelTotalMentions++;
+    }
+    if (selectedModel.has("Gemini 2.0 Flash") && brand.gemini_mentions > 0) {
+      selectedModelTotalMentions++;
+    }
+    if (selectedModel.has("GPT 4o Web Search") && brand.gpt_search_mentions > 0) {
+      selectedModelTotalMentions++;
+    }
+    if (selectedModel.has("Google AI Overview") && brand.ai_overview_mentions > 0) {
+      selectedModelTotalMentions++;
+    }
+    
+    // Use selectedModelTotalMentions when filtering is active
+    const finalTotalMentions = selectedModel.size > 0 ? selectedModelTotalMentions : totalMentionsPerModel;
+    const finalMaxModels = selectedModel.size > 0 ? selectedModel.size : maxModels;
+    console.log(finalTotalMentions, finalMaxModels)
     if (type === "ratio") {
-      return `${totalMentionsPerModel} / ${maxModels}`;
+      return `${finalTotalMentions} / ${finalMaxModels}`;
     } else {
-      return (totalMentionsPerModel / maxModels).toFixed(2);
+      return (finalTotalMentions / finalMaxModels).toFixed(2);
     }
   };
   const getMentionsIndex = (brand: any) => {
@@ -1274,6 +1302,8 @@ function DashboardContent() {
     }
   }, [selectedQuery, selectedDateRange, customDateRange]);
 
+  const isNotDesktop = useMediaQuery("(max-width: 1024px)");
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -1908,7 +1938,9 @@ function DashboardContent() {
                       })}
                     </p>
                     {"•"}
-                    <p>{queries.length} active prompts</p>
+                    <p>{queries.length} total prompts ({queries.filter((query) => query.status === "active").length} active)</p>
+                    {"•"}
+                    <p className="text-muted-foreground">Currently viewing: <em className="text-white">&quot;{selectedQuery?.query}&quot;</em></p>
                   </div>
                   <motion.div
                     animate={{ rotate: isExpanded ? 180 : 0 }}
@@ -1965,6 +1997,144 @@ function DashboardContent() {
                     </DropdownMenu>
 
                     {/* Date Range Selection */}
+                    {isNotDesktop ? (
+                        <div className="grid grid-cols-4 w-full items-center gap-2 whitespace-nowrap">
+                        <Button
+                          variant={
+                            selectedDateRange === "today"
+                              ? "default"
+                              : "outline"
+                          }
+                          size="sm"
+                          onClick={() => {
+                            setSelectedDateRange("today");
+                            setCustomDateRange({
+                              from: undefined,
+                              to: undefined,
+                            });
+                          }}
+                          className={`text-xs ${
+                            selectedDateRange === "today" &&
+                            "rounded-full bg-blue-500/20 text-blue-500 border border-blue-500 hover:text-white"
+                          }`}
+                        >
+                          Today
+                        </Button>
+                        <Button
+                          variant={
+                            selectedDateRange === "7days"
+                              ? "default"
+                              : "outline"
+                          }
+                          size="sm"
+                          onClick={() => {
+                            setSelectedDateRange("7days");
+                            setCustomDateRange({
+                              from: undefined,
+                              to: undefined,
+                            });
+                          }}
+                          className={`text-xs ${
+                            selectedDateRange === "7days" &&
+                            "rounded-full bg-blue-500/20 text-blue-500 border border-blue-500 hover:text-white"
+                          }`}
+                        >
+                          7 Days
+                        </Button>
+                        <Button
+                          variant={
+                            selectedDateRange === "30days"
+                              ? "default"
+                              : "outline"
+                          }
+                          size="sm"
+                          onClick={() => {
+                            setSelectedDateRange("30days");
+                            setCustomDateRange({
+                              from: undefined,
+                              to: undefined,
+                            });
+                          }}
+                          className={`text-xs ${
+                            selectedDateRange === "30days" &&
+                            "rounded-full bg-blue-500/20 text-blue-500 border border-blue-500 hover:text-white"
+                          }`}
+                        >
+                          30 Days
+                        </Button>
+                        <Button
+                          variant={
+                            selectedDateRange === "all" ? "default" : "outline"
+                          }
+                          size="sm"
+                          onClick={() => {
+                            setSelectedDateRange("all");
+                            setCustomDateRange({
+                              from: undefined,
+                              to: undefined,
+                            });
+                          }}
+                          className={`text-xs ${
+                            selectedDateRange === "all" &&
+                            "rounded-full bg-blue-500/20 text-blue-500 border border-blue-500 hover:text-white"
+                          }`}
+                        >
+                          All Time
+                        </Button>
+
+                        {/* Custom Date Range Picker */}
+                        <Popover >
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant={
+                                selectedDateRange === "custom"
+                                  ? "default"
+                                  : "outline"
+                              }
+                              size="sm"
+                              className={cn(
+                                "text-xs justify-start text-left font-normal col-span-2",
+                                !customDateRange.from &&
+                                  !customDateRange.to &&
+                                  "text-muted-foreground"
+                              )}
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {customDateRange.from ? (
+                                customDateRange.to ? (
+                                  <>
+                                    {format(customDateRange.from, "LLL dd, y")}{" "}
+                                    - {format(customDateRange.to, "LLL dd, y")}
+                                  </>
+                                ) : (
+                                  format(customDateRange.from, "LLL dd, y")
+                                )
+                              ) : (
+                                <span>Pick a date range</span>
+                              )}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              initialFocus
+                              mode="range"
+                              defaultMonth={customDateRange.from}
+                              selected={customDateRange}
+                              onSelect={(range) => {
+                                setCustomDateRange(
+                                  range || { from: undefined, to: undefined }
+                                );
+                                if (range?.from && range?.to) {
+                                  setSelectedDateRange("custom");
+                                }
+                              }}
+                              numberOfMonths={2}
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+
+                    ): (
                     <div className="flex items-center gap-2 group">
                       <Button
                         size="sm"
@@ -2134,6 +2304,8 @@ function DashboardContent() {
                       </div>
                     </div>
 
+                    )}
+
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button
@@ -2238,8 +2410,21 @@ function DashboardContent() {
                   />
                 </div>
 
-                <div className="flex md:flex-row flex-col gap-4 w-full h-full">
-                  {/* Google Search Results */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 w-full h-full">
+                  <CitationsCard
+                      results={results || []}
+                      selectedDateRange={selectedDateRange}
+                      customDateRange={customDateRange}
+                      selectedModel={selectedModel}
+                      googleSearchResults={googleSearchResults}
+                    />
+                
+                  {keywords && (
+                      <KeywordCloud keywords={keywords} />
+                  )}
+
+                  {/* Citations Section */}
+                  <div className="lg:col-span-2">
                   {showGoogleResults &&
                     googleSearchResults &&
                     googleSearchResults.search_results &&
@@ -2256,11 +2441,8 @@ function DashboardContent() {
                       </ScrollArea>
                     )}
 
-                  {keywords && (
-                    <div className="space-y-6 w-full h-full">
-                      <KeywordCloud keywords={keywords} />
-                    </div>
-                  )}
+                   
+                  </div>
                 </div>
               </div>
             </div>

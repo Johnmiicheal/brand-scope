@@ -126,7 +126,7 @@ export function KeywordCloud({ keywords }: KeywordCloudProps) {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5, delay: 0.2 }}>
-      <Card className="bg-background border-[#e2e2e2]/70 dark:border-accent shadow-none">
+      <Card className="bg-background border-[#e2e2e2]/70 dark:border-accent shadow-none h-full">
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
             <CardTitle>Keyword Cloud</CardTitle>

@@ -167,10 +167,58 @@ export function MetricsHeader({
         (brand.ai_overview_mentions > 0 ? 1 : 0)
       );
     }, 0);
+     // When models are selected, only count mentions from those specific models
+     let finalTotalMentions = totalMentionsPerModel;
+     let finalMaxModels = maxModels;
+
+     if (selectedModel.size > 0) {
+       finalTotalMentions = brands.reduce((acc, brand) => {
+         let brandModelCount = 0;
+
+         if (selectedModel.has("GPT 4.1") && brand.gpt_mentions > 0) {
+           brandModelCount++;
+         }
+         if (
+           selectedModel.has("Claude 3.5 Sonnet") &&
+           brand.claude_mentions > 0
+         ) {
+           brandModelCount++;
+         }
+         if (
+           selectedModel.has("Perplexity Sonar") &&
+           brand.perplexity_mentions > 0
+         ) {
+           brandModelCount++;
+         }
+         if (
+           selectedModel.has("Gemini 2.0 Flash") &&
+           brand.gemini_mentions > 0
+         ) {
+           brandModelCount++;
+         }
+         if (
+           selectedModel.has("GPT 4o Web Search") &&
+           brand.gpt_search_mentions > 0
+         ) {
+           brandModelCount++;
+         }
+         if (
+           selectedModel.has("Google AI Overview") &&
+           brand.ai_overview_mentions > 0
+         ) {
+           brandModelCount++;
+         }
+
+         return acc + brandModelCount;
+       }, 0);
+
+       finalMaxModels = selectedModel.size;
+     }
+
     if (type === "ratio") {
-      return `⌀ ${totalMentionsPerModel} / ${maxModels * brands.length}`;
+      return `⌀ ${finalTotalMentions} / ${finalMaxModels * brands.length}`;
     } else {
-      return (totalMentionsPerModel / (maxModels * brands.length)).toFixed(2);
+      return (finalTotalMentions / (finalMaxModels * brands.length)).toFixed(2);
     }
   };
   const getMentionsIndex = (brands: Brand[]) => {
@@ -181,32 +229,36 @@ export function MetricsHeader({
     return totalMentions / maxMentions;
   };
 
-
   // Get unique models with count of brands mentioned by each model
   const getUniqueModelsForSelectedBrands = () => {
     const modelCounts: Record<string, number> = {};
-    
+
     selectedBrandsData.forEach((brand) => {
       if (brand.gpt_mentions > 0) {
         modelCounts["GPT 4.1"] = (modelCounts["GPT 4.1"] || 0) + 1;
       }
       if (brand.gpt_search_mentions > 0) {
-        modelCounts["GPT 4o Web Search"] = (modelCounts["GPT 4o Web Search"] || 0) + 1;
+        modelCounts["GPT 4o Web Search"] =
+          (modelCounts["GPT 4o Web Search"] || 0) + 1;
       }
       if (brand.claude_mentions > 0) {
-        modelCounts["Claude 3.5 Sonnet"] = (modelCounts["Claude 3.5 Sonnet"] || 0) + 1;
+        modelCounts["Claude 3.5 Sonnet"] =
+          (modelCounts["Claude 3.5 Sonnet"] || 0) + 1;
       }
       if (brand.perplexity_mentions > 0) {
-        modelCounts["Perplexity Sonar"] = (modelCounts["Perplexity Sonar"] || 0) + 1;
+        modelCounts["Perplexity Sonar"] =
+          (modelCounts["Perplexity Sonar"] || 0) + 1;
       }
       if (brand.gemini_mentions > 0) {
-        modelCounts["Gemini 2.0 Flash"] = (modelCounts["Gemini 2.0 Flash"] || 0) + 1;
+        modelCounts["Gemini 2.0 Flash"] =
+          (modelCounts["Gemini 2.0 Flash"] || 0) + 1;
       }
       if (brand.ai_overview_mentions > 0) {
-        modelCounts["Google AI Overview"] = (modelCounts["Google AI Overview"] || 0) + 1;
+        modelCounts["Google AI Overview"] =
+          (modelCounts["Google AI Overview"] || 0) + 1;
       }
     });
-    
+
     return Object.entries(modelCounts).map(([modelName, count]) => ({
       name: modelName,
       count,
@@ -214,7 +266,10 @@ export function MetricsHeader({
   };
 
   // Model to icon mapping
-  const modelIcons: Record<string, React.ComponentType<{ className?: string }>> = {
+  const modelIcons: Record<
+    string,
+    React.ComponentType<{ className?: string }>
+  > = {
     "GPT 4.1": OpenAI,
     "GPT 4o Web Search": OpenAI,
     "Claude 3.5 Sonnet": Claude,
@@ -227,15 +282,23 @@ export function MetricsHeader({
 
   // Calculate visibility trend from previous analysis date
   const getVisibilityTrend = () => {
-    if (selectedBrand.has("all") || selectedBrand.size === 0 || temporalBrands.length === 0) {
+    if (
+      selectedBrand.has("all") ||
+      selectedBrand.size === 0 ||
+      temporalBrands.length === 0
+    ) {
       return undefined;
     }
 
     // Filter temporal data for selected brands and sort by date
     const selectedBrandNames = Array.from(selectedBrand);
     const relevantData = temporalBrands
-      .filter(brand => selectedBrandNames.includes(brand.brand_name))
-      .sort((a, b) => new Date(a.analysis_date).getTime() - new Date(b.analysis_date).getTime());
+      .filter((brand) => selectedBrandNames.includes(brand.brand_name))
+      .sort(
+        (a, b) =>
+          new Date(a.analysis_date).getTime() -
+          new Date(b.analysis_date).getTime()
+      );
 
     if (relevantData.length === 0) return undefined;
 
@@ -254,29 +317,85 @@ export function MetricsHeader({
     // Get current (latest) and previous date data
     const currentDate = dates[dates.length - 1];
     const previousDate = dates[dates.length - 2];
-    
+
     const currentData = dataByDate[currentDate];
     const previousData = dataByDate[previousDate];
 
     // Calculate visibility scores for both periods
     const calculateVisibilityScore = (brandsData: TemporalBrand[]) => {
-      const maxMentions = Math.max(...temporalBrands.map(b => b.total_mentions));
+      const maxMentions = Math.max(
+        ...temporalBrands.map((b) => b.total_mentions)
+      );
       const maxModels = selectedModel.size === 0 ? 6 : selectedModel.size;
-      
+
       const totalMentionsPerModel = brandsData.reduce((acc, brand) => {
-        return acc +
+        return (
+          acc +
           (brand.gpt_mentions > 0 ? 1 : 0) +
           (brand.claude_mentions > 0 ? 1 : 0) +
           (brand.perplexity_mentions > 0 ? 1 : 0) +
           (brand.gemini_mentions > 0 ? 1 : 0) +
           (brand.gpt_search_mentions > 0 ? 1 : 0) +
-          (brand.ai_overview_mentions > 0 ? 1 : 0);
+          (brand.ai_overview_mentions > 0 ? 1 : 0)
+        );
       }, 0);
-      
-      const coverageRatio = totalMentionsPerModel / (maxModels * brandsData.length);
-      const totalMentions = brandsData.reduce((acc, brand) => acc + brand.total_mentions, 0);
+
+      // When models are selected, only count mentions from those specific models
+      let finalTotalMentions = totalMentionsPerModel;
+      let finalMaxModels = maxModels;
+
+      if (selectedModel.size > 0) {
+        finalTotalMentions = brandsData.reduce((acc, brand) => {
+          let brandModelCount = 0;
+
+          if (selectedModel.has("GPT 4.1") && brand.gpt_mentions > 0) {
+            brandModelCount++;
+          }
+          if (
+            selectedModel.has("Claude 3.5 Sonnet") &&
+            brand.claude_mentions > 0
+          ) {
+            brandModelCount++;
+          }
+          if (
+            selectedModel.has("Perplexity Sonar") &&
+            brand.perplexity_mentions > 0
+          ) {
+            brandModelCount++;
+          }
+          if (
+            selectedModel.has("Gemini 2.0 Flash") &&
+            brand.gemini_mentions > 0
+          ) {
+            brandModelCount++;
+          }
+          if (
+            selectedModel.has("GPT 4o Web Search") &&
+            brand.gpt_search_mentions > 0
+          ) {
+            brandModelCount++;
+          }
+          if (
+            selectedModel.has("Google AI Overview") &&
+            brand.ai_overview_mentions > 0
+          ) {
+            brandModelCount++;
+          }
+
+          return acc + brandModelCount;
+        }, 0);
+
+        finalMaxModels = selectedModel.size;
+      }
+
+      const coverageRatio =
+        finalTotalMentions / (finalMaxModels * brandsData.length);
+      const totalMentions = brandsData.reduce(
+        (acc, brand) => acc + brand.total_mentions,
+        0
+      );
       const mentionsIndex = totalMentions / maxMentions;
-      
+
       return (100 * (coverageRatio + mentionsIndex)) / 2;
     };
 
@@ -284,7 +403,7 @@ export function MetricsHeader({
     const previousScore = calculateVisibilityScore(previousData);
 
     if (previousScore === 0) return undefined;
-    
+
     return (currentScore - previousScore) / previousScore;
   };
 
@@ -292,14 +411,22 @@ export function MetricsHeader({
 
   // Calculate coverage ratio trend
   const getCoverageRatioTrend = () => {
-    if (selectedBrand.has("all") || selectedBrand.size === 0 || temporalBrands.length === 0) {
+    if (
+      selectedBrand.has("all") ||
+      selectedBrand.size === 0 ||
+      temporalBrands.length === 0
+    ) {
       return undefined;
     }
 
     const selectedBrandNames = Array.from(selectedBrand);
     const relevantData = temporalBrands
-      .filter(brand => selectedBrandNames.includes(brand.brand_name))
-      .sort((a, b) => new Date(a.analysis_date).getTime() - new Date(b.analysis_date).getTime());
+      .filter((brand) => selectedBrandNames.includes(brand.brand_name))
+      .sort(
+        (a, b) =>
+          new Date(a.analysis_date).getTime() -
+          new Date(b.analysis_date).getTime()
+      );
 
     if (relevantData.length === 0) return undefined;
 
@@ -316,42 +443,101 @@ export function MetricsHeader({
 
     const currentDate = dates[dates.length - 1];
     const previousDate = dates[dates.length - 2];
-    
+
     const currentData = dataByDate[currentDate];
     const previousData = dataByDate[previousDate];
 
     const calculateCoverageRatio = (brandsData: TemporalBrand[]) => {
       const maxModels = selectedModel.size === 0 ? 6 : selectedModel.size;
       const totalMentionsPerModel = brandsData.reduce((acc, brand) => {
-        return acc +
+        return (
+          acc +
           (brand.gpt_mentions > 0 ? 1 : 0) +
           (brand.claude_mentions > 0 ? 1 : 0) +
           (brand.perplexity_mentions > 0 ? 1 : 0) +
           (brand.gemini_mentions > 0 ? 1 : 0) +
           (brand.gpt_search_mentions > 0 ? 1 : 0) +
-          (brand.ai_overview_mentions > 0 ? 1 : 0);
+          (brand.ai_overview_mentions > 0 ? 1 : 0)
+        );
       }, 0);
-      return (totalMentionsPerModel / (maxModels * brandsData.length)) * 100;
+
+      // When models are selected, only count mentions from those specific models
+      let finalTotalMentions = totalMentionsPerModel;
+      let finalMaxModels = maxModels;
+
+      if (selectedModel.size > 0) {
+        finalTotalMentions = brandsData.reduce((acc, brand) => {
+          let brandModelCount = 0;
+
+          if (selectedModel.has("GPT 4.1") && brand.gpt_mentions > 0) {
+            brandModelCount++;
+          }
+          if (
+            selectedModel.has("Claude 3.5 Sonnet") &&
+            brand.claude_mentions > 0
+          ) {
+            brandModelCount++;
+          }
+          if (
+            selectedModel.has("Perplexity Sonar") &&
+            brand.perplexity_mentions > 0
+          ) {
+            brandModelCount++;
+          }
+          if (
+            selectedModel.has("Gemini 2.0 Flash") &&
+            brand.gemini_mentions > 0
+          ) {
+            brandModelCount++;
+          }
+          if (
+            selectedModel.has("GPT 4o Web Search") &&
+            brand.gpt_search_mentions > 0
+          ) {
+            brandModelCount++;
+          }
+          if (
+            selectedModel.has("Google AI Overview") &&
+            brand.ai_overview_mentions > 0
+          ) {
+            brandModelCount++;
+          }
+
+          return acc + brandModelCount;
+        }, 0);
+
+        finalMaxModels = selectedModel.size;
+      }
+
+      return (finalTotalMentions / (finalMaxModels * brandsData.length)) * 100;
     };
 
     const currentRatio = calculateCoverageRatio(currentData);
     const previousRatio = calculateCoverageRatio(previousData);
 
     if (previousRatio === 0) return undefined;
-    
+
     return (currentRatio - previousRatio) / previousRatio;
   };
 
   // Calculate mentions trend
   const getMentionsTrend = () => {
-    if (selectedBrand.has("all") || selectedBrand.size === 0 || temporalBrands.length === 0) {
+    if (
+      selectedBrand.has("all") ||
+      selectedBrand.size === 0 ||
+      temporalBrands.length === 0
+    ) {
       return undefined;
     }
 
     const selectedBrandNames = Array.from(selectedBrand);
     const relevantData = temporalBrands
-      .filter(brand => selectedBrandNames.includes(brand.brand_name))
-      .sort((a, b) => new Date(a.analysis_date).getTime() - new Date(b.analysis_date).getTime());
+      .filter((brand) => selectedBrandNames.includes(brand.brand_name))
+      .sort(
+        (a, b) =>
+          new Date(a.analysis_date).getTime() -
+          new Date(b.analysis_date).getTime()
+      );
 
     if (relevantData.length === 0) return undefined;
 
@@ -368,7 +554,7 @@ export function MetricsHeader({
 
     const currentDate = dates[dates.length - 1];
     const previousDate = dates[dates.length - 2];
-    
+
     const currentData = dataByDate[currentDate];
     const previousData = dataByDate[previousDate];
 
@@ -380,7 +566,7 @@ export function MetricsHeader({
     const previousMentions = calculateTotalMentions(previousData);
 
     if (previousMentions === 0) return undefined;
-    
+
     return (currentMentions - previousMentions) / previousMentions;
   };
 
@@ -437,19 +623,26 @@ export function MetricsHeader({
             {activeModels.map((model) => {
               const IconComponent = modelIcons[model.name];
               return (
-                <div key={model.name} className="flex items-center gap-2 bg-muted/50 rounded-full px-3 py-1">
+                <div
+                  key={model.name}
+                  className="flex items-center gap-2 bg-muted/50 rounded-full px-3 py-1"
+                >
                   <IconComponent className="w-4 h-4" />
                   <span className="text-xs font-medium">
                     {model.name}
                     {model.count > 1 && (
-                      <span className="ml-1 text-blue-500 font-semibold">+{model.count}</span>
+                      <span className="ml-1 text-blue-500 font-semibold">
+                        +{model.count}
+                      </span>
                     )}
                   </span>
                 </div>
               );
             })}
             {activeModels.length === 0 && (
-              <span className="text-sm text-muted-foreground">No models found</span>
+              <span className="text-sm text-muted-foreground">
+                No models found
+              </span>
             )}
           </div>
         </motion.div>
