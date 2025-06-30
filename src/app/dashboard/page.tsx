@@ -107,6 +107,7 @@ import {
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { useMediaQuery } from "@/hooks/use-mobile";
+import { KeywordAnalysisCard } from "@/components/dashboard/keyword-analysis-card";
 
 const INDUSTRIES = [
   "Technology",
@@ -2419,9 +2420,11 @@ function DashboardContent() {
                       googleSearchResults={googleSearchResults}
                     />
                 
-                  {keywords && (
+                  {/* {keywords && (
                       <KeywordCloud keywords={keywords} />
-                  )}
+                  )} */}
+
+                  <KeywordAnalysisCard />
 
                   {/* Citations Section */}
                   <div className="lg:col-span-2">

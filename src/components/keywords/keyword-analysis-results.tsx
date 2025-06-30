@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/components/ui/use-toast";
 
@@ -113,6 +113,7 @@ export function KeywordAnalysisResults({ keywords, metadata, onScheduleKeyword }
         description: "Failed to schedule keyword monitoring. Please try again.",
         variant: "destructive"
       });
+      console.error(error);
     } finally {
       setIsScheduling(false);
     }
@@ -178,7 +179,7 @@ export function KeywordAnalysisResults({ keywords, metadata, onScheduleKeyword }
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {keywordEntries.map(([id, keyword], index) => (
+                {keywordEntries.map(([id, keyword]) => (
                   <motion.tr
                     key={id}
                     variants={fadeIn}
@@ -270,7 +271,7 @@ export function KeywordAnalysisResults({ keywords, metadata, onScheduleKeyword }
           <DialogHeader>
             <DialogTitle>Schedule Keyword Monitoring</DialogTitle>
             <DialogDescription>
-              Configure monitoring settings for "{selectedKeyword?.conversational_keyword}"
+              Configure monitoring settings for &quot;{selectedKeyword?.conversational_keyword}&quot;
             </DialogDescription>
           </DialogHeader>
           

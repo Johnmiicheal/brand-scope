@@ -123,6 +123,64 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Generate analysis session ID
+    const analysisId = crypto.randomUUID();
+
+    // Save the analysis session
+    const { error: sessionError } = await supabase
+      .from('keyword_analysis_sessions')
+      .insert({
+        id: analysisId,
+        user_id: userId,
+        business_brief: businessBrief,
+        website: website,
+        keyword_input: keyword,
+        total_keywords: outputData.keywords?.length || 0,
+        analysis_summary: outputData.summary || '',
+      });
+
+    if (sessionError) {
+      console.error('Error saving analysis session:', sessionError);
+    }
+
+    // Save individual keyword recommendations
+    if (outputData.keywords && Array.isArray(outputData.keywords)) {
+      const keywordInserts = outputData.keywords.map((keywordData: {
+        conversational_keyword?: string;
+        intent?: string;
+        google_seed_keyword?: string;
+        category?: string;
+        search_volume?: number | string;
+        competition_index?: number | string;
+        low_cpc?: string;
+        trend_6m?: string;
+        relevance_score?: number | string;
+      }) => ({
+        user_id: userId,
+        analysis_id: analysisId,
+        business_brief: businessBrief,
+        website: website,
+        keyword_input: keyword,
+        conversational_keyword: keywordData.conversational_keyword || '',
+        intent: keywordData.intent || null,
+        google_seed_keyword: keywordData.google_seed_keyword || null,
+        category: keywordData.category || null,
+        search_volume: parseInt(String(keywordData.search_volume || 0)) || 0,
+        competition_index: parseFloat(String(keywordData.competition_index || 0)) || 0,
+        low_cpc: keywordData.low_cpc || '$0.00',
+        trend_6m: keywordData.trend_6m || '0%',
+        relevance_score: parseFloat(String(keywordData.relevance_score || 0)) || 0,
+      }));
+
+      const { error: keywordError } = await supabase
+        .from('keyword_recommendations')
+        .insert(keywordInserts);
+
+      if (keywordError) {
+        console.error('Error saving keyword recommendations:', keywordError);
+      }
+    }
+
     // Update or insert usage tracking
     const { error: upsertError } = await supabase
       .from('keyword_analysis_usage')

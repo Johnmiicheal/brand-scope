@@ -177,10 +177,10 @@ export default function KeywordAnalysisPage() {
 
       {/* Daily Limit Info */}
       <motion.div variants={slideUp}>
-        <Alert>
+        <Alert className="bg-blue-500/10 border-blue-500/20 border-dashed text-blue-500">
           <Calendar className="h-4 w-4" />
-          <AlertDescription>
-            You have <strong>1 keyword analysis</strong> available per day. Use it wisely to discover the best opportunities for your brand.
+          <AlertDescription className="flex">
+            You have <strong className="text-blue-500">1 keyword analysis</strong> available per day. Use it wisely to discover the best opportunities for your brand.
           </AlertDescription>
         </Alert>
       </motion.div>
@@ -199,7 +199,7 @@ export default function KeywordAnalysisPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="flex flex-col gap-6">
                 {/* Left Column */}
                 <div className="space-y-4">
                   <div className="space-y-2">
@@ -221,7 +221,7 @@ export default function KeywordAnalysisPage() {
 
                   <div className="space-y-2">
                     <Label htmlFor="keyword" className="text-base font-medium">
-                      Main Keyword
+                      Main Keyword (optional)
                     </Label>
                     <Input
                       id="keyword"
@@ -259,7 +259,7 @@ export default function KeywordAnalysisPage() {
                     <Button
                       type="submit"
                       disabled={isLoading || !hasAnyInput}
-                      className="w-full"
+                      className="w-full bg-blue-500 hover:bg-blue-600"
                       size="lg"
                     >
                       {isLoading ? (
