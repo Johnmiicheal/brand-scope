@@ -442,7 +442,7 @@ export function KeywordAnalysisCard() {
                 className="w-full group bg-blue-500 hover:bg-blue-600"
                 onClick={handleViewAllAnalyses}
               >
-                View All Analyses
+                View All Analysis
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </Button>
             ) : (

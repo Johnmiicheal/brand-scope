@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { createClient } from '@supabase/supabase-js';
 import { serverEnv } from '@/env/server';
 import { SearchResults, AIRanking, AnalysisMode, Summary, GoogleSearch, Search } from '@/types/search';
