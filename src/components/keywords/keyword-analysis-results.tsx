@@ -11,6 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/components/ui/use-toast";
+import { countries } from "@/lib/countries";
 
 type KeywordData = {
   conversational_keyword: string;
@@ -144,7 +145,7 @@ export function KeywordAnalysisResults({ keywords, metadata, onScheduleKeyword }
         </CardHeader>
         <CardContent>
           <div className="flex gap-4 text-sm text-muted-foreground">
-            {metadata.map((meta, index) => (
+            {metadata && metadata.map((meta, index) => (
               <div key={index} className="flex items-center gap-1">
                 <MapPin className="w-4 h-4" />
                 {meta.language.toUpperCase()} • {meta.country}
@@ -287,44 +288,38 @@ export function KeywordAnalysisResults({ keywords, metadata, onScheduleKeyword }
                 </div>
               </div>
             )}
+            <div className="flex gap-5 w-full items-center justify-between">
+              <div className="space-y-2 w-full">
+                <label className="text-sm font-medium">Monitoring Frequency</label>
+                <Select value={scheduleFrequency} onValueChange={setScheduleFrequency}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="daily">Daily</SelectItem>
+                    <SelectItem value="weekly">Weekly</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Monitoring Frequency</label>
-              <Select value={scheduleFrequency} onValueChange={setScheduleFrequency}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="daily">Daily</SelectItem>
-                  <SelectItem value="weekly">Weekly</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="space-y-2 w-full">
+                <label className="text-sm font-medium">Location</label>
+                <Select value={scheduleCountry} onValueChange={setScheduleCountry}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="global" disabled>Select Location</SelectItem>
+                    {countries.map((country) => (
+                      <SelectItem key={country.value} value={country.value}>
+                        {country.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Location</label>
-              <Select value={scheduleCountry} onValueChange={setScheduleCountry}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="global">Global</SelectItem>
-                  <SelectItem value="US">United States</SelectItem>
-                  <SelectItem value="GB">United Kingdom</SelectItem>
-                  <SelectItem value="CA">Canada</SelectItem>
-                  <SelectItem value="AU">Australia</SelectItem>
-                  <SelectItem value="DE">Germany</SelectItem>
-                  <SelectItem value="FR">France</SelectItem>
-                  <SelectItem value="ES">Spain</SelectItem>
-                  <SelectItem value="IT">Italy</SelectItem>
-                  <SelectItem value="NL">Netherlands</SelectItem>
-                  <SelectItem value="SE">Sweden</SelectItem>
-                  <SelectItem value="NO">Norway</SelectItem>
-                  <SelectItem value="DK">Denmark</SelectItem>
-                  <SelectItem value="FI">Finland</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
 
             <div className="flex gap-2 pt-4">
               <Button
@@ -332,7 +327,7 @@ export function KeywordAnalysisResults({ keywords, metadata, onScheduleKeyword }
                 disabled={isScheduling}
                 className="flex-1"
               >
-                <Calendar className="w-4 h-4 mr-2" />
+                <Calendar className="w-4 h-4" />
                 {isScheduling ? "Scheduling..." : "Schedule Monitoring"}
               </Button>
               <Button

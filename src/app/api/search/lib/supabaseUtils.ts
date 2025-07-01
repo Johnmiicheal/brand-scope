@@ -6,9 +6,36 @@ import { SearchResults, AIRanking, AnalysisMode, Summary, GoogleSearch, Search }
 // Initialize Supabase client
 const supabase = createClient(serverEnv.SUPABASE_URL, serverEnv.SUPABASE_SERVICE_ROLE_KEY);
 
-// Fetch search results by search ID
+// Fetch search results by search ID (optimized)
 export async function getSearchResultsBySearchId(search_id: string): Promise<SearchResults | null> {
-  // Get AI rankings
+  // Try optimized structure first
+  const { data: sessionData, error: sessionError } = await supabase
+    .from('ai_ranking_sessions')
+    .select('*')
+    .eq('id', search_id)
+    .single();
+  
+  if (sessionData && !sessionError) {
+    // Convert JSONB rankings back to array format
+    const ai_rankings: AIRanking[] = [];
+    
+    if (sessionData.rankings_data) {
+      Object.entries(sessionData.rankings_data as Record<string, AIRanking[]>).forEach(([query, rankings]) => {
+        ai_rankings.push(...rankings);
+      });
+    }
+    
+    return {
+      search_id,
+      mode: sessionData.mode,
+      mode_id: sessionData.id,
+      ai_rankings,
+      search_results: [],
+      searches: []
+    };
+  }
+  
+  // Fallback to old structure
   const { data: rankingsData, error: rankingsError } = await supabase
     .from('ai_rankings')
     .select('*')
@@ -26,20 +53,52 @@ export async function getSearchResultsBySearchId(search_id: string): Promise<Sea
   };
 }
 
-// Fetch results by mode ID (to get all results from a specific mode run)
+// Fetch results by mode ID (optimized)
 export async function getSearchResultsByModeId(mode_id: string): Promise<SearchResults | null> {
-  // Get all AI rankings with this mode_id
+  // Try optimized structure first
+  const { data: sessionData, error: sessionError } = await supabase
+    .from('ai_ranking_sessions')
+    .select('*')
+    .eq('id', mode_id)
+    .single();
+  
+  if (sessionData && !sessionError) {
+    // Convert JSONB rankings back to array format
+    const ai_rankings: AIRanking[] = [];
+    
+    if (sessionData.rankings_data) {
+      Object.entries(sessionData.rankings_data as Record<string, AIRanking[]>).forEach(([query, rankings]) => {
+        ai_rankings.push(...rankings);
+      });
+    }
+    
+    // Get related data
+    const { data: summs } = await supabase.from('ai_summary').select('*').eq('mode_id', mode_id);
+    const { data: searches } = await supabase.from('searches').select('*').eq('monitoring_id', mode_id);
+    const { data: search_results } = await supabase.from('search_results').select('*').eq('mode_id', mode_id);
+    
+    return {
+      search_id: mode_id,
+      mode: sessionData.mode,
+      mode_id,
+      ai_rankings,
+      summary: summs as Summary[],
+      search_results: search_results as GoogleSearch[],
+      searches: searches as Search[]
+    };
+  }
+  
+  // Fallback to old structure
   const { data: rankingsData, error: rankingsError } = await supabase
     .from('ai_rankings')
     .select('*')
     .eq('mode_id', mode_id);
   
   if (rankingsError || !rankingsData || rankingsData.length === 0) return null;
-  
 
-    const { data: summs } = await supabase.from('ai_summary').select('*').eq('mode_id', mode_id)
-    const { data: searches } = await supabase.from('searches').select('*').eq('monitoring_id', mode_id)
-    const { data: search_results } = await supabase.from('search_results').select('*').eq('mode_id', mode_id)
+  const { data: summs } = await supabase.from('ai_summary').select('*').eq('mode_id', mode_id);
+  const { data: searches } = await supabase.from('searches').select('*').eq('monitoring_id', mode_id);
+  const { data: search_results } = await supabase.from('search_results').select('*').eq('mode_id', mode_id);
   
   return {
     search_id: rankingsData[0].id,
@@ -52,9 +111,38 @@ export async function getSearchResultsByModeId(mode_id: string): Promise<SearchR
   };
 }
 
-// Fetch all search results for a user
+// Fetch all search results for a user (optimized)
 export async function getUserSearchResults(user_id: string): Promise<SearchResults[]> {
-  // Get all AI rankings for this user
+  // Try optimized structure first
+  const { data: sessionsData, error: sessionsError } = await supabase
+    .from('ai_ranking_sessions')
+    .select('*')
+    .eq('user_id', user_id)
+    .order('analyzed_at', { ascending: false });
+  
+  if (sessionsData && !sessionsError && sessionsData.length > 0) {
+    return sessionsData.map((session): SearchResults => {
+      // Convert JSONB rankings back to array format
+      const ai_rankings: AIRanking[] = [];
+      
+      if (session.rankings_data) {
+        Object.entries(session.rankings_data as Record<string, AIRanking[]>).forEach(([query, rankings]) => {
+          ai_rankings.push(...rankings);
+        });
+      }
+      
+      return {
+        search_id: session.id,
+        mode: session.mode as AnalysisMode,
+        mode_id: session.id,
+        ai_rankings,
+        search_results: [],
+        searches: []
+      };
+    });
+  }
+  
+  // Fallback to old structure
   const { data: rankingsData, error: rankingsError } = await supabase
     .from('ai_rankings')
     .select('*')

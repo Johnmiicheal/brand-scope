@@ -1230,16 +1230,12 @@ const supabase = createClient(
     }
 );
 
-// Save search results to Supabase
+// Save search results to Supabase using optimized structure
 export async function saveToSupabase(
   results: SearchResults,
   user_id: string
 ): Promise<void> {
   try {
-    // ai_summary data is already saved during the text generation phase.
-    // We only need to save ai_rankings (which now uses consistent entity_ids)
-    // and social_insights.
-
     // Ensure brand records exist (using the consistent entity IDs)
     const brandPromises = results.ai_rankings.map(async (ranking) => {
       // Check if brand exists by entity_id FIRST
@@ -1250,9 +1246,7 @@ export async function saveToSupabase(
         .single();
 
       if (checkError && checkError.code !== "PGRST116") {
-        // Ignore 'not found' error
         console.error("Error checking for existing brand:", checkError);
-        // Decide how to handle - maybe skip this ranking or throw?
         return null;
       }
 
@@ -1262,11 +1256,10 @@ export async function saveToSupabase(
         // Brand doesn't exist, create it WITH the specific entity_id
         const { data: newBrand, error: createError } = await supabase
           .from("brands")
-        .insert({
+          .insert({
             id: ranking.entity_id, // Use the pre-generated UUID
             name: ranking.entity_name,
-            // industry: 'Unknown', // Maybe add industry if available?
-            user_id: user_id, // Ensure user_id is correctly passed
+            user_id: user_id,
             created_at: new Date().toISOString(),
           })
           .select("id")
@@ -1277,7 +1270,6 @@ export async function saveToSupabase(
             `Brand creation error for ${ranking.entity_name} (ID: ${ranking.entity_id}):`,
             createError
           );
-          // Decide how to handle error
           return null;
         }
         return newBrand.id;
@@ -1290,37 +1282,147 @@ export async function saveToSupabase(
     );
 
     // Filter rankings to only include those whose brands were successfully found/created
-    const validRankingsToSave = results.ai_rankings.filter((r) =>
+    const validRankings = results.ai_rankings.filter((r) =>
       brandIds.includes(r.entity_id)
     );
 
-    if (validRankingsToSave.length > 0) {
-      console.log("Saving AI rankings:", validRankingsToSave.length);
-    const { error: rankingsError } = await supabase
-        .from("ai_rankings")
-        .insert(validRankingsToSave); // Insert the validated rankings
+    if (validRankings.length === 0) {
+      console.warn("No valid AI rankings to save after brand check/creation.");
+      return;
+    }
 
-    if (rankingsError) {
-        console.error("AI Rankings save failed:", rankingsError);
-        // Don't necessarily throw, maybe just log, depending on desired behavior
+    // Group rankings by query for optimized storage
+    const rankingsByQuery: Record<string, AIRanking[]> = {};
+    let totalScore = 0;
+    const sentimentCounts: Record<string, number> = {};
+    const entityCounts: Record<string, number> = {};
+
+    validRankings.forEach((ranking) => {
+      // Group by query
+      if (!rankingsByQuery[ranking.query]) {
+        rankingsByQuery[ranking.query] = [];
+      }
+      rankingsByQuery[ranking.query].push(ranking);
+
+      // Calculate stats
+      totalScore += ranking.score || 0;
+      const sentiment = ranking.sentiment || 'neutral';
+      sentimentCounts[sentiment] = (sentimentCounts[sentiment] || 0) + 1;
+      entityCounts[ranking.entity_name] = (entityCounts[ranking.entity_name] || 0) + 1;
+    });
+
+    // Get top 5 entities across all queries (by frequency and average score)
+    const entityStats = Object.entries(entityCounts).map(([name, count]) => {
+      const entityRankings = validRankings.filter(r => r.entity_name === name);
+      const avgScore = entityRankings.reduce((sum, r) => sum + (r.score || 0), 0) / entityRankings.length;
+      const bestRank = Math.min(...entityRankings.map(r => r.rank || 999));
+      
+      return {
+        entity_name: name,
+        entity_id: entityRankings[0].entity_id,
+        count,
+        avg_score: Math.round(avgScore * 10) / 10,
+        best_rank: bestRank,
+        entity_type: entityRankings[0].entity_type
+      };
+    });
+
+    const topEntities = entityStats
+      .sort((a, b) => b.avg_score - a.avg_score)
+      .slice(0, 5);
+
+    // Calculate summary stats
+    const avgScore = Math.round((totalScore / validRankings.length) * 10) / 10;
+    const queryCount = Object.keys(rankingsByQuery).length;
+    const totalRankings = validRankings.length;
+
+    const stats = {
+      avg_score: avgScore,
+      query_count: queryCount,
+      total_rankings: totalRankings,
+      sentiment_distribution: sentimentCounts,
+      entity_distribution: entityCounts,
+      top_performing_entities: topEntities.slice(0, 3)
+    };
+
+    // Determine the main query (use the first query or most common one)
+    const mainQuery = Object.keys(rankingsByQuery)[0] || 'Analysis';
+
+    // Save as single optimized session record
+    const { error: sessionError } = await supabase
+      .from("ai_ranking_sessions")
+      .insert({
+        id: results.mode_id, // Use mode_id as primary key
+        user_id: user_id,
+        mode: results.mode,
+        query: mainQuery,
+        query_count: queryCount,
+        total_rankings: totalRankings,
+        rankings_data: rankingsByQuery,
+        top_entities: topEntities,
+        stats: stats,
+        analyzed_at: new Date().toISOString()
+      });
+
+    if (sessionError) {
+      console.error("AI Rankings session save failed:", sessionError);
+      // Fallback: save to old structure if new structure fails
+      const { error: fallbackError } = await supabase
+        .from("ai_rankings")
+        .insert(validRankings);
+      
+      if (fallbackError) {
+        console.error("Fallback AI Rankings save also failed:", fallbackError);
       }
     } else {
-      console.warn("No valid AI rankings to save after brand check/creation.");
+      console.log(`Successfully saved AI ranking session with ${totalRankings} rankings grouped by ${queryCount} queries`);
+      
+      // Update user summary stats asynchronously
+      supabase.rpc('update_ai_ranking_summary', { p_user_id: user_id })
+        .then(({ error: summaryError }) => {
+          if (summaryError) {
+            console.error('Error updating AI ranking summary stats:', summaryError);
+          }
+        });
     }
 
   } catch (error) {
     console.error("Error in saveToSupabase:", error);
-    // Decide if this function should throw or just log errors
-    // throw error;
+    // Don't throw to prevent breaking the analysis flow
   }
 }
 
-// Fetch search results by search ID
+// Fetch search results by search ID (fallback to old structure if needed)
 export async function getSearchResultsBySearchId(
   search_id: string
 ): Promise<SearchResults | null> {
   try {
-    // Get AI rankings
+    // First try optimized structure
+    const { data: sessionData, error: sessionError } = await supabase
+      .from("ai_ranking_sessions")
+      .select("*")
+      .eq("id", search_id)
+      .single();
+    
+    if (sessionData && !sessionError) {
+      // Convert JSONB rankings back to array format
+      const ai_rankings: AIRanking[] = [];
+      
+      if (sessionData.rankings_data) {
+        Object.entries(sessionData.rankings_data as Record<string, AIRanking[]>).forEach(([query, rankings]) => {
+          ai_rankings.push(...rankings);
+        });
+      }
+      
+      return {
+        search_id,
+        mode: sessionData.mode,
+        mode_id: sessionData.id,
+        ai_rankings,
+      };
+    }
+    
+    // Fallback to old structure
     const { data: rankingsData, error: rankingsError } = await supabase
       .from("ai_rankings")
       .select("*")
@@ -1329,7 +1431,6 @@ export async function getSearchResultsBySearchId(
     if (rankingsError || !rankingsData || rankingsData.length === 0) {
       return null;
     }
-    
     
     return {
       search_id,
@@ -1343,12 +1444,38 @@ export async function getSearchResultsBySearchId(
   }
 }
 
-// Fetch results by mode ID
+// Fetch results by mode ID (optimized)
 export async function getSearchResultsByModeId(
   mode_id: string
 ): Promise<SearchResults | null> {
   try {
-    // Get all AI rankings with this mode_id
+    // Try optimized structure first
+    const { data: sessionData, error: sessionError } = await supabase
+      .from("ai_ranking_sessions")
+      .select("*")
+      .eq("id", mode_id)
+      .single();
+    
+    if (sessionData && !sessionError) {
+      // Convert JSONB rankings back to array format
+      const ai_rankings: AIRanking[] = [];
+      
+      if (sessionData.rankings_data) {
+        Object.entries(sessionData.rankings_data as Record<string, AIRanking[]>).forEach(([query, rankings]) => {
+          ai_rankings.push(...rankings);
+        });
+      }
+      
+      return {
+        search_id: mode_id,
+        mode: sessionData.mode,
+        mode_id,
+        ai_rankings,
+        social_insights: [], // Would need to fetch separately if needed
+      };
+    }
+    
+    // Fallback to old structure
     const { data: rankingsData, error: rankingsError } = await supabase
       .from("ai_rankings")
       .select("*")
@@ -1377,12 +1504,40 @@ export async function getSearchResultsByModeId(
   }
 }
 
-// Fetch all search results for a user
+// Fetch all search results for a user (optimized)
 export async function getUserSearchResults(
   user_id: string
 ): Promise<SearchResults[]> {
   try {
-    // Get all AI rankings for this user
+    // Try optimized structure first
+    const { data: sessionsData, error: sessionsError } = await supabase
+      .from("ai_ranking_sessions")
+      .select("*")
+      .eq("user_id", user_id)
+      .order("analyzed_at", { ascending: false });
+    
+    if (sessionsData && !sessionsError && sessionsData.length > 0) {
+      return sessionsData.map((session): SearchResults => {
+        // Convert JSONB rankings back to array format
+        const ai_rankings: AIRanking[] = [];
+        
+        if (session.rankings_data) {
+          Object.entries(session.rankings_data as Record<string, AIRanking[]>).forEach(([query, rankings]) => {
+            ai_rankings.push(...rankings);
+          });
+        }
+        
+        return {
+          search_id: session.id,
+          mode: session.mode as AnalysisMode,
+          mode_id: session.id,
+          ai_rankings,
+          social_insights: [], // Would need to fetch separately if needed
+        };
+      });
+    }
+    
+    // Fallback to old structure
     const { data: rankingsData, error: rankingsError } = await supabase
       .from("ai_rankings")
       .select("*")
@@ -1406,12 +1561,12 @@ export async function getUserSearchResults(
     return Object.entries(modeGroups).map(
       ([mode_id, rankings]): SearchResults => {
         const firstRanking = rankings[0] as AIRanking;
-      return {
-        search_id: firstRanking.id,
-        mode: firstRanking.mode as AnalysisMode,
-        mode_id,
-        ai_rankings: rankings as AIRanking[],
-        social_insights: [], // Would need to fetch separately if needed
+        return {
+          search_id: firstRanking.id,
+          mode: firstRanking.mode as AnalysisMode,
+          mode_id,
+          ai_rankings: rankings as AIRanking[],
+          social_insights: [], // Would need to fetch separately if needed
         };
       }
     );

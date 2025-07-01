@@ -161,52 +161,52 @@ function IndustryRankingsTable({
   const [brandFetch, setBrandFetch] = useState<BrandFetchProps[]>([]);
   const [lastFetchedBrands, setLastFetchedBrands] = useState<string[]>([]);
   const brand_name = brands.map((brand) => brand.brand_name.split(" ")[0]);
-  useEffect(() => {
-    const fetchBrandData = async () => {
-      try {
-        if (brand_name.length > 0) {
-          const brandDataPromises = brand_name.map(async (name) => {
-            const response = await fetch(
-              `https://api.brandfetch.io/v2/search/${encodeURIComponent(
-                name
-              )}?c=1idSVUQuJldhOA4nY-0`
-            );
+  // useEffect(() => {
+  //   const fetchBrandData = async () => {
+  //     try {
+  //       if (brand_name.length > 0) {
+  //         const brandDataPromises = brand_name.map(async (name) => {
+  //           const response = await fetch(
+  //             `https://api.brandfetch.io/v2/search/${encodeURIComponent(
+  //               name
+  //             )}?c=1idSVUQuJldhOA4nY-0`
+  //           );
 
-            if (!response.ok) {
-              throw new Error(`Failed to fetch brand data for ${name}`);
-            }
+  //           if (!response.ok) {
+  //             throw new Error(`Failed to fetch brand data for ${name}`);
+  //           }
 
-            const data = await response.json();
+  //           const data = await response.json();
 
-            // Return the first item from the response array for this brand
-            if (data && data.length > 0) {
-              return data[0] as BrandFetchProps;
-            }
-            return null;
-          });
+  //           // Return the first item from the response array for this brand
+  //           if (data && data.length > 0) {
+  //             return data[0] as BrandFetchProps;
+  //           }
+  //           return null;
+  //         });
 
-          const brandDataResults = await Promise.all(brandDataPromises);
-          const validBrandData = brandDataResults.filter(
-            Boolean
-          ) as BrandFetchProps[];
+  //         const brandDataResults = await Promise.all(brandDataPromises);
+  //         const validBrandData = brandDataResults.filter(
+  //           Boolean
+  //         ) as BrandFetchProps[];
 
-          setBrandFetch(validBrandData);
-          setLastFetchedBrands([...brand_name]);
-        }
-      } catch (error) {
-        console.error("Error fetching brand data:", error);
-      }
-    };
+  //         setBrandFetch(validBrandData);
+  //         setLastFetchedBrands([...brand_name]);
+  //       }
+  //     } catch (error) {
+  //       console.error("Error fetching brand data:", error);
+  //     }
+  //   };
 
-    // Only fetch if brand names have actually changed
-    const brandsChanged =
-      JSON.stringify(brand_name.sort()) !==
-      JSON.stringify(lastFetchedBrands.sort());
+  //   // Only fetch if brand names have actually changed
+  //   const brandsChanged =
+  //     JSON.stringify(brand_name.sort()) !==
+  //     JSON.stringify(lastFetchedBrands.sort());
 
-    if (brand_name.length > 0 && (brandFetch.length === 0 || brandsChanged)) {
-      fetchBrandData();
-    }
-  }, [brand_name, brands]);
+  //   if (brand_name.length > 0 && (brandFetch.length === 0 || brandsChanged)) {
+  //     fetchBrandData();
+  //   }
+  // }, [brand_name, brands]);
 
   if (!brands || !brandFetch) return null;
 
@@ -328,7 +328,7 @@ function IndustryRankingsTable({
                       <TableCell className="font-medium">{index + 1}</TableCell>
                       <TableCell className="flex items-center gap-2">
                         <div className="whitespace-normal break-words max-w-[150px] flex items-center">
-                          {brandFetch.find((brand) =>
+                          {/* {brandFetch.find((brand) =>
                             entity.brand_name
                               .toLowerCase()
                               ?.includes(brand.name?.toLowerCase() || "")
@@ -350,7 +350,7 @@ function IndustryRankingsTable({
                             <div className="inline-block mr-2 min-w-5 h-5 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold text-center">
                               {entity.brand_name[0]}
                             </div>
-                          )}
+                          )} */}
                           {entity.brand_name}{" "}
                           {selectedBrand.has(entity.brand_name) ? (
                             <TbStarFilled className="inline w-4 h-4 text-yellow-500" />

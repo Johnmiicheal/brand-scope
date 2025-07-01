@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Check if user has exceeded daily limit
-    if (usageData && usageData.usage_count >= 3) {
+    if (usageData && usageData.usage_count >= 5) {
       return NextResponse.json(
         { error: 'Daily keyword analysis limit reached. You can perform 1 analysis per day.' },
         { status: 429, headers: corsHeaders }
@@ -126,7 +126,87 @@ export async function POST(req: NextRequest) {
     // Generate analysis session ID
     const analysisId = crypto.randomUUID();
 
-    // Save the analysis session
+    // Define types for keyword processing
+    interface ProcessedKeyword {
+      conversational_keyword: string;
+      intent: string | null;
+      google_seed_keyword: string | null;
+      category: string | null;
+      search_volume: number;
+      competition_index: number;
+      low_cpc: string;
+      trend_6m: string;
+      relevance_score: number;
+    }
+
+    interface KeywordStats {
+      total_keywords: number;
+      avg_relevance_score: number;
+      high_volume_count: number;
+      intent_distribution: Record<string, number>;
+      category_distribution: Record<string, number>;
+    }
+
+    // Process keywords data for optimized storage
+    let keywordsArray: ProcessedKeyword[] = [];
+    let topKeywords: ProcessedKeyword[] = [];
+    let stats: KeywordStats = {
+      total_keywords: 0,
+      avg_relevance_score: 0,
+      high_volume_count: 0,
+      intent_distribution: {},
+      category_distribution: {}
+    };
+    
+    if (outputData.keywords && typeof outputData.keywords === 'object') {
+      // Convert object with numbered keys to array
+      keywordsArray = Object.values(outputData.keywords).map((keywordData) => {
+        const data = keywordData as Record<string, unknown>;
+        return {
+          conversational_keyword: String(data.conversational_keyword || ''),
+          intent: data.intent ? String(data.intent) : null,
+          google_seed_keyword: data.google_seed_keyword ? String(data.google_seed_keyword) : null,
+          category: data.category ? String(data.category) : null,
+          search_volume: parseInt(String(data.search_volume || 0)) || 0,
+          competition_index: parseFloat(String(data.competition_index || 0)) || 0,
+          low_cpc: String(data.low_cpc || '$0.00'),
+          trend_6m: String(data.trend_6m || '0%'),
+          relevance_score: parseFloat(String(data.relevance_score || 0)) || 0,
+        };
+      });
+
+      // Get top 10 keywords by relevance score for quick dashboard access
+      topKeywords = keywordsArray
+        .sort((a, b) => b.relevance_score - a.relevance_score)
+        .slice(0, 10);
+
+      // Calculate quick stats
+      const totalKeywords = keywordsArray.length;
+      const avgRelevance = keywordsArray.reduce((sum, kw) => sum + kw.relevance_score, 0) / totalKeywords;
+      const highVolumeCount = keywordsArray.filter(kw => kw.search_volume > 1000).length;
+      const intentCounts = keywordsArray.reduce((acc: Record<string, number>, kw) => {
+        const intent = kw.intent || 'unknown';
+        acc[intent] = (acc[intent] || 0) + 1;
+        return acc;
+      }, {});
+      const categoryCounts = keywordsArray.reduce((acc: Record<string, number>, kw) => {
+        const category = kw.category || 'unknown';
+        acc[category] = (acc[category] || 0) + 1;
+        return acc;
+      }, {});
+
+      stats = {
+        total_keywords: totalKeywords,
+        avg_relevance_score: Math.round(avgRelevance * 10) / 10,
+        high_volume_count: highVolumeCount,
+        intent_distribution: intentCounts,
+        category_distribution: categoryCounts
+      };
+    }
+
+    const totalKeywords = keywordsArray.length;
+
+    // Save the analysis session with embedded keywords data
     const { error: sessionError } = await supabase
       .from('keyword_analysis_sessions')
       .insert({
@@ -135,50 +215,25 @@ export async function POST(req: NextRequest) {
         business_brief: businessBrief,
         website: website,
         keyword_input: keyword,
-        total_keywords: outputData.keywords?.length || 0,
+        total_keywords: totalKeywords,
         analysis_summary: outputData.summary || '',
+        keywords_data: keywordsArray,
+        top_keywords: topKeywords,
+        stats: stats
       });
 
     if (sessionError) {
       console.error('Error saving analysis session:', sessionError);
-    }
-
-    // Save individual keyword recommendations
-    if (outputData.keywords && Array.isArray(outputData.keywords)) {
-      const keywordInserts = outputData.keywords.map((keywordData: {
-        conversational_keyword?: string;
-        intent?: string;
-        google_seed_keyword?: string;
-        category?: string;
-        search_volume?: number | string;
-        competition_index?: number | string;
-        low_cpc?: string;
-        trend_6m?: string;
-        relevance_score?: number | string;
-      }) => ({
-        user_id: userId,
-        analysis_id: analysisId,
-        business_brief: businessBrief,
-        website: website,
-        keyword_input: keyword,
-        conversational_keyword: keywordData.conversational_keyword || '',
-        intent: keywordData.intent || null,
-        google_seed_keyword: keywordData.google_seed_keyword || null,
-        category: keywordData.category || null,
-        search_volume: parseInt(String(keywordData.search_volume || 0)) || 0,
-        competition_index: parseFloat(String(keywordData.competition_index || 0)) || 0,
-        low_cpc: keywordData.low_cpc || '$0.00',
-        trend_6m: keywordData.trend_6m || '0%',
-        relevance_score: parseFloat(String(keywordData.relevance_score || 0)) || 0,
-      }));
-
-      const { error: keywordError } = await supabase
-        .from('keyword_recommendations')
-        .insert(keywordInserts);
-
-      if (keywordError) {
-        console.error('Error saving keyword recommendations:', keywordError);
-      }
+    } else {
+      console.log('Successfully saved analysis session with', totalKeywords, 'keywords');
+      
+      // Update user summary stats asynchronously
+      supabase.rpc('update_keyword_analysis_summary', { p_user_id: userId })
+        .then(({ error: summaryError }) => {
+          if (summaryError) {
+            console.error('Error updating summary stats:', summaryError);
+          }
+        });
     }
 
     // Update or insert usage tracking

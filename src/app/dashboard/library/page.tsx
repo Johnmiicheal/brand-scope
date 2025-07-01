@@ -38,6 +38,8 @@ interface SearchRecord {
   query: string;
   analyzed_at: string;
   reasoning: string;
+  query_count?: number;
+  total_rankings?: number;
 }
 
 export default function LibraryPage() {
@@ -58,33 +60,78 @@ export default function LibraryPage() {
     
     if (user) {
       const fetchSearches = async () => {
-        setLoading(true);        
-        const { data, error } = await supabase
-          .from('ai_rankings')
-          .select(`
-            mode_id,
-            mode,
-            query,
-            analyzed_at,
-            reasoning
-          `)
-          .eq('user_id', user.id)
-          .order('analyzed_at', { ascending: false }) as { data: SearchRecord[] | null; error: Error | null };
-
-          const { data: scheduledData, error: scheduledError } = await supabase
-          .from('scheduled_queries')
-          .select(`*`)
-          .eq('user_id', user.id)
-          .order('last_analysis_at', { ascending: false })
-          .limit(100) as { data: ScheduledQuery[] | null; error: Error | null };
+        setLoading(true);
         
-        if (error) {
+        try {
+          // Try optimized structure first
+          const { data: sessionsData, error: sessionsError } = await supabase
+            .from('ai_ranking_sessions')
+            .select(`
+              id,
+              mode,
+              query,
+              query_count,
+              total_rankings,
+              analyzed_at,
+              stats,
+              rankings_data
+            `)
+            .eq('user_id', user.id)
+            .order('analyzed_at', { ascending: false });
+
+          let searchRecords: SearchRecord[] = [];
+
+          if (sessionsData && !sessionsError && sessionsData.length > 0) {
+            // Convert optimized data to SearchRecord format
+            searchRecords = sessionsData.map(session => {
+              return {
+                mode_id: session.id as string,
+                mode: (session.mode as string) || 'Analysis',
+                query: Object.keys(session.rankings_data || {})[0] || 'Search Analysis',
+                analyzed_at: session.analyzed_at as string,
+                reasoning: `Analyzed ${session.total_rankings || 0} brands across ${session.query_count || 0} ${session.query_count as number === 1 ? 'query' : 'queries'}`,
+                query_count: session.query_count as number,
+                total_rankings: session.total_rankings as number
+              };
+            });
+          } else {
+            // Fallback to old structure
+            const { data: oldData, error: oldError } = await supabase
+              .from('ai_rankings')
+              .select(`
+                mode_id,
+                mode,
+                query,
+                analyzed_at,
+                reasoning
+              `)
+              .eq('user_id', user.id)
+              .order('analyzed_at', { ascending: false });
+
+            if (oldData && !oldError) {
+              searchRecords = oldData as SearchRecord[];
+            }
+          }
+
+          // Fetch scheduled queries
+          const { data: scheduledData, error: scheduledError } = await supabase
+            .from('scheduled_queries')
+            .select(`*`)
+            .eq('user_id', user.id)
+            .order('last_analysis_at', { ascending: false })
+            .limit(100) as { data: ScheduledQuery[] | null; error: Error | null };
+
+          if (scheduledError) {
+            console.error("Error fetching scheduled queries:", scheduledError);
+          } else {
+            setScheduledQueries(scheduledData || []);
+          }
+
+          setSearches(searchRecords);
+        } catch (error) {
           console.error("Error fetching search history:", error);
-        } else if (scheduledError) {
-          console.error("Error fetching scheduled queries:", scheduledError);
-        } else {
-          setSearches(data || []);
-          setScheduledQueries(scheduledData || []);
+          setSearches([]);
+          setScheduledQueries([]);
         }
         
         setLoading(false);
@@ -94,23 +141,11 @@ export default function LibraryPage() {
     }
   }, [router, user, isLoading]);
   
-  // Group by query to get unique searches
-  const uniqueSearches = searches.reduce((acc, search) => {
-    // Check if we already have this mode_id in our accumulator
-    const existingIndex = acc.findIndex(item => item.mode_id === search.mode_id);
-    
-    // If not found, add it to the accumulator
-    if (existingIndex === -1) {
-      acc.push(search);
-    }
-    
-    return acc;
-  }, [] as SearchRecord[]);
     
   // Filter searches based on search term
   const filteredSearches = searchTerm.trim() === '' 
-    ? uniqueSearches 
-    : uniqueSearches.filter(search => 
+    ? searches 
+    : searches.filter(search => 
         search.query.toLowerCase().includes(searchTerm.toLowerCase())
       );
   
@@ -167,14 +202,27 @@ export default function LibraryPage() {
     try {
       if (!user?.id) return;
 
-      const { error } = await supabase
-        .from('ai_rankings')
+      // Try deleting from optimized structure first
+      const { error: sessionError } = await supabase
+        .from('ai_ranking_sessions')
         .delete()
-        .eq('mode_id', modeId)
+        .eq('id', modeId)
         .eq('user_id', user.id);
 
-      // Also delete related search results
+      // If no session was deleted, try the old structure
+      if (sessionError) {
+        const { error: oldError } = await supabase
+          .from('ai_rankings')
+          .delete()
+          .eq('mode_id', modeId)
+          .eq('user_id', user.id);
+
+        if (oldError) throw oldError;
+      }
+
+      // Delete related data regardless of structure
       if (modeId) {
+        // Delete search results
         const { error: searchResultsError } = await supabase
           .from('search_results')
           .delete()
@@ -182,14 +230,40 @@ export default function LibraryPage() {
 
         if (searchResultsError) {
           console.error('Error deleting related search results:', searchResultsError);
-          // Continue with deletion even if this fails
+        }
+
+        // Delete AI summaries
+        const { error: summaryError } = await supabase
+          .from('ai_summary')
+          .delete()
+          .eq('mode_id', modeId);
+
+        if (summaryError) {
+          console.error('Error deleting related AI summaries:', summaryError);
+        }
+
+        // Delete searches
+        const { error: searchesError } = await supabase
+          .from('searches')
+          .delete()
+          .eq('monitoring_id', modeId);
+
+        if (searchesError) {
+          console.error('Error deleting related searches:', searchesError);
         }
       }
 
-      if (error) throw error;
-
       // Update local state to remove the deleted thread
       setSearches(prevSearches => prevSearches.filter(search => search.mode_id !== modeId));
+      
+      // Update AI ranking summary for the user
+      supabase.rpc('update_ai_ranking_summary', { p_user_id: user.id })
+        .then(({ error: summaryError }) => {
+          if (summaryError) {
+            console.error('Error updating AI ranking summary stats:', summaryError);
+          }
+        });
+
       toast({
         title: "Thread deleted",
         description: "The thread has been successfully deleted.",
