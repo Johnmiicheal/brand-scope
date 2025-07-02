@@ -550,6 +550,57 @@ async function processQuery(
     temperature: 0.0,
   });
 
+  // --- 4. Auto-generate Steps if Citations Exist ---
+  const hasCitations = ai_summary.some(summary => 
+    Array.isArray(summary.reasoning) && summary.reasoning.length > 0
+  );
+
+  if (hasCitations) {
+    console.log(`  Auto-generating steps for query ${query.id} due to citations found...`);
+    try {
+      // Extract citations from the first model that has them
+      const citationsData = ai_summary.find(summary => 
+        Array.isArray(summary.reasoning) && summary.reasoning.length > 0
+      )?.reasoning || [];
+
+      // Transform citations to the expected format
+      const citations = citationsData.map((citation: any) => ({
+        url: citation.url_citation?.url || citation.url || '',
+        title: citation.url_citation?.title || citation.title || 'No title',
+        snippet: citation.url_citation?.snippet || citation.snippet || 'No snippet',
+      })).filter((c: any) => c.url); // Filter out citations without URLs
+
+      if (citations.length > 0) {
+        // Call the generate-steps API internally
+        const stepsResponse = await fetch(`${process.env.VERCEL_URL || 'http://localhost:3000'}/api/generate-steps`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            prompt: query.query,
+            country: query.location || 'United States',
+            citations: citations,
+            monitoringId: query.mode_id,
+            userId: query.user_id,
+          }),
+        });
+
+        if (stepsResponse.ok) {
+          await stepsResponse.json(); // Consume the response
+          console.log(`  Steps generated successfully for query ${query.id}`);
+        } else {
+          console.warn(`  Failed to generate steps for query ${query.id}: ${stepsResponse.status}`);
+        }
+      }
+    } catch (stepsError) {
+      console.warn(`  Error generating steps for query ${query.id}:`, stepsError);
+      // Don't fail the main analysis if steps generation fails
+    }
+  } else {
+    console.log(`  No citations found for query ${query.id}, skipping steps generation`);
+  }
+
 
   // --- Prepare New Analysis Run Object (Matches existing DB Schema) ---
   const newAnalysisRun: z.infer<typeof AnalysisRunSchema> = {

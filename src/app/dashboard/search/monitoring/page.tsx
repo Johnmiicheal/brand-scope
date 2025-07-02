@@ -27,7 +27,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { formatDistanceToNow, parseISO, format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { TbScanPosition, TbSearch, TbSparkles } from "react-icons/tb";
+import { TbScanPosition, TbSearch, TbSparkles, TbStepInto } from "react-icons/tb";
 import { TbTableSpark } from "react-icons/tb";
 import {
   Sheet,
@@ -43,6 +43,7 @@ import { GoogleSearchResult, Search } from "@/types/search";
 import { GoogleSearch } from "@/types/search";
 import { GoogleResults } from "@/components/ui/google-results";
 import { Globe } from "lucide-react";
+import { StepsTabContent } from "@/components/monitoring/steps-tab-content";
 import type { ReactElement } from "react";
 
 // --- Zod Schemas ---
@@ -446,6 +447,7 @@ function MonitoringContent() {
                 selectedModel={selectedModel}
                 searchResults={scheduledQuery?.search_results[0]?.results}
                 rankings={scheduledQuery?.search_results[0]?.rankings}
+                scheduledQuery={scheduledQuery}
               />
             </CardContent>
           </Card>
@@ -499,12 +501,14 @@ function AnalysisRunDetailsContent({
   selectedModel,
   searchResults,
   rankings,
+  scheduledQuery,
 }: {
   modelResults: NonNullable<z.infer<typeof AnalysisRunSchema>["model_results"]>;
   modelSummary: z.infer<typeof AnalysisModelSummarySchema> | null;
   selectedModel: string | null;
   searchResults: GoogleSearchResult | undefined;
   rankings: unknown;
+  scheduledQuery: MonitoringResults | null;
 }): ReactElement {
   // Filter logic
   const filteredResults = useMemo(() => {
@@ -553,6 +557,14 @@ function AnalysisRunDetailsContent({
             Citations
           </TabsTrigger>
 
+          <TabsTrigger
+            value="steps"
+            className="data-[state=active]:bg-zinc-700 cursor-pointer whitespace-nowrap"
+          >
+            <TbStepInto className="w-4 h-4 mr-1 hidden sm:inline" />
+            Steps
+          </TabsTrigger>
+
           {searchResults && (
             <TabsTrigger
               value="google"
@@ -575,6 +587,26 @@ function AnalysisRunDetailsContent({
 
       <TabsContent value="citations" className="space-y-4">
         <CitationsTabContent citations={citations} />
+      </TabsContent>
+
+      <TabsContent value="steps" className="space-y-4">
+        {(() => {
+          const stepsProps = {
+            citations: citations ? citations.map(c => c.url_citation) : null,
+            monitoringId: scheduledQuery?.monitoring[0]?.mode_id || scheduledQuery?.mode_id || "",
+            prompt: scheduledQuery?.monitoring[0]?.query || "",
+            country: scheduledQuery?.monitoring[0]?.location || "United States"
+          };
+          console.log('StepsTabContent props:', stepsProps);
+          return (
+            <StepsTabContent 
+              citations={stepsProps.citations}
+              monitoringId={stepsProps.monitoringId}
+              prompt={stepsProps.prompt}
+              country={stepsProps.country}
+            />
+          );
+        })()}
       </TabsContent>
 
       <TabsContent value="google" className="space-y-4">
