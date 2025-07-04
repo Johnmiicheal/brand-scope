@@ -6,17 +6,17 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { 
   TbSparkles, 
   TbSearch, 
-  TbTrendingUp, 
-  TbTarget, 
   TbRefresh,
   TbLoader2
 } from "react-icons/tb";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
+import { Search } from "lucide-react";
 
 // Types for the webhook response
 interface StepsData {
@@ -245,156 +245,227 @@ export function StepsTabContent({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className="space-y-6"
+      className="space-y-6 border-t border-accent"
     >
-      {/* Header with topic and search config */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TbTarget className="w-5 h-5 text-primary" />
-            {stepsData.output.topic}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-            <div>
-              <p className="text-muted-foreground">Location</p>
-              <p className="font-medium">{stepsData.output.search_config.location}</p>
-            </div>
-            <div>
-              <p className="text-muted-foreground">Language</p>
-              <p className="font-medium">{stepsData.output.search_config.language_code}</p>
-            </div>
-            <div>
-              <p className="text-muted-foreground">Domain</p>
-              <p className="font-medium">{stepsData.output.search_config.google_domain}</p>
-            </div>
-            <div>
-              <p className="text-muted-foreground">Brand Focus</p>
-              <p className="font-medium">{stepsData.output.search_config.brand || "General"}</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Search Categories */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TbSearch className="w-5 h-5 text-primary" />
-            Search Categories
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4">
-            {stepsData.output.categories.map((category, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.1 }}
-                className="border rounded-lg p-4 bg-muted/30"
-              >
-                <h4 className="font-semibold mb-3 text-primary">{category.header}</h4>
-                <div className="flex flex-wrap gap-2">
-                  {category.subsearches.map((search, searchIndex) => (
-                    <Badge key={searchIndex} variant="secondary" className="text-xs">
-                      {search}
-                    </Badge>
-                  ))}
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Keywords Analysis */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TbTrendingUp className="w-5 h-5 text-primary" />
-            Keyword Analysis
-            <Badge variant="outline" className="ml-auto">
-              {Object.keys(stepsData.output.keywords).length} keywords
-            </Badge>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ScrollArea className="h-[400px] pr-4">
-            <div className="space-y-3">
-              {Object.entries(stepsData.output.keywords).map(([key, keyword]) => (
+              {/* Search Categories with Stepper */}
+        <Card className="border-none"> 
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <TbSearch className="w-5 h-5 text-primary" />
+              Search Analysis Steps
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="relative">
+              {stepsData?.output?.categories.map((category, index) => (
                 <motion.div
-                  key={key}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: parseInt(key) * 0.05 }}
-                  className="border rounded-lg p-4 bg-background hover:bg-muted/50 transition-colors"
+                  key={index}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                  className="relative flex items-start gap-6 pb-0"
                 >
-                  <div className="flex items-start justify-between mb-2">
-                    <h5 className="font-medium text-sm">{keyword.conversational_keyword}</h5>
-                    <Badge 
-                      variant={keyword.relevance_score >= 8 ? "default" : keyword.relevance_score >= 6 ? "secondary" : "outline"}
-                      className="ml-2"
+                  {/* Stepper Indicator */}
+                  <div className="flex flex-col items-center">
+                    {/* Step Number Circle - aligned with header */}
+                    <motion.div 
+                      className="flex items-center justify-center w-2 h-2 rounded-full bg-neutral-800 text-primary-foreground text-sm font-semibold shadow-lg relative mt-1.5"
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ delay: index * 0.1 + 0.2, type: "spring", stiffness: 300 }}
                     >
-                      {keyword.relevance_score}/10
-                    </Badge>
+                      {/* Pulse ring animation */}
+                      <motion.div
+                        className="absolute inset-0 rounded-full bg-primary/20"
+                        initial={{ scale: 1, opacity: 0 }}
+                        animate={{ scale: 1.5, opacity: 0 }}
+                        transition={{ 
+                          delay: index * 0.1 + 0.5,
+                          duration: 1.5,
+                          repeat: Infinity,
+                          repeatDelay: 2
+                        }}
+                      />
+                    </motion.div>
+                    
+                    {/* Connecting Line - continuous */}
+                    <motion.div 
+                      className="w-0.5 bg-muted/80 "
+                      style={{ height: index === stepsData.output.categories.length - 1 ? '80px' : '80px' }}
+                      initial={{ height: 0 }}
+                      animate={{ 
+                        height: index === stepsData.output.categories.length - 1 ? '80px' : '80px' 
+                      }}
+                      transition={{ delay: index * 0.1 + 0.4, duration: 0.5 }}
+                    />
                   </div>
-                  
-                  <p className="text-xs text-muted-foreground mb-3">{keyword.intent}</p>
-                  
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
-                    <div>
-                      <p className="text-muted-foreground">Search Volume</p>
-                      <p className="font-medium">{keyword.search_volume.toLocaleString()}</p>
+
+                  {/* Step Content */}
+                  <div className="flex-1">
+                    <h4 className="font-semibold mb-3 text-foreground">{category.header}</h4>
+                    <div className="flex flex-wrap gap-2 mb-6">
+                      {category.subsearches.map((search, searchIndex) => (
+                        <Badge 
+                          key={searchIndex} 
+                          variant="secondary" 
+                          className="text-xs py-1.5 px-3 flex items-center rounded-md bg-muted/50 text-muted-foreground hover:bg-muted/80 transition-colors"
+                        >
+                          <Search className="w-3 h-3 mr-2" />
+                          {search}
+                        </Badge>
+                      ))}
                     </div>
-                    <div>
-                      <p className="text-muted-foreground">Difficulty</p>
-                      <p className="font-medium">{keyword.competition_index}/10</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">CPC</p>
-                      <p className="font-medium">{keyword.low_cpc}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Trend</p>
-                      <p className={cn(
-                        "font-medium",
-                        keyword.trend_6m.includes('+') ? "text-green-500" : 
-                        keyword.trend_6m.includes('-') ? "text-red-500" : "text-muted-foreground"
-                      )}>
-                        {keyword.trend_6m}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center justify-between mt-3 pt-3 border-t">
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="text-xs">
-                        {keyword.category}
-                      </Badge>
-                      <Badge variant="outline" className="text-xs">
-                        {keyword.search_intent}
-                      </Badge>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Seed: {keyword.google_seed_keyword}
-                    </p>
                   </div>
                 </motion.div>
               ))}
+              
+              {/* Completion Indicator */}
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: stepsData?.output?.categories?.length * 0.1 + 0.2 }}
+                className="flex items-center gap-6"
+              >
+                {/* Final Step Indicator */}
+                  <motion.div 
+                    className="flex items-center justify-center w-2 h-2 rounded-full bg-neutral-800 relative"
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ 
+                      delay: stepsData?.output?.categories?.length * 0.1 + 0.4, 
+                      type: "spring", 
+                      stiffness: 300 
+                    }}
+                  >
+                  
+                  </motion.div>
+
+              
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: stepsData?.output?.categories?.length * 0.1 + 0.6 }}
+                    className="text-sm text-muted-foreground italic"
+                  >
+                    Search analysis steps completed
+                  </motion.div>
+              </motion.div>
             </div>
-          </ScrollArea>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+
+              {/* Keywords Analysis */}
+        <Card className="border-none">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              Keyword Analysis
+                              <Badge variant="outline" className="ml-auto">
+                 {Object.keys(stepsData?.output?.keywords || {}).length} keywords
+                </Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="">
+            <ScrollArea className="h-[480px] rounded-lg bg-muted/20">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-b border-muted">
+                    <TableHead className="font-semibold text-foreground">Keyword</TableHead>
+                    <TableHead className="font-semibold text-foreground">Intent</TableHead>
+                    <TableHead className="font-semibold text-foreground text-right">Volume</TableHead>
+                    <TableHead className="font-semibold text-foreground text-center">Difficulty</TableHead>
+                    <TableHead className="font-semibold text-foreground text-center">CPC</TableHead>
+                    <TableHead className="font-semibold text-foreground text-center">Trend</TableHead>
+                    <TableHead className="font-semibold text-foreground text-center">Score</TableHead>
+                    <TableHead className="font-semibold text-foreground">Category</TableHead>
+                  </TableRow>
+                </TableHeader>
+                                  <TableBody>
+                   {Object.entries(stepsData?.output?.keywords || {}).map(([key, keyword], index) => (
+                    <motion.tr
+                      key={key}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.03 }}
+                      className="border-b border-muted/30 hover:bg-muted/30 transition-colors"
+                    >
+                      <TableCell className="py-4">
+                        <div>
+                          <p className="font-medium text-sm text-foreground mb-1">
+                            {keyword.conversational_keyword}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Seed: {keyword.google_seed_keyword}
+                          </p>
+                        </div>
+                      </TableCell>
+                      <TableCell className="py-4">
+                        <div>
+                          <Badge variant="outline" className="text-xs py-1 bg-gradient-to-t from-zinc-500/30 to-muted/20">
+                            {keyword.intent}
+                          </Badge>
+                        </div>
+                      </TableCell>
+                      <TableCell className="py-4 text-right">
+                        <p className="font-medium text-sm">
+                          {keyword.search_volume.toLocaleString()}
+                        </p>
+                      </TableCell>
+                      <TableCell className="py-4 text-center">
+                        <span 
+                          className={cn(
+                            "text-sm font-medium",
+                            keyword.competition_index >= 7 ? "text-red-600" : 
+                            keyword.competition_index >= 4 ? "text-orange-500" : 
+                            "text-green-600"
+                          )}
+                        >
+                          {keyword.competition_index}/10
+                        </span>
+                      </TableCell>
+                      <TableCell className="py-4 text-center">
+                        <p className="font-medium text-sm">{keyword.low_cpc}</p>
+                      </TableCell>
+                      <TableCell className="py-4 text-center">
+                        <p className={cn(
+                          "font-medium text-sm",
+                          keyword.trend_6m.includes('+') ? "text-green-600" : 
+                          keyword.trend_6m.includes('-') ? "text-red-600" : "text-muted-foreground"
+                        )}>
+                          {keyword.trend_6m}
+                        </p>
+                      </TableCell>
+                      <TableCell className="py-4 text-center">
+                        <span 
+                          className={cn(
+                            "inline-block px-3 py-1 rounded-full text-xs font-medium text-white",
+                            keyword.relevance_score >= 8 ? "bg-gradient-to-b from-green-300/40 to-green-800/20 border border-green-800" :
+                            keyword.relevance_score >= 5 ? "bg-gradient-to-b from-orange-500/40 to-orange-800/20 border border-orange-600" :
+                            "bg-gradient-to-b from-red-400/20 to-red-600/50 border border-red-600"
+                          )}
+                        >
+                          {keyword.relevance_score}/10
+                        </span>
+                      </TableCell>
+                      <TableCell className="py-4">
+                        <Badge variant="outline" className="text-xs">
+                          {keyword.category}
+                        </Badge>
+                      </TableCell>
+                    </motion.tr>
+                  ))}
+                </TableBody>
+              </Table>
+            </ScrollArea>
+          </CardContent>
+        </Card>
 
       {/* Regenerate Button */}
-      <div className="flex justify-center">
+      {/* <div className="flex justify-center">
         <Button onClick={generateSteps} variant="outline" disabled={isGenerating}>
           <TbRefresh className="w-4 h-4 mr-2" />
           Regenerate Steps
         </Button>
-      </div>
+      </div> */}
     </motion.div>
   );
 }

@@ -24,34 +24,65 @@ const requestSchema = z.object({
   userId: z.string().uuid("Valid user ID is required"),
 });
 
-// Zod schema for webhook response
-const webhookResponseSchema = z.object({
-  output: z.object({
-    topic: z.string(),
-    search_config: z.object({
-      location: z.string(),
-      language_code: z.string(),
-      google_domain: z.string(),
-      brand: z.string(),
+// Zod schema for webhook response (expecting array format)
+const webhookResponseSchema = z.union([
+  // Handle array format
+  z.array(z.object({
+    output: z.object({
+      topic: z.string(),
+      search_config: z.object({
+        location: z.string(),
+        language_code: z.string(),
+        google_domain: z.string(),
+        brand: z.string(),
+      }),
+      categories: z.array(z.object({
+        header: z.string(),
+        subsearches: z.array(z.string()),
+      })),
+      keywords: z.record(z.object({
+        conversational_keyword: z.string(),
+        intent: z.string(),
+        search_intent: z.string(),
+        google_seed_keyword: z.string(),
+        category: z.string(),
+        search_volume: z.number(),
+        competition_index: z.number(),
+        low_cpc: z.string(),
+        trend_6m: z.string(),
+        relevance_score: z.number(),
+      })),
     }),
-    categories: z.array(z.object({
-      header: z.string(),
-      subsearches: z.array(z.string()),
-    })),
-    keywords: z.record(z.object({
-      conversational_keyword: z.string(),
-      intent: z.string(),
-      search_intent: z.string(),
-      google_seed_keyword: z.string(),
-      category: z.string(),
-      search_volume: z.number(),
-      competition_index: z.number(),
-      low_cpc: z.string(),
-      trend_6m: z.string(),
-      relevance_score: z.number(),
-    })),
+  })),
+  // Handle object format (existing format)
+  z.object({
+    output: z.object({
+      topic: z.string(),
+      search_config: z.object({
+        location: z.string(),
+        language_code: z.string(),
+        google_domain: z.string(),
+        brand: z.string(),
+      }),
+      categories: z.array(z.object({
+        header: z.string(),
+        subsearches: z.array(z.string()),
+      })),
+      keywords: z.record(z.object({
+        conversational_keyword: z.string(),
+        intent: z.string(),
+        search_intent: z.string(),
+        google_seed_keyword: z.string(),
+        category: z.string(),
+        search_volume: z.number(),
+        competition_index: z.number(),
+        low_cpc: z.string(),
+        trend_6m: z.string(),
+        relevance_score: z.number(),
+      })),
+    }),
   }),
-});
+]);
 
 export async function POST(req: Request) {
   try {
@@ -177,8 +208,16 @@ export async function POST(req: Request) {
       // Store the raw response anyway but mark it as potentially invalid
     }
 
+    // Transform array response to expected object format
+    let transformedResponse = webhookResponse;
+    if (Array.isArray(webhookResponse)) {
+      console.log("Transforming array response to object format");
+      // Take the first item from the array if it's an array
+      transformedResponse = webhookResponse[0] || webhookResponse;
+    }
+
     // Store the steps data in database
-    const { data: insertedSteps, error: insertError } = await supabase
+    const { error: insertError } = await supabase
       .from("monitoring_steps")
       .insert({
         monitoring_id: monitoringId,
@@ -187,12 +226,10 @@ export async function POST(req: Request) {
         primary_citation_url: primaryCitation.url,
         prompt: prompt,
         country: country,
-        steps_data: webhookResponse,
+        steps_data: transformedResponse,
         created_at: new Date().toISOString(),
         status: 'completed',
-      })
-      .select("id, steps_data")
-      .single();
+      });
 
     if (insertError) {
       console.error("Failed to store steps data:", insertError);
@@ -204,7 +241,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       message: "Steps generated successfully",
-      stepsData: insertedSteps.steps_data,
+      stepsData: transformedResponse,
       citationsProcessed: citations.length,
       cached: false,
     });

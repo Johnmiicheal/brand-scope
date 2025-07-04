@@ -1,5 +1,5 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 "use client";
 import { useState, useEffect, useMemo, Suspense } from "react";
@@ -25,18 +25,7 @@ import { z } from "zod";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 import { formatDistanceToNow, parseISO, format } from "date-fns";
-import { cn } from "@/lib/utils";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { TbScanPosition, TbSearch, TbSparkles, TbStepInto } from "react-icons/tb";
-import { TbTableSpark } from "react-icons/tb";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+import { TbGitMerge, TbScanPosition, TbSearch, TbSparkles, TbTableSpark } from "react-icons/tb";
 import ReactMarkdown from "react-markdown";
 import { Claude, Gemini, OpenAI, Perplexity } from "@lobehub/icons";
 import { GoogleSearchResult, Search } from "@/types/search";
@@ -561,7 +550,7 @@ function AnalysisRunDetailsContent({
             value="steps"
             className="data-[state=active]:bg-zinc-700 cursor-pointer whitespace-nowrap"
           >
-            <TbStepInto className="w-4 h-4 mr-1 hidden sm:inline" />
+            <TbGitMerge className="w-4 h-4 mr-1 hidden sm:inline" />
             Steps
           </TabsTrigger>
 

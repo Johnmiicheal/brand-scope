@@ -275,7 +275,7 @@ export function CitationsCard({
   }
 
   return (
-    <Card className="bg-background shadow-none border-[#e2e2e2]/70 dark:border-accent">
+    <Card className="bg-background shadow-none border-[#e2e2e2]/70 dark:border-accent h-fit">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Quote className="w-5 h-5" />

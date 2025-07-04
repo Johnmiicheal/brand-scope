@@ -108,6 +108,8 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { useMediaQuery } from "@/hooks/use-mobile";
 import { KeywordAnalysisCard } from "@/components/dashboard/keyword-analysis-card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { StepsTabContent } from "@/components/monitoring/steps-tab-content";
 
 const INDUSTRIES = [
   "Technology",
@@ -2424,7 +2426,23 @@ function DashboardContent() {
                       <KeywordCloud keywords={keywords} />
                   )} */}
 
-                  <KeywordAnalysisCard />
+                  <Tabs defaultValue="keywords" className="w-full">
+                    <TabsList className="grid w-full grid-cols-2 bg-muted/20">
+                      <TabsTrigger value="keywords" className="data-[state=active]:bg-blue-500/10">Keywords</TabsTrigger>
+                      <TabsTrigger value="steps" className="data-[state=active]:bg-blue-500/10">Steps</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="keywords">
+                      <KeywordAnalysisCard />
+                    </TabsContent>
+                    <TabsContent value="steps">
+                      <StepsTabContent 
+                        citations={results?.length > 0 ? results[0]?.model_summary[0]?.reasoning || null : null}
+                        monitoringId={selectedQuery?.mode_id || ''}
+                        prompt={selectedQuery?.query || ''}
+                        country={selectedQuery?.location || ''}
+                      />
+                    </TabsContent>
+                  </Tabs>
 
                   {/* Citations Section */}
                   <div className="lg:col-span-2">

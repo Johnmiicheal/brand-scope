@@ -145,6 +145,7 @@ export function ScheduledQueriesList({
 
   // Function to handle row click
   const handleRowClick = (queryId: string) => {
+    toast.info(`Redirecting to monitoring page...`)
     router.push(`/dashboard/search/monitoring?mode_id=${queryId}`);
   };
     
@@ -303,7 +304,7 @@ export function ScheduledQueriesList({
                     exit="hidden"
                     custom={index}
                     className="hover:bg-muted/40 items-center"
-                    onClick={() => {onSelectQuery?.(query); toast.info(`Selected "${query.query}" for view on dashboard`)}}
+                    onClick={() => window.location.pathname === "/dashboard/library" ?  handleRowClick(query?.mode_id!) : handleViewOnDashboard(query)}
                   >
                     <TableCell className="font-medium truncate max-w-xs flex items-center gap-2">
                       {query.query} {selectedQuery === query.query && <TbStarFilled className="w-4 h-4 text-yellow-500" />}
@@ -345,10 +346,10 @@ export function ScheduledQueriesList({
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleViewOnDashboard(query)}>
+                          <DropdownMenuItem onClick={(e) => {e.preventDefault(); handleViewOnDashboard(query)}}>
                             View on Dashboard
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleRowClick(query?.mode_id!)}>
+                          <DropdownMenuItem onClick={(e) => {e.preventDefault(); handleRowClick(query?.mode_id!)}}>
                             View on Page
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
