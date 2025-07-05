@@ -697,6 +697,7 @@ function DashboardContent() {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const results = selectedQuery?.results;
+  // console.log("Results: ", results);
   const keywords = results?.[0]?.keyword_analysis?.keywords;
   const [analysis_brands, setAnalysisBrands] = useState<any[]>([]);
   const [selectedBrands, setSelectedBrands] = useState<Set<string>>(
@@ -2436,7 +2437,22 @@ function DashboardContent() {
                     </TabsContent>
                     <TabsContent value="steps">
                       <StepsTabContent 
-                        citations={results?.length > 0 ? results[0]?.model_summary[0]?.reasoning || null : null}
+                        citations={(() => {
+                          if (!results || results.length === 0) return null;
+                          
+                          // Extract citations from model_summary
+                          const allCitations = results
+                            .flatMap((result: any) => result.model_summary || [])
+                            .flatMap((summary: any) => summary.reasoning || [])
+                            .filter((item: any) => item?.url_citation)
+                            .map((item: any) => ({
+                              url: item.url_citation.url,
+                              title: item.url_citation.title,
+                              snippet: item.url_citation.snippet
+                            }));
+                          
+                          return allCitations.length > 0 ? allCitations : null;
+                        })()}
                         monitoringId={selectedQuery?.mode_id || ''}
                         prompt={selectedQuery?.query || ''}
                         country={selectedQuery?.location || ''}
