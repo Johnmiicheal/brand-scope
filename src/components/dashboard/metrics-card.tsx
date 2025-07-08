@@ -10,7 +10,7 @@ import {
   TooltipProvider,
   TooltipContent,
 } from "@/components/ui/tooltip";
-import { Claude, Gemini, OpenAI, Perplexity } from "@lobehub/icons";
+import { AiStudio, Claude, Gemini, OpenAI, Perplexity } from "@lobehub/icons";
 interface MetricCardProps {
   title: string;
   value: string | number;
@@ -103,6 +103,7 @@ interface Brand {
   gemini_mentions: number;
   total_mentions: number;
   ai_overview_mentions: number;
+  google_ai_mode_mentions: number;
 }
 
 interface TemporalBrand {
@@ -115,6 +116,7 @@ interface TemporalBrand {
   gemini_mentions: number;
   total_mentions: number;
   ai_overview_mentions: number;
+  google_ai_mode_mentions: number;
 }
 
 interface MetricsHeaderProps {
@@ -153,7 +155,7 @@ export function MetricsHeader({
   );
   // const visibilityScore = total_mentions / all_total_mentions || 0;
   const mentions = total_mentions || 0;
-  const maxModels = selectedModel.size === 0 ? 6 : selectedModel.size;
+  const maxModels = selectedModel.size === 0 ? 7 : selectedModel.size;
   const maxMentions = Math.max(...brands.map((brand) => brand.total_mentions));
   const getCoverageRatio = (brands: Brand[], type: "ratio" | "count") => {
     const totalMentionsPerModel = brands.reduce((acc, brand) => {
@@ -164,7 +166,8 @@ export function MetricsHeader({
         (brand.perplexity_mentions > 0 ? 1 : 0) +
         (brand.gemini_mentions > 0 ? 1 : 0) +
         (brand.gpt_search_mentions > 0 ? 1 : 0) +
-        (brand.ai_overview_mentions > 0 ? 1 : 0)
+        (brand.ai_overview_mentions > 0 ? 1 : 0) +
+        (brand.google_ai_mode_mentions > 0 ? 1 : 0)
       );
     }, 0);
      // When models are selected, only count mentions from those specific models
@@ -208,7 +211,12 @@ export function MetricsHeader({
          ) {
            brandModelCount++;
          }
-
+         if (
+           selectedModel.has("Google AI Mode") &&
+           brand.google_ai_mode_mentions > 0
+         ) {
+           brandModelCount++;
+         }
          return acc + brandModelCount;
        }, 0);
 
@@ -257,6 +265,10 @@ export function MetricsHeader({
         modelCounts["Google AI Overview"] =
           (modelCounts["Google AI Overview"] || 0) + 1;
       }
+      if (brand.google_ai_mode_mentions > 0) {
+        modelCounts["Google AI Mode"] =
+          (modelCounts["Google AI Mode"] || 0) + 1;
+      }
     });
 
     return Object.entries(modelCounts).map(([modelName, count]) => ({
@@ -276,6 +288,7 @@ export function MetricsHeader({
     "Perplexity Sonar": Perplexity,
     "Gemini 2.0 Flash": Gemini,
     "Google AI Overview": Gemini.Color,
+    "Google AI Mode": AiStudio.Color,
   };
 
   const activeModels = getUniqueModelsForSelectedBrands();
@@ -326,7 +339,7 @@ export function MetricsHeader({
       const maxMentions = Math.max(
         ...temporalBrands.map((b) => b.total_mentions)
       );
-      const maxModels = selectedModel.size === 0 ? 6 : selectedModel.size;
+      const maxModels = selectedModel.size === 0 ? 7 : selectedModel.size;
 
       const totalMentionsPerModel = brandsData.reduce((acc, brand) => {
         return (
@@ -336,7 +349,8 @@ export function MetricsHeader({
           (brand.perplexity_mentions > 0 ? 1 : 0) +
           (brand.gemini_mentions > 0 ? 1 : 0) +
           (brand.gpt_search_mentions > 0 ? 1 : 0) +
-          (brand.ai_overview_mentions > 0 ? 1 : 0)
+          (brand.ai_overview_mentions > 0 ? 1 : 0) +
+          (brand.google_ai_mode_mentions > 0 ? 1 : 0)
         );
       }, 0);
 
@@ -381,7 +395,12 @@ export function MetricsHeader({
           ) {
             brandModelCount++;
           }
-
+          if (
+            selectedModel.has("Google AI Mode") &&
+            brand.google_ai_mode_mentions > 0
+          ) {
+            brandModelCount++;
+          }
           return acc + brandModelCount;
         }, 0);
 
@@ -448,7 +467,7 @@ export function MetricsHeader({
     const previousData = dataByDate[previousDate];
 
     const calculateCoverageRatio = (brandsData: TemporalBrand[]) => {
-      const maxModels = selectedModel.size === 0 ? 6 : selectedModel.size;
+      const maxModels = selectedModel.size === 0 ? 7 : selectedModel.size;
       const totalMentionsPerModel = brandsData.reduce((acc, brand) => {
         return (
           acc +
@@ -457,7 +476,8 @@ export function MetricsHeader({
           (brand.perplexity_mentions > 0 ? 1 : 0) +
           (brand.gemini_mentions > 0 ? 1 : 0) +
           (brand.gpt_search_mentions > 0 ? 1 : 0) +
-          (brand.ai_overview_mentions > 0 ? 1 : 0)
+          (brand.ai_overview_mentions > 0 ? 1 : 0) +
+          (brand.google_ai_mode_mentions > 0 ? 1 : 0)
         );
       }, 0);
 
@@ -502,7 +522,12 @@ export function MetricsHeader({
           ) {
             brandModelCount++;
           }
-
+          if (
+            selectedModel.has("Google AI Mode") &&
+            brand.google_ai_mode_mentions > 0
+          ) {
+            brandModelCount++;
+          } 
           return acc + brandModelCount;
         }, 0);
 

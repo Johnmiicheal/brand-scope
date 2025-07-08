@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
-/* eslint-disable @typescript-eslint/no-non-null-asserted-optional-chain */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
@@ -215,7 +214,7 @@ function IndustryRankingsTable({
   // console.log(brandFetch)
 
   const maxMentions = Math.max(...brands.map((brand) => brand.total_mentions));
-  const maxModels = selectedModel.size === 0 ? 6 : selectedModel.size;
+  const maxModels = selectedModel.size === 0 ? 7 : selectedModel.size;
   const getCoverageRatio = (brand: any, type: "ratio" | "count") => {
     const totalMentionsPerModel =
       (brand.gpt_mentions > 0 ? 1 : 0) +
@@ -223,7 +222,8 @@ function IndustryRankingsTable({
       (brand.perplexity_mentions > 0 ? 1 : 0) +
       (brand.gemini_mentions > 0 ? 1 : 0) +
       (brand.gpt_search_mentions > 0 ? 1 : 0) +
-      (brand.ai_overview_mentions > 0 ? 1 : 0);
+      (brand.ai_overview_mentions > 0 ? 1 : 0) +
+      (brand.google_ai_mode_mentions > 0 ? 1 : 0);
     // Check selected models and add to total mentions count
     let selectedModelTotalMentions = 0;
     
@@ -243,6 +243,9 @@ function IndustryRankingsTable({
       selectedModelTotalMentions++;
     }
     if (selectedModel.has("Google AI Overview") && brand.ai_overview_mentions > 0) {
+      selectedModelTotalMentions++;
+    } 
+    if (selectedModel.has("Google AI Mode") && brand.google_ai_mode_mentions > 0) {
       selectedModelTotalMentions++;
     }
     
@@ -984,6 +987,7 @@ function DashboardContent() {
           gemini_mentions: 0,
           gpt_search_mentions: 0,
           ai_overview_mentions: 0,
+          google_ai_mode_mentions: 0,
         };
 
         // Process model results for this date
@@ -1029,6 +1033,8 @@ function DashboardContent() {
                 mentions.gpt_search_mentions += mentionCount;
               } else if (modelName.includes("ai overview")) {
                 mentions.ai_overview_mentions += mentionCount;
+              } else if (modelName.includes("google ai mode")) {
+                mentions.google_ai_mode_mentions += mentionCount;
               }
             }
           }
@@ -1103,6 +1109,7 @@ function DashboardContent() {
         gemini_mentions: 0,
         gpt_search_mentions: 0,
         ai_overview_mentions: 0,
+        google_ai_mode_mentions: 0,
       };
 
       // Process each filtered result
@@ -1149,6 +1156,8 @@ function DashboardContent() {
                 mentions.gpt_search_mentions += mentionCount;
               } else if (modelName.includes("ai overview")) {
                 mentions.ai_overview_mentions += mentionCount;
+              } else if (modelName.includes("google ai mode")) {
+                mentions.google_ai_mode_mentions += mentionCount;
               }
             }
           }

@@ -61,6 +61,11 @@ const AnalysisModelSummarySchema = z.object({
       title: z.string(),
       snippet: z.string(),
     }),
+    domain: z.string(),
+    source: z.string(),
+    text: z.string(),
+    url: z.string(),
+    title: z.string(),
   })),
 });
 
@@ -506,7 +511,22 @@ function AnalysisRunDetailsContent({
       : modelResults?.filter((r) => r.llm_name === selectedModel);
   }, [modelResults, selectedModel]);
 
-  const citations = modelSummary?.model === selectedModel ? modelSummary?.reasoning : null;
+  const citations = useMemo(() => {
+    if (modelSummary?.model !== selectedModel || !modelSummary?.reasoning) {
+      return null;
+    }
+    
+    // Remove duplicates based on url or url_citation.url
+    const seen = new Set();
+    return modelSummary.reasoning.filter((citation) => {
+      const url = citation.url_citation?.url || citation.title;
+      if (!url || seen.has(url)) {
+        return false;
+      }
+      seen.add(url);
+      return true;
+    });
+  }, [modelSummary, selectedModel]);
 
   if (!filteredResults || filteredResults.length === 0) {
     return (
@@ -634,11 +654,14 @@ function AnalysisLoadingState() {
 }
 
 interface Citation {
-  url_citation: {
+  url_citation?: {
     url: string;
     title: string;
     snippet: string;
   };
+  domain: string;
+  source: string;
+  text: string;
 }
 
 // Citations tab content
@@ -654,6 +677,7 @@ function CitationsTabContent({
       </div>
     );
   }
+  
 
   return (
     <motion.div
@@ -679,17 +703,17 @@ function CitationsTabContent({
               <Card className="h-full bg-zinc-800/50 border-accent hover:bg-zinc-800/70 transition-colors">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base font-medium line-clamp-2">
-                    {citation.url_citation.title}
+                    {citation.url_citation?.title || citation.title || "No title available"}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
                     <div className="flex items-center justify-between pt-2">
                       <Badge variant="outline" className="text-xs">
-                        {new URL(citation.url_citation.url).hostname}
+                        {new URL(citation.url_citation?.url || citation.url).hostname}
                       </Badge>
                       <a
-                        href={citation.url_citation.url}
+                        href={citation.url_citation?.url || citation.url}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center text-xs text-blue-400 hover:text-blue-300 transition-colors"

@@ -14,14 +14,19 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
-import { Claude, Gemini, OpenAI, Perplexity } from "@lobehub/icons";
+import { AiStudio, Claude, Gemini, OpenAI, Perplexity } from "@lobehub/icons";
 
 interface Citation {
-  url_citation: {
+  url_citation?: {
     url: string;
     title: string;
     snippet: string;
   };
+  domain?: string;
+  source?: string;
+  text?: string;
+  url?: string;
+  title?: string;
 }
 
 // Google AI Overview citation structure
@@ -53,6 +58,7 @@ const modelIcons: Record<string, React.ComponentType<{ className?: string }>> = 
   "Perplexity Sonar": Perplexity,
   "Gemini 2.0 Flash": Gemini,
   "Google AI Overview": Gemini.Color,
+  "Google AI Mode": AiStudio.Color,
 };
 
 const containerVariants = {
@@ -192,21 +198,30 @@ export function CitationsCard({
           }
 
           if (summary.reasoning && Array.isArray(summary.reasoning)) {
-            const citations = summary.reasoning.filter(
+            // Handle regular citations (Perplexity format with url_citation wrapper)
+            const regularCitations = summary.reasoning.filter(
               (item: any) => item.url_citation
             );
+            
+            // Handle Google AI Mode citations (direct url, title, text format)
+            const googleAiModeCitations = summary.reasoning.filter(
+              (item: any) => item.url && item.title && !item.url_citation
+            );
 
-            if (citations.length > 0) {
+            const allCitations = [...regularCitations, ...googleAiModeCitations];
+
+            if (allCitations.length > 0) {
               const existingCitations = modelCitationsMap.get(summary.model) || [];
               modelCitationsMap.set(summary.model, [
                 ...existingCitations,
-                ...citations,
+                ...allCitations,
               ]);
             }
           }
         });
       }
     });
+    
 
     // Process Google AI Overview citations
     if (googleSearchResults && (!selectedModel.size || selectedModel.has("Google AI Overview"))) {
@@ -242,7 +257,7 @@ export function CitationsCard({
         (citation, index, self) =>
           index ===
           self.findIndex(
-            (c) => c.url_citation.url === citation.url_citation.url
+            (c) => c.url_citation?.url === citation.url_citation?.url && c?.title === citation.title
           )
       );
 
@@ -346,23 +361,23 @@ export function CitationsCard({
                               <div className="space-y-2">
                                 <div className="flex items-start justify-between gap-2">
                                   <a
-                                    href={citation.url_citation.url}
+                                    href={citation.url_citation?.url || citation.url}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="text-blue-500 hover:text-blue-400 hover:underline font-medium text-sm flex-1 line-clamp-2"
                                   >
-                                    {citation.url_citation.title}
+                                    {citation.url_citation?.title || citation.title}
                                   </a>
                                   <ExternalLink className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
                                 </div>
 
                                 <p className="text-xs text-muted-foreground line-clamp-2">
-                                  {citation.url_citation.snippet}
+                                  {citation.url_citation?.snippet || citation.text}
                                 </p>
 
                                 <div className="flex items-center justify-between">
                                   <Badge variant="outline" className="text-xs">
-                                    {new URL(citation.url_citation.url).hostname}
+                                    {new URL(citation?.url_citation?.url || citation?.url || "").hostname}
                                   </Badge>
                                 </div>
                               </div>

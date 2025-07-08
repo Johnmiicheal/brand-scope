@@ -49,6 +49,7 @@ interface BrandAnalysis {
   gemini_mentions: number;
   gpt_search_mentions: number;
   ai_overview_mentions: number;
+  google_ai_mode_mentions: number;
 }
 
 const chartConfig = {
@@ -76,7 +77,7 @@ export function CompetitorChart({
   );
 
 
-  const maxModels = selectedModel.size === 0 ? 6 : selectedModel.size;
+  const maxModels = selectedModel.size === 0 ? 7 : selectedModel.size;
 
   const getCoverageRatio = (brand: BrandAnalysis, type: "ratio" | "count") => {
     const totalMentionsPerModel =
@@ -85,7 +86,8 @@ export function CompetitorChart({
       (brand.perplexity_mentions > 0 ? 1 : 0) +
       (brand.gemini_mentions > 0 ? 1 : 0) +
       (brand.gpt_search_mentions > 0 ? 1 : 0) +
-      (brand.ai_overview_mentions > 0 ? 1 : 0);
+      (brand.ai_overview_mentions > 0 ? 1 : 0) +
+      (brand.google_ai_mode_mentions > 0 ? 1 : 0);
        // Check selected models and add to total mentions count
     let selectedModelTotalMentions = 0;
     
@@ -107,7 +109,9 @@ export function CompetitorChart({
     if (selectedModel.has("Google AI Overview") && brand.ai_overview_mentions > 0) {
       selectedModelTotalMentions++;
     }
-    
+    if (selectedModel.has("Google AI Mode") && brand.google_ai_mode_mentions > 0) {
+      selectedModelTotalMentions++;
+    }
     // Use selectedModelTotalMentions when filtering is active
     const finalTotalMentions = selectedModel.size > 0 ? selectedModelTotalMentions : totalMentionsPerModel;
     const finalMaxModels = selectedModel.size > 0 ? selectedModel.size : maxModels;

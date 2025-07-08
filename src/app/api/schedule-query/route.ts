@@ -30,6 +30,94 @@ const openrouter = createOpenRouter({ apiKey: openRouterApiKey });
 
 // --- Zod Schemas ---
 
+// Google AI Mode Response Schemas
+const AiOverviewReferenceSchema = z.object({
+  type: z.literal('ai_overview_reference'),
+  position: z.string(),
+  source: z.string(),
+  domain: z.string(),
+  url: z.string(),
+  title: z.string(),
+  text: z.string(),
+});
+
+const AiOverviewElementSchema = z.object({
+  type: z.literal('ai_overview_element'),
+  position: z.string(),
+  title: z.string().nullable(),
+  text: z.string(),
+  markdown: z.string(),
+  links: z.any().nullable(),
+  images: z.any().nullable(),
+  references: z.array(AiOverviewReferenceSchema).nullable(),
+});
+
+const ItemSchema = z.object({
+  type: z.literal('ai_overview'),
+  rank_group: z.number(),
+  rank_absolute: z.number(),
+  position: z.string(),
+  xpath: z.string(),
+  markdown: z.string(),
+  items: z.array(AiOverviewElementSchema),
+  references: z.array(AiOverviewReferenceSchema),
+  rectangle: z.any().nullable(),
+});
+
+const ResultSchema = z.object({
+  keyword: z.string(),
+  type: z.string(),
+  se_domain: z.string(),
+  location_code: z.number(),
+  language_code: z.string(),
+  check_url: z.string(),
+  datetime: z.string(),
+  spell: z.any().nullable(),
+  refinement_chips: z.any().nullable(),
+  item_types: z.array(z.string()),
+  se_results_count: z.number(),
+  items_count: z.number(),
+  items: z.array(ItemSchema),
+});
+
+const DataSchema = z.object({
+  api: z.string(),
+  function: z.string(),
+  se: z.string(),
+  se_type: z.string(),
+  keyword: z.string(),
+  location_name: z.string(),
+  language_name: z.string(),
+  device: z.string(),
+  os: z.string(),
+  calculate_rectangles: z.boolean(),
+});
+
+const TaskSchema = z.object({
+  id: z.string(),
+  status_code: z.number(),
+  status_message: z.string(),
+  time: z.string(),
+  cost: z.number(),
+  result_count: z.number(),
+  path: z.array(z.string()),
+  data: DataSchema,
+  result: z.array(ResultSchema),
+});
+
+const GoogleAiResponseSchema = z.array(
+  z.object({
+    version: z.string(),
+    status_code: z.number(),
+    status_message: z.string(),
+    time: z.string(),
+    cost: z.number(),
+    tasks_count: z.number(),
+    tasks_error: z.number(),
+    tasks: z.array(TaskSchema),
+  })
+);
+
 // Schema for a single brand analysis by one LLM
 const BrandResultSchema = z.object({
   name: z.string().describe("The name of the brand analyzed."), // Changed from brand_name
@@ -299,6 +387,113 @@ async function callSearchGoogleEndpoint(
   }
 }
 
+/**
+ * Calls the Google AI Mode webhook and processes the response
+ * @param prompt - The query prompt to analyze
+ * @returns Object with text content and citations
+ */
+async function callGoogleAiMode(prompt: string): Promise<{
+  text: string;
+  citations: any[];
+  success: boolean;
+  error: string | null;
+}> {
+  try {
+    console.log(`    Calling Google AI Mode for prompt: "${prompt}"`);
+    
+    const response = await fetch('https://primary-production-20a3.up.railway.app/webhook/2b8d1b46-8acd-4717-8870-88b7030eb2af', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        chatInput: prompt
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Google AI Mode API returned ${response.status}: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    
+    // Validate the response against our schema
+    const validationResult = GoogleAiResponseSchema.safeParse(data);
+    if (!validationResult.success) {
+      console.warn('Google AI Mode response validation failed:', validationResult.error);
+      // Continue with raw data if validation fails, but log the issue
+    }
+
+    // Extract markdown content and citations
+    let combinedMarkdown = '';
+    const allCitations: any[] = [];
+
+    // Process each task result
+    for (const responseItem of data) {
+      for (const task of responseItem.tasks) {
+        for (const result of task.result) {
+          // Extract AI overview items
+          const aiOverviewItems = result.items.filter((item: any) => item.type === 'ai_overview');
+          
+          for (const item of aiOverviewItems) {
+            // Add the main markdown content
+            if (item.markdown) {
+              combinedMarkdown += item.markdown + '\n\n';
+            }
+            
+            // Add citations from references
+            if (item.references && Array.isArray(item.references)) {
+              allCitations.push(...item.references.map((ref: any) => ({
+                url: ref.url,
+                title: ref.title,
+                text: ref.text,
+                domain: ref.domain,
+                source: ref.source
+              })));
+            }
+            
+            // Also process items within the AI overview
+            if (item.items && Array.isArray(item.items)) {
+              for (const subItem of item.items) {
+                if (subItem.markdown) {
+                  combinedMarkdown += subItem.markdown + '\n\n';
+                }
+                if (subItem.references && Array.isArray(subItem.references)) {
+                  allCitations.push(...subItem.references.map((ref: any) => ({
+                    url: ref.url,
+                    title: ref.title,
+                    text: ref.text,
+                    domain: ref.domain,
+                    source: ref.source
+                  })));
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    console.log(`    Google AI Mode success. Extracted ${combinedMarkdown.length} chars of content and ${allCitations.length} citations`);
+    
+    return {
+      text: combinedMarkdown.trim() || 'No AI overview content found',
+      citations: allCitations,
+      success: true,
+      error: null
+    };
+
+  } catch (error: any) {
+    console.error(`    Error calling Google AI Mode:`, error.message);
+    return {
+      text: '',
+      citations: [],
+      success: false,
+      error: error.message || "Google AI Mode call failed"
+    };
+  }
+}
+
 // --- Core Logic ---
 
 /**
@@ -327,7 +522,6 @@ async function processQuery(
   const textModels = [
     { modelId: "openai/gpt-4o-search-preview", name: "GPT 4o Web Search" },
     { modelId: "openai/gpt-4.1", name: "GPT 4.1"},
-
     {
       modelId: "anthropic/claude-3.5-sonnet",
       name: "Claude 3.5 Sonnet",
@@ -342,6 +536,7 @@ async function processQuery(
     },
     // { modelId: "meta-llama/llama-3.3-70b-instruct", name: "Llama 3.3 70B Instruct" },
     { modelId: "perplexity/sonar", name: "Perplexity Sonar" }, // Keep Perplexity here
+    { modelId: "google-ai-mode", name: "Google AI Mode" }, // Custom Google AI Mode
   ];
 
   const objectModels = [
@@ -356,6 +551,7 @@ async function processQuery(
       name: "Gemini 2.0 Flash",
     },
     { model: openrouter("perplexity/sonar"), name: "Perplexity Sonar" }, // Keep Perplexity here
+    { model: "google-ai-mode", name: "Google AI Mode" }, // Custom Google AI Mode
   ];
 
   // --- Fetch Existing Results --- (Moved to the top)
@@ -394,6 +590,19 @@ async function processQuery(
   const textPromises = textModels.map(async ({ modelId, name }) => {
     console.log(`    Generating text for ${name}...`);
     try {
+      // Handle Google AI Mode specially
+      if (modelId === "google-ai-mode") {
+        const googleResult = await callGoogleAiMode(query.query);
+        return {
+          name,
+          text: googleResult.text,
+          citations: googleResult.citations,
+          success: googleResult.success,
+          error: googleResult.error,
+        };
+      }
+
+      // Handle other models with OpenRouter
       const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -450,8 +659,46 @@ async function processQuery(
         };
       }
       console.log(`    Extracting structure from ${name}'s text...`);
+      
+      // Handle Google AI Mode specially - use OpenAI for extraction
+      if (name === "Google AI Mode") {
+        try {
+          console.log(`      Using OpenAI GPT-4o for Google AI Mode extraction...`);
+          const formattedExtractionPrompt = RANKING_PROMPT.replace("{text}", text);
+          
+          const { object } = await generateObject({
+            model: openrouter("openai/gpt-4o"),
+            schema: LLMOutputSchema,
+            prompt: formattedExtractionPrompt,
+            maxRetries: 2,
+            temperature: 0.0,
+          });
+          
+          const validation = LLMOutputSchema.safeParse(object);
+          if (!validation.success) {
+            throw new Error(`Schema validation failed for ${name}.`);
+          }
+          
+          console.log(`      ${name} successful (via OpenAI GPT-4o).`);
+          return {
+            llm_name: name,
+            status: "fulfilled" as const,
+            data: validation.data,
+            error: null,
+          };
+        } catch (error: any) {
+          console.error(`    Error during extraction phase for ${name}:`, error.message);
+          return {
+            llm_name: name,
+            status: "rejected" as const,
+            data: null,
+            error: error.message || "Extraction phase failed",
+          };
+        }
+      }
+
       const modelConfig = objectModels.find((m) => m.name === name);
-      if (!modelConfig) {
+      if (!modelConfig || typeof modelConfig.model === 'string') {
         return {
           llm_name: name,
           status: "rejected" as const,
