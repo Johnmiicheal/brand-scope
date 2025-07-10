@@ -264,7 +264,6 @@ export function GoogleResults({ googleResults, rankings }: GoogleResultsProps) {
                         if (block.type === "paragraph") {
                           return (
                             <div key={blockIndex} className="text-white/90">
-                              <p>
                                 {block.snippet}
                                 {showCitations &&
                                   renderCitations(
@@ -277,7 +276,6 @@ export function GoogleResults({ googleResults, rankings }: GoogleResultsProps) {
                                       refs
                                     )
                                   )}
-                              </p>
                             </div>
                           );
                         }

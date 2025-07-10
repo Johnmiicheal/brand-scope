@@ -39,11 +39,16 @@ import {
   Star,
   Calendar as CalendarIcon,
   Eye,
+  X,
+  Search,
+  Download,
+  TextSearch,
 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -94,7 +99,7 @@ import {
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { GoogleResults } from "@/components/ui/google-results";
 import { Gemini } from "@lobehub/icons";
-import { toast } from "sonner";
+import { toast as toastSonner } from "sonner";
 import { TbStarFilled } from "react-icons/tb";
 import { GoogleSearch, GoogleSearchResult } from "@/types/search";
 import { Calendar } from "@/components/ui/calendar";
@@ -109,6 +114,18 @@ import { useMediaQuery } from "@/hooks/use-mobile";
 import { KeywordAnalysisCard } from "@/components/dashboard/keyword-analysis-card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StepsTabContent } from "@/components/monitoring/steps-tab-content";
+import ExcelJS from "exceljs";
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  LineElement,
+  PointElement,
+  Title,
+  Tooltip as ChartTooltip,
+  Legend,
+} from "chart.js";
 
 const INDUSTRIES = [
   "Technology",
@@ -152,7 +169,6 @@ interface BrandFetchProps {
   verified: boolean;
 }
 
-// Updated component for the Industry Rankings Table
 function IndustryRankingsTable({
   brands,
   setSelectedBrand,
@@ -226,33 +242,49 @@ function IndustryRankingsTable({
       (brand.google_ai_mode_mentions > 0 ? 1 : 0);
     // Check selected models and add to total mentions count
     let selectedModelTotalMentions = 0;
-    
+
     if (selectedModel.has("GPT 4.1") && brand.gpt_mentions > 0) {
       selectedModelTotalMentions++;
     }
     if (selectedModel.has("Claude 3.5 Sonnet") && brand.claude_mentions > 0) {
       selectedModelTotalMentions++;
     }
-    if (selectedModel.has("Perplexity Sonar") && brand.perplexity_mentions > 0) {
+    if (
+      selectedModel.has("Perplexity Sonar") &&
+      brand.perplexity_mentions > 0
+    ) {
       selectedModelTotalMentions++;
     }
     if (selectedModel.has("Gemini 2.0 Flash") && brand.gemini_mentions > 0) {
       selectedModelTotalMentions++;
     }
-    if (selectedModel.has("GPT 4o Web Search") && brand.gpt_search_mentions > 0) {
+    if (
+      selectedModel.has("GPT 4o Web Search") &&
+      brand.gpt_search_mentions > 0
+    ) {
       selectedModelTotalMentions++;
     }
-    if (selectedModel.has("Google AI Overview") && brand.ai_overview_mentions > 0) {
-      selectedModelTotalMentions++;
-    } 
-    if (selectedModel.has("Google AI Mode") && brand.google_ai_mode_mentions > 0) {
+    if (
+      selectedModel.has("Google AI Overview") &&
+      brand.ai_overview_mentions > 0
+    ) {
       selectedModelTotalMentions++;
     }
-    
+    if (
+      selectedModel.has("Google AI Mode") &&
+      brand.google_ai_mode_mentions > 0
+    ) {
+      selectedModelTotalMentions++;
+    }
+
     // Use selectedModelTotalMentions when filtering is active
-    const finalTotalMentions = selectedModel.size > 0 ? selectedModelTotalMentions : totalMentionsPerModel;
-    const finalMaxModels = selectedModel.size > 0 ? selectedModel.size : maxModels;
-    console.log(finalTotalMentions, finalMaxModels)
+    const finalTotalMentions =
+      selectedModel.size > 0
+        ? selectedModelTotalMentions
+        : totalMentionsPerModel;
+    const finalMaxModels =
+      selectedModel.size > 0 ? selectedModel.size : maxModels;
+
     if (type === "ratio") {
       return `${finalTotalMentions} / ${finalMaxModels}`;
     } else {
@@ -706,6 +738,7 @@ function DashboardContent() {
   const [selectedBrands, setSelectedBrands] = useState<Set<string>>(
     new Set<string>([])
   );
+  const [brandSearchQuery, setBrandSearchQuery] = useState<string>("");
 
   const handleCheckedChange = (brandName: string, isChecked: boolean) => {
     setSelectedBrands((prevSelected) => {
@@ -749,6 +782,1557 @@ function DashboardContent() {
       }
       return newSelection;
     });
+  };
+
+  const removeBrandFromSelection = (brandName: string) => {
+    setSelectedBrands((prevSelected) => {
+      const newSelection = new Set(prevSelected);
+      newSelection.delete(brandName);
+
+      // If removing the last brand, default to "all"
+      if (newSelection.size === 0 && analysis_brands.length > 0) {
+        newSelection.add("all");
+      }
+
+      return newSelection;
+    });
+  };
+
+  // Filter brands based on search query
+  const filteredBrandsForSearch = useMemo(() => {
+    if (!brandSearchQuery.trim()) {
+      return analysis_brands;
+    }
+    return analysis_brands.filter((brand) =>
+      brand.name.toLowerCase().includes(brandSearchQuery.toLowerCase())
+    );
+  }, [analysis_brands, brandSearchQuery]);
+
+  // Export Industry Rankings Table functionality
+  const exportToCSV = () => {
+    if (!brandMentionsInSummaries || brandMentionsInSummaries.length === 0) {
+      toastSonner.error("No brand data available to export");
+      return;
+    }
+
+    try {
+      const exportData: any[] = [];
+      const maxModels = selectedModel.size === 0 ? 7 : selectedModel.size;
+      const maxMentions = Math.max(
+        ...brandMentionsInSummaries.map((brand) => brand.total_mentions)
+      );
+
+      // Helper function to calculate coverage ratio for a brand
+      const getCoverageRatio = (brand: any) => {
+        const totalMentionsPerModel =
+          (brand.gpt_mentions > 0 ? 1 : 0) +
+          (brand.claude_mentions > 0 ? 1 : 0) +
+          (brand.perplexity_mentions > 0 ? 1 : 0) +
+          (brand.gemini_mentions > 0 ? 1 : 0) +
+          (brand.gpt_search_mentions > 0 ? 1 : 0) +
+          (brand.ai_overview_mentions > 0 ? 1 : 0) +
+          (brand.google_ai_mode_mentions > 0 ? 1 : 0);
+
+        let selectedModelTotalMentions = 0;
+
+        if (selectedModel.size > 0) {
+          if (selectedModel.has("GPT 4.1") && brand.gpt_mentions > 0)
+            selectedModelTotalMentions++;
+          if (
+            selectedModel.has("Claude 3.5 Sonnet") &&
+            brand.claude_mentions > 0
+          )
+            selectedModelTotalMentions++;
+          if (
+            selectedModel.has("Perplexity Sonar") &&
+            brand.perplexity_mentions > 0
+          )
+            selectedModelTotalMentions++;
+          if (
+            selectedModel.has("Gemini 2.0 Flash") &&
+            brand.gemini_mentions > 0
+          )
+            selectedModelTotalMentions++;
+          if (
+            selectedModel.has("GPT 4o Web Search") &&
+            brand.gpt_search_mentions > 0
+          )
+            selectedModelTotalMentions++;
+          if (
+            selectedModel.has("Google AI Overview") &&
+            brand.ai_overview_mentions > 0
+          )
+            selectedModelTotalMentions++;
+          if (
+            selectedModel.has("Google AI Mode") &&
+            brand.google_ai_mode_mentions > 0
+          )
+            selectedModelTotalMentions++;
+        }
+
+        const finalTotalMentions =
+          selectedModel.size > 0
+            ? selectedModelTotalMentions
+            : totalMentionsPerModel;
+        const finalMaxModels =
+          selectedModel.size > 0 ? selectedModel.size : maxModels;
+
+        return ((finalTotalMentions / finalMaxModels) * 100).toFixed(1);
+      };
+
+      // Helper function to calculate visibility score for a brand
+      const getVisibilityScore = (brand: any) => {
+        const coverageRatio = parseFloat(getCoverageRatio(brand)) / 100;
+        const mentionsIndex = brand.total_mentions / maxMentions;
+        return ((100 * (coverageRatio + mentionsIndex)) / 2).toFixed(1);
+      };
+
+      // Helper function to get listed models for a brand
+      const getListedModels = (brand: any) => {
+        const models: string[] = [];
+        if (brand.gpt_mentions > 0) models.push("GPT 4.1");
+        if (brand.gpt_search_mentions > 0) models.push("GPT 4o Web Search");
+        if (brand.claude_mentions > 0) models.push("Claude 3.5 Sonnet");
+        if (brand.perplexity_mentions > 0) models.push("Perplexity Sonar");
+        if (brand.gemini_mentions > 0) models.push("Gemini 2.0 Flash");
+        if (brand.ai_overview_mentions > 0) models.push("Google AI Overview");
+        if (brand.google_ai_mode_mentions > 0) models.push("Google AI Mode");
+        return models.join("; ");
+      };
+
+      // Collect all citations from all models for each brand
+      const getAllCitations = (brandName: string) => {
+        const allCitations: string[] = [];
+
+        // Get citations from model summaries
+        const dateFilteredResults = getDateFilteredResults;
+        dateFilteredResults.forEach((result) => {
+          result.model_summary?.forEach((summary: any) => {
+            if (summary.reasoning) {
+              summary.reasoning.forEach((citation: any) => {
+                const url = citation.url || citation.url_citation?.url;
+                if (url) allCitations.push(url);
+              });
+            }
+          });
+        });
+
+        // Get Google AI Overview citations
+        if (googleSearchResults?.search_results) {
+          googleSearchResults.search_results.forEach((searchResult: any) => {
+            const googleCitations =
+              searchResult.results?.ai_overview?.references || [];
+            googleCitations.forEach((ref: any) => {
+              if (ref.link) allCitations.push(ref.link);
+            });
+          });
+        }
+
+        // Get organic search results
+        if (googleSearchResults?.search_results) {
+          googleSearchResults.search_results.forEach((searchResult: any) => {
+            const organicResults = searchResult.results?.organic_results || [];
+            organicResults.forEach((result: any) => {
+              if (result.link) allCitations.push(result.link);
+            });
+          });
+        }
+
+        // Remove duplicates and return
+        return [...new Set(allCitations)].join("; ");
+      };
+
+      // Process each brand in brandMentionsInSummaries (export ALL brands)
+      brandMentionsInSummaries.forEach((brand) => {
+        const citations = getAllCitations(brand.brand_name);
+        const citationCount = citations ? citations.split("; ").length : 0;
+
+        exportData.push({
+          "Brand Name": brand.brand_name,
+          "Total Mentions": brand.total_mentions,
+          "Coverage Ratio (%)": getCoverageRatio(brand),
+          "Visibility Score (%)": getVisibilityScore(brand),
+          "Listed in Models": getListedModels(brand),
+          "GPT 4.1 Mentions": brand.gpt_mentions > 0,
+          "GPT 4o Web Search Mentions": brand.gpt_search_mentions > 0,
+          "Claude 3.5 Sonnet Mentions": brand.claude_mentions > 0,
+          "Perplexity Sonar Mentions": brand.perplexity_mentions > 0,
+          "Gemini 2.0 Flash Mentions": brand.gemini_mentions > 0,
+          "Google AI Overview Mentions": brand.ai_overview_mentions > 0,
+          "Google AI Mode Mentions": brand.google_ai_mode_mentions > 0,
+          "All Citations (URLs)": citations,
+          "Citation Count": citationCount,
+          Query: selectedQuery.query,
+          "Analysis Date": new Date().toLocaleDateString(),
+        });
+      });
+
+      if (exportData.length === 0) {
+        toastSonner.error("No data matches your current filters");
+        return;
+      }
+
+      // Sort by total mentions (descending) to match table order
+      exportData.sort((a, b) => b["Total Mentions"] - a["Total Mentions"]);
+
+      // Add summary row at the top
+      const totalBrands = exportData.length;
+      const totalMentions = exportData.reduce(
+        (sum, brand) => sum + brand["Total Mentions"],
+        0
+      );
+      const avgCoverage = (
+        exportData.reduce(
+          (sum, brand) => sum + parseFloat(brand["Coverage Ratio (%)"]),
+          0
+        ) / totalBrands
+      ).toFixed(1);
+      const avgVisibility = (
+        exportData.reduce(
+          (sum, brand) => sum + parseFloat(brand["Visibility Score (%)"]),
+          0
+        ) / totalBrands
+      ).toFixed(1);
+      const allModels = [
+        "GPT 4.1",
+        "GPT 4o Web Search",
+        "Claude 3.5 Sonnet",
+        "Perplexity Sonar",
+        "Gemini 2.0 Flash",
+        "Google AI Overview",
+        "Google AI Mode",
+      ];
+      const activeModels =
+        selectedModel.size > 0
+          ? Array.from(selectedModel).join("; ")
+          : allModels.join("; ");
+
+      exportData.unshift({
+        "Brand Name": "SUMMARY",
+        "Total Mentions": totalMentions,
+        "Coverage Ratio (%)": `Avg: ${avgCoverage}%`,
+        "Visibility Score (%)": `Avg: ${avgVisibility}%`,
+        "Listed in Models": activeModels,
+        "GPT 4.1 Mentions": exportData.reduce(
+          (sum, brand) => sum + brand["GPT 4.1 Mentions"],
+          0
+        ),
+        "GPT 4o Web Search Mentions":
+          exportData.reduce(
+            (sum, brand) => sum + brand["GPT 4o Web Search Mentions"],
+            0
+          ) || 0,
+        "Claude 3.5 Sonnet Mentions":
+          exportData.reduce(
+            (sum, brand) => sum + brand["Claude 3.5 Sonnet Mentions"],
+            0
+          ) || 0,
+        "Perplexity Sonar Mentions":
+          exportData.reduce(
+            (sum, brand) => sum + brand["Perplexity Sonar Mentions"],
+            0
+          ) || 0,
+        "Gemini 2.0 Flash Mentions":
+          exportData.reduce(
+            (sum, brand) => sum + brand["Gemini 2.0 Flash Mentions"],
+            0
+          ) || 0,
+        "Google AI Overview Mentions":
+          exportData.reduce(
+            (sum, brand) => sum + brand["Google AI Overview Mentions"],
+            0
+          ) || 0,
+        "Google AI Mode Mentions":
+          exportData.reduce(
+            (sum, brand) => sum + brand["Google AI Mode Mentions"],
+            0
+          ) || 0,
+        "All Citations (URLs)": `${totalBrands} brands analyzed`,
+        "Citation Count":
+          exportData.reduce((sum, brand) => sum + brand["Citation Count"], 0) ||
+          0,
+        Query: selectedQuery.query,
+        "Analysis Date": `Export Date: ${new Date().toLocaleDateString()}`,
+      });
+
+      // Convert to CSV
+      const headers = Object.keys(exportData[0]);
+      const csvContent = [
+        headers.join(","),
+        ...exportData.map((row) =>
+          headers
+            .map((header) => {
+              const value = row[header] || "";
+              const stringValue = String(value);
+              // Escape quotes and wrap in quotes if contains comma or quote
+              if (
+                stringValue.includes(",") ||
+                stringValue.includes('"') ||
+                stringValue.includes("\n")
+              ) {
+                return `"${stringValue.replace(/"/g, '""')}"`;
+              }
+              return stringValue;
+            })
+            .join(",")
+        ),
+      ].join("\n");
+
+      // Download CSV
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      link.setAttribute("href", url);
+      link.setAttribute(
+        "download",
+        `industry-rankings-${selectedQuery.query
+          .replace(/[^a-z0-9]/gi, "_")
+          .toLowerCase()}-${new Date().toISOString().split("T")[0]}.csv`
+      );
+      link.style.visibility = "hidden";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      toastSonner.success(`Exported ${exportData.length - 1} brands to CSV`); // Subtract 1 for summary row
+    } catch (error) {
+      console.error("Export error:", error);
+      toastSonner.error("Failed to export data");
+    }
+  };
+
+  // Register Chart.js components
+  ChartJS.register(
+    CategoryScale,
+    LinearScale,
+    BarElement,
+    LineElement,
+    PointElement,
+    Title,
+    ChartTooltip,
+    Legend
+  );
+
+  // Function to generate chart images using client-side Chart.js
+  const generateChartImage = async (chartConfig: any): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      try {
+        const width = 800;
+        const height = 600;
+
+        // Create a canvas element
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+
+        if (!ctx) {
+          throw new Error("Could not get canvas context");
+        }
+
+        // Create the chart
+        const chart = new ChartJS(ctx, chartConfig);
+
+        // Wait for chart to render then convert to base64
+        setTimeout(() => {
+          try {
+            const base64Image = canvas.toDataURL("image/png").split(",")[1];
+            chart.destroy(); // Clean up
+            resolve(base64Image);
+          } catch (error) {
+            chart.destroy();
+            reject(error);
+          }
+        }, 500); // Give chart time to render
+      } catch (error) {
+        console.error("Chart generation error:", error);
+        reject(error);
+      }
+    });
+  };
+
+  // Export to Excel with Charts
+  const exportToExcelWithCharts = async () => {
+    if (!brandMentionsInSummaries || brandMentionsInSummaries.length === 0) {
+      toastSonner.error("No brand data available to export");
+      return;
+    }
+
+    try {
+      // Filter out any invalid brand data
+      const validBrands = brandMentionsInSummaries.filter(
+        (brand) =>
+          brand &&
+          brand.brand_name &&
+          typeof brand.brand_name === "string" &&
+          typeof brand.total_mentions === "number" &&
+          !isNaN(brand.total_mentions)
+      );
+
+      if (validBrands.length === 0) {
+        toastSonner.error("No valid brand data available to export");
+        return;
+      }
+
+      const workbook = new ExcelJS.Workbook();
+      const maxModels = selectedModel.size === 0 ? 7 : selectedModel.size;
+      const maxMentions = Math.max(
+        ...validBrands.map((brand) => brand.total_mentions || 0)
+      );
+
+      // Helper functions (same as CSV export)
+      const getCoverageRatio = (brand: any) => {
+        if (!brand) return 0;
+        const totalMentionsPerModel =
+          ((brand.gpt_mentions || 0) > 0 ? 1 : 0) +
+          ((brand.claude_mentions || 0) > 0 ? 1 : 0) +
+          ((brand.perplexity_mentions || 0) > 0 ? 1 : 0) +
+          ((brand.gemini_mentions || 0) > 0 ? 1 : 0) +
+          ((brand.gpt_search_mentions || 0) > 0 ? 1 : 0) +
+          ((brand.ai_overview_mentions || 0) > 0 ? 1 : 0) +
+          ((brand.google_ai_mode_mentions || 0) > 0 ? 1 : 0);
+
+        let selectedModelTotalMentions = 0;
+        if (selectedModel.size > 0) {
+          if (selectedModel.has("GPT 4.1") && (brand.gpt_mentions || 0) > 0)
+            selectedModelTotalMentions++;
+          if (
+            selectedModel.has("Claude 3.5 Sonnet") &&
+            (brand.claude_mentions || 0) > 0
+          )
+            selectedModelTotalMentions++;
+          if (
+            selectedModel.has("Perplexity Sonar") &&
+            (brand.perplexity_mentions || 0) > 0
+          )
+            selectedModelTotalMentions++;
+          if (
+            selectedModel.has("Gemini 2.0 Flash") &&
+            (brand.gemini_mentions || 0) > 0
+          )
+            selectedModelTotalMentions++;
+          if (
+            selectedModel.has("GPT 4o Web Search") &&
+            (brand.gpt_search_mentions || 0) > 0
+          )
+            selectedModelTotalMentions++;
+          if (
+            selectedModel.has("Google AI Overview") &&
+            (brand.ai_overview_mentions || 0) > 0
+          )
+            selectedModelTotalMentions++;
+          if (
+            selectedModel.has("Google AI Mode") &&
+            (brand.google_ai_mode_mentions || 0) > 0
+          )
+            selectedModelTotalMentions++;
+        }
+
+        const finalTotalMentions =
+          selectedModel.size > 0
+            ? selectedModelTotalMentions
+            : totalMentionsPerModel;
+        const finalMaxModels =
+          selectedModel.size > 0 ? selectedModel.size : maxModels;
+        return finalMaxModels > 0
+          ? (finalTotalMentions / finalMaxModels) * 100
+          : 0;
+      };
+
+      const getVisibilityScore = (brand: any) => {
+        if (!brand) return 0;
+        const coverageRatio = getCoverageRatio(brand) / 100;
+        const mentionsIndex =
+          maxMentions > 0 ? (brand.total_mentions || 0) / maxMentions : 0;
+        return (100 * (coverageRatio + mentionsIndex)) / 2;
+      };
+
+      // Sheet 1: Industry Rankings
+      const rankingsSheet = workbook.addWorksheet("Industry Rankings");
+
+      // Headers
+      const headers = [
+        "Brand Name",
+        "Total Mentions",
+        "Coverage Ratio (%)",
+        "Visibility Score (%)",
+        "GPT 4.1",
+        "GPT 4o Search",
+        "Claude 3.5",
+        "Perplexity",
+        "Gemini 2.0",
+        "AI Overview",
+        "AI Mode",
+      ];
+
+      rankingsSheet.addRow(headers);
+
+      // Style headers
+      rankingsSheet.getRow(1).font = { bold: true, color: { argb: "FFFFFF" } };
+      rankingsSheet.getRow(1).fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "366092" },
+      };
+
+      // Add data rows
+      const sortedBrands = [...validBrands].sort(
+        (a, b) => (b.total_mentions || 0) - (a.total_mentions || 0)
+      );
+      sortedBrands.forEach((brand) => {
+        rankingsSheet.addRow([
+          brand.brand_name || "Unknown",
+          brand.total_mentions || 0,
+          getCoverageRatio(brand).toFixed(1),
+          getVisibilityScore(brand).toFixed(1),
+          (brand.gpt_mentions || 0) > 0 ? "✓" : "✗",
+          (brand.gpt_search_mentions || 0) > 0 ? "✓" : "✗",
+          (brand.claude_mentions || 0) > 0 ? "✓" : "✗",
+          (brand.perplexity_mentions || 0) > 0 ? "✓" : "✗",
+          (brand.gemini_mentions || 0) > 0 ? "✓" : "✗",
+          (brand.ai_overview_mentions || 0) > 0 ? "✓" : "✗",
+          (brand.google_ai_mode_mentions || 0) > 0 ? "✓" : "✗",
+        ]);
+      });
+
+      // Auto-fit columns
+      rankingsSheet.columns.forEach((column) => {
+        column.width = 15;
+      });
+
+      // Generate main visibility score bar chart
+      const topBrandsForChart = sortedBrands
+        .slice(0, 10)
+        .filter((brand) => brand && brand.brand_name); // Top 10 brands
+      const visibilityChartConfig = {
+        type: "bar",
+        data: {
+          labels: topBrandsForChart.map(
+            (brand) => brand.brand_name || "Unknown"
+          ),
+          datasets: [
+            {
+              label: "Visibility Score (%)",
+              data: topBrandsForChart.map(
+                (brand) => getVisibilityScore(brand) || 0
+              ),
+              backgroundColor: "#36A2EB",
+              borderColor: "#36A2EB",
+              borderWidth: 1,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            title: {
+              display: true,
+              text: "Top 10 Brands - Visibility Score Analysis",
+              font: { size: 16 },
+            },
+            legend: {
+              display: false,
+            },
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              max: 100,
+              title: {
+                display: true,
+                text: "Visibility Score (%)",
+              },
+            },
+            x: {
+              title: {
+                display: true,
+                text: "Brands",
+              },
+            },
+          },
+        },
+      };
+
+      const visibilityChartImageBase64 = await generateChartImage(
+        visibilityChartConfig
+      );
+      rankingsSheet.addImage(
+        {
+          base64: visibilityChartImageBase64,
+          extension: "png",
+        },
+        {
+          tl: { col: 12, row: 1 }, // Start at column M (12), row 2 (1)
+          ext: { width: 600, height: 400 },
+        }
+      );
+
+      // Sheet 2: Temporal Trends
+      const trendsSheet = workbook.addWorksheet("Temporal Trends");
+
+      // Prepare temporal data with validation
+      const temporalData = (temportalBrandMentionsInSummaries || []).filter(
+        (item) => item && item.analysis_date && item.brand_name
+      );
+      const dates = [
+        ...new Set(temporalData.map((item) => item.analysis_date)),
+      ].sort();
+      const topBrands = sortedBrands
+        .slice(0, 10)
+        .filter((brand) => brand && brand.brand_name); // Top 10 brands for the chart
+
+      // Headers for temporal data
+      const temporalHeaders = [
+        "Date",
+        ...topBrands.map((brand) => brand.brand_name || "Unknown"),
+      ];
+      trendsSheet.addRow(temporalHeaders);
+
+      // Style headers
+      trendsSheet.getRow(1).font = { bold: true, color: { argb: "FFFFFF" } };
+      trendsSheet.getRow(1).fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "366092" },
+      };
+
+      // Add temporal data
+      dates.forEach((date) => {
+        const row = [new Date(date).toLocaleDateString()];
+        topBrands.forEach((brand) => {
+          const brandData = temporalData.find(
+            (item) =>
+              item.analysis_date === date &&
+              item.brand_name === brand.brand_name
+          );
+          row.push(brandData ? brandData.total_mentions || 0 : 0);
+        });
+        trendsSheet.addRow(row);
+      });
+
+      // Auto-fit columns
+      trendsSheet.columns.forEach((column) => {
+        column.width = 12;
+      });
+
+      // Generate and embed temporal trends chart
+      if (dates.length > 1 && topBrands.length > 0) {
+        const chartConfig = {
+          type: "line",
+          data: {
+            labels: dates.map((date) => new Date(date).toLocaleDateString()),
+            datasets: topBrands.slice(0, 5).map((brand, index) => {
+              const colors = [
+                "#FF6384",
+                "#36A2EB",
+                "#FFCE56",
+                "#4BC0C0",
+                "#9966FF",
+              ];
+              const data = dates.map((date) => {
+                const brandData = temporalData.find(
+                  (item) =>
+                    item.analysis_date === date &&
+                    item.brand_name === brand.brand_name
+                );
+                return brandData ? brandData.total_mentions || 0 : 0;
+              });
+
+              return {
+                label: brand.brand_name || "Unknown",
+                data: data,
+                borderColor: colors[index % colors.length],
+                backgroundColor: colors[index % colors.length] + "20",
+                tension: 0.1,
+              };
+            }),
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              title: {
+                display: true,
+                text: "Brand Mentions Over Time",
+                font: { size: 16 },
+              },
+              legend: {
+                position: "top",
+              },
+            },
+            scales: {
+              y: {
+                beginAtZero: true,
+                title: {
+                  display: true,
+                  text: "Number of Mentions",
+                },
+              },
+              x: {
+                title: {
+                  display: true,
+                  text: "Date",
+                },
+              },
+            },
+          },
+        };
+
+        const chartImageBase64 = await generateChartImage(chartConfig);
+        trendsSheet.addImage(
+          {
+            base64: chartImageBase64,
+            extension: "png",
+          },
+          {
+            tl: { col: 13, row: 1 }, // Start at column N (13), row 2 (1)
+            ext: { width: 600, height: 400 },
+          }
+        );
+      }
+
+      // Sheet 3: Model Comparison
+      const modelSheet = workbook.addWorksheet("Model Comparison");
+
+      // Model comparison data
+      const modelNames = [
+        "GPT 4.1",
+        "GPT 4o Search",
+        "Claude 3.5",
+        "Perplexity",
+        "Gemini 2.0",
+        "AI Overview",
+        "AI Mode",
+      ];
+      const modelHeaders = ["Model", "Total Brands Mentioned", "Percentage"];
+      modelSheet.addRow(modelHeaders);
+
+      // Style headers
+      modelSheet.getRow(1).font = { bold: true, color: { argb: "FFFFFF" } };
+      modelSheet.getRow(1).fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "366092" },
+      };
+
+      // Calculate model statistics
+      const totalBrands = validBrands.length;
+      const modelStats = [
+        {
+          name: "GPT 4.1",
+          count: validBrands.filter((b) => (b.gpt_mentions || 0) > 0).length,
+        },
+        {
+          name: "GPT 4o Search",
+          count: validBrands.filter((b) => (b.gpt_search_mentions || 0) > 0)
+            .length,
+        },
+        {
+          name: "Claude 3.5",
+          count: validBrands.filter((b) => (b.claude_mentions || 0) > 0).length,
+        },
+        {
+          name: "Perplexity",
+          count: validBrands.filter((b) => (b.perplexity_mentions || 0) > 0)
+            .length,
+        },
+        {
+          name: "Gemini 2.0",
+          count: validBrands.filter((b) => (b.gemini_mentions || 0) > 0).length,
+        },
+        {
+          name: "AI Overview",
+          count: validBrands.filter((b) => (b.ai_overview_mentions || 0) > 0)
+            .length,
+        },
+        {
+          name: "AI Mode",
+          count: validBrands.filter((b) => (b.google_ai_mode_mentions || 0) > 0)
+            .length,
+        },
+      ];
+
+      modelStats.forEach((stat) => {
+        const percentage = ((stat.count / totalBrands) * 100).toFixed(1);
+        modelSheet.addRow([stat.name, stat.count, `${percentage}%`]);
+      });
+
+      // Auto-fit columns
+      modelSheet.columns.forEach((column) => {
+        column.width = 18;
+      });
+
+      // Generate and embed model comparison bar chart
+      const modelChartConfig = {
+        type: "bar",
+        data: {
+          labels: modelStats.map((stat) => stat.name),
+          datasets: [
+            {
+              label: "Brands Mentioned",
+              data: modelStats.map((stat) => stat.count),
+              backgroundColor: [
+                "#FF6384",
+                "#36A2EB",
+                "#FFCE56",
+                "#4BC0C0",
+                "#9966FF",
+                "#FF9F40",
+                "#FF6384",
+              ],
+              borderColor: [
+                "#FF6384",
+                "#36A2EB",
+                "#FFCE56",
+                "#4BC0C0",
+                "#9966FF",
+                "#FF9F40",
+                "#FF6384",
+              ],
+              borderWidth: 1,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            title: {
+              display: true,
+              text: "Model Coverage - Brands Mentioned by Each AI Model",
+              font: { size: 16 },
+            },
+            legend: {
+              display: false,
+            },
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              title: {
+                display: true,
+                text: "Number of Brands",
+              },
+            },
+            x: {
+              title: {
+                display: true,
+                text: "AI Models",
+              },
+            },
+          },
+        },
+      };
+
+      const modelChartImageBase64 = await generateChartImage(modelChartConfig);
+      modelSheet.addImage(
+        {
+          base64: modelChartImageBase64,
+          extension: "png",
+        },
+        {
+          tl: { col: 4, row: 1 }, // Start at column E (4), row 2 (1)
+          ext: { width: 600, height: 400 },
+        }
+      );
+
+      // Sheet 4: Executive Summary
+      const summarySheet = workbook.addWorksheet("Executive Summary");
+
+      // Executive Summary Content
+      summarySheet.addRow(["Brand Analysis Report"]);
+      summarySheet.addRow([`Query: ${selectedQuery.query}`]);
+      summarySheet.addRow([
+        `Analysis Date: ${new Date().toLocaleDateString()}`,
+      ]);
+      summarySheet.addRow([]);
+      summarySheet.addRow(["Key Insights:"]);
+      summarySheet.addRow([`• Total Brands Analyzed: ${validBrands.length}`]);
+      summarySheet.addRow([
+        `• Top Brand: ${sortedBrands[0]?.brand_name || "N/A"} (${
+          sortedBrands[0]?.total_mentions || 0
+        } mentions)`,
+      ]);
+      summarySheet.addRow([
+        `• Models Covered: ${
+          modelStats.filter((m) => m.count > 0).length
+        } out of ${modelStats.length}`,
+      ]);
+      summarySheet.addRow([
+        `• Average Visibility Score: ${
+          validBrands.length > 0
+            ? (
+                validBrands.reduce(
+                  (sum, brand) => sum + getVisibilityScore(brand),
+                  0
+                ) / validBrands.length
+              ).toFixed(1)
+            : "0"
+        }%`,
+      ]);
+      summarySheet.addRow([]);
+      summarySheet.addRow(["Report Contents:"]);
+      summarySheet.addRow([
+        "• Industry Rankings - Complete metrics + Visibility Score Bar Chart",
+      ]);
+      summarySheet.addRow([
+        "• Temporal Trends - Time-series data + Brand Mentions Line Chart",
+      ]);
+      summarySheet.addRow([
+        "• Model Comparison - Coverage stats + AI Model Bar Chart",
+      ]);
+      summarySheet.addRow([]);
+      summarySheet.addRow(["Visual Charts Included:"]);
+      summarySheet.addRow(["✓ Top 10 Brands Visibility Score (Bar Chart)"]);
+      summarySheet.addRow(["✓ Brand Mentions Over Time (Line Chart)"]);
+      summarySheet.addRow(["✓ AI Model Coverage Comparison (Bar Chart)"]);
+      summarySheet.addRow([]);
+      summarySheet.addRow([
+        "📊 All charts are embedded as high-quality images ready for presentations!",
+      ]);
+
+      // Style the summary sheet
+      summarySheet.getRow(1).font = {
+        bold: true,
+        size: 16,
+        color: { argb: "0066CC" },
+      };
+      summarySheet.getRow(1).fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "E6F2FF" },
+      };
+      summarySheet.getRow(5).font = { bold: true, color: { argb: "2F4F4F" } };
+      summarySheet.getRow(11).font = { bold: true, color: { argb: "2F4F4F" } };
+      summarySheet.getRow(15).font = { bold: true, color: { argb: "2F4F4F" } };
+
+      // Auto-fit columns for summary
+      summarySheet.columns.forEach((column) => {
+        column.width = 60;
+      });
+
+      // Generate and download the Excel file
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+
+      const link = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      link.setAttribute("href", url);
+      link.setAttribute(
+        "download",
+        `brand-analysis-report-${selectedQuery.query
+          .replace(/[^a-z0-9]/gi, "_")
+          .toLowerCase()}-${new Date().toISOString().split("T")[0]}.xlsx`
+      );
+      link.style.visibility = "hidden";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      toastSonner.success(
+        `🎉 Excel report with embedded visual charts exported successfully! 3 professional charts included.`
+      );
+    } catch (error) {
+      console.error("Excel export error:", error);
+      toastSonner.error("Failed to export Excel report");
+    }
+  };
+
+  // Professional HTML Report Export with Charts
+  const exportToHTMLReport = async () => {
+    if (!brandMentionsInSummaries || brandMentionsInSummaries.length === 0) {
+      toastSonner.error("No brand data available to export");
+      return;
+    }
+
+    try {
+      // Filter valid brands
+      const validBrands = brandMentionsInSummaries.filter(
+        (brand) =>
+          brand &&
+          brand.brand_name &&
+          typeof brand.brand_name === "string" &&
+          typeof brand.total_mentions === "number" &&
+          !isNaN(brand.total_mentions)
+      );
+
+      if (validBrands.length === 0) {
+        toastSonner.error("No valid brand data available to export");
+        return;
+      }
+
+      const maxModels = selectedModel.size === 0 ? 7 : selectedModel.size;
+      const maxMentions = Math.max(
+        ...validBrands.map((brand) => brand.total_mentions || 0)
+      );
+
+      // Helper functions
+      const getCoverageRatio = (brand: any) => {
+        if (!brand) return 0;
+        const totalMentionsPerModel =
+          ((brand.gpt_mentions || 0) > 0 ? 1 : 0) +
+          ((brand.claude_mentions || 0) > 0 ? 1 : 0) +
+          ((brand.perplexity_mentions || 0) > 0 ? 1 : 0) +
+          ((brand.gemini_mentions || 0) > 0 ? 1 : 0) +
+          ((brand.gpt_search_mentions || 0) > 0 ? 1 : 0) +
+          ((brand.ai_overview_mentions || 0) > 0 ? 1 : 0) +
+          ((brand.google_ai_mode_mentions || 0) > 0 ? 1 : 0);
+
+        const finalMaxModels =
+          selectedModel.size > 0 ? selectedModel.size : maxModels;
+        return finalMaxModels > 0
+          ? (totalMentionsPerModel / finalMaxModels) * 100
+          : 0;
+      };
+
+      const getVisibilityScore = (brand: any) => {
+        if (!brand) return 0;
+        const coverageRatio = getCoverageRatio(brand) / 100;
+        const mentionsIndex =
+          maxMentions > 0 ? (brand.total_mentions || 0) / maxMentions : 0;
+        return (100 * (coverageRatio + mentionsIndex)) / 2;
+      };
+
+      const sortedBrands = [...validBrands].sort(
+        (a, b) => (b.total_mentions || 0) - (a.total_mentions || 0)
+      );
+
+      // Generate HTML Report
+      const reportHTML = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brand Analysis Report - ${selectedQuery?.query || "Export"}</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @media print {
+            body { margin: 0; }
+            .no-print { display: none; }
+            .page-break { page-break-before: always; }
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: white;
+        }
+        
+        .header {
+            text-align: center;
+            border-bottom: 3px solid #366092;
+            padding-bottom: 20px;
+            margin-bottom: 40px;
+        }
+        
+        .header h1 {
+            color: #366092;
+            font-size: 2.5em;
+            margin: 0;
+            font-weight: 700;
+        }
+        
+        .header .subtitle {
+            color: #666;
+            font-size: 1.2em;
+            margin: 10px 0;
+        }
+        
+        .header .meta {
+            color: #888;
+            font-size: 0.9em;
+        }
+        
+        .section {
+            margin: 40px 0;
+        }
+        
+        .section h2 {
+            color: #366092;
+            font-size: 1.8em;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+        
+        .metric-card {
+            background: #f8f9fa;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .metric-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #366092;
+            margin: 10px 0;
+        }
+        
+        .metric-label {
+            color: #666;
+            font-size: 0.9em;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        th {
+            background: #366092;
+            color: white;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+        }
+        
+        tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+        
+        tr:hover {
+            background: #e8f4f8;
+        }
+        
+        .coverage-indicator {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 20px;
+            font-weight: bold;
+            font-size: 12px;
+            color: white;
+        }
+        
+        .covered {
+            background: #28a745;
+        }
+        
+        .not-covered {
+            background: #dc3545;
+        }
+        
+        .chart-container {
+            margin: 30px 0;
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+        }
+        
+        .chart-title {
+            font-size: 1.3em;
+            font-weight: 600;
+            color: #366092;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .chart-canvas {
+            max-width: 100% !important;
+            height: 400px !important;
+            width: 100% !important;
+            max-height: 400px !important;
+            min-height: 400px !important;
+        }
+        
+        .export-buttons {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+        
+        .btn {
+            background: #366092;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 0 5px;
+            font-size: 14px;
+        }
+        
+        .btn:hover {
+            background: #2a4c73;
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+        }
+        
+        .btn-secondary:hover {
+            background: #545b62;
+        }
+        
+        .footer {
+            margin-top: 60px;
+            padding: 30px 0;
+            border-top: 2px solid #e0e0e0;
+            text-align: center;
+            background: #f8f9fa;
+        }
+        
+        .footer-content {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .footer-logo {
+            height: 40px;
+            width: auto;
+        }
+        
+        .footer-text {
+            color: #666;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        @media print {
+            .footer {
+                margin-top: 40px;
+                background: white;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="export-buttons no-print">
+        <button class="btn" onclick="window.print()">📄 Print/Save PDF</button>
+        <button class="btn btn-secondary" onclick="window.close()">✖ Close</button>
+    </div>
+
+    <div class="header">
+        <h1>Brand Analysis Report</h1>
+        <div class="subtitle">Query: "${selectedQuery?.query || "Export"}"</div>
+        <div class="meta">
+            Generated on ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>📊 Executive Summary</h2>
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div class="metric-value">${validBrands.length}</div>
+                <div class="metric-label">Total Brands Analyzed</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value">${
+                  sortedBrands[0]?.brand_name || "N/A"
+                }</div>
+                <div class="metric-label">Top Performing Brand</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value">${
+                  sortedBrands[0]?.total_mentions || 0
+                }</div>
+                <div class="metric-label">Highest Mentions</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value">${
+                  validBrands.length > 0
+                    ? (
+                        validBrands.reduce(
+                          (sum, brand) => sum + getVisibilityScore(brand),
+                          0
+                        ) / validBrands.length
+                      ).toFixed(1)
+                    : "0"
+                }%</div>
+                <div class="metric-label">Average Visibility Score</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>🏆 Brand Rankings</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>Brand Name</th>
+                    <th>Total Mentions</th>
+                    <th>Coverage Ratio</th>
+                    <th>Visibility Score</th>
+                    <th>GPT 4.1</th>
+                    <th>GPT 4o</th>
+                    <th>Claude 3.5</th>
+                    <th>Perplexity</th>
+                    <th>Gemini 2.0</th>
+                    <th>AI Overview</th>
+                    <th>AI Mode</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${sortedBrands
+                  .map(
+                    (brand, index) => `
+                    <tr>
+                        <td><strong>#${index + 1}</strong></td>
+                        <td><strong>${
+                          brand.brand_name || "Unknown"
+                        }</strong></td>
+                        <td>${brand.total_mentions || 0}</td>
+                        <td>${getCoverageRatio(brand).toFixed(1)}%</td>
+                        <td>${getVisibilityScore(brand).toFixed(1)}%</td>
+                        <td><span class="coverage-indicator ${
+                          (brand.gpt_mentions || 0) > 0
+                            ? "covered"
+                            : "not-covered"
+                        }">${
+                      (brand.gpt_mentions || 0) > 0 ? "✓" : "✗"
+                    }</span></td>
+                        <td><span class="coverage-indicator ${
+                          (brand.gpt_search_mentions || 0) > 0
+                            ? "covered"
+                            : "not-covered"
+                        }">${
+                      (brand.gpt_search_mentions || 0) > 0 ? "✓" : "✗"
+                    }</span></td>
+                        <td><span class="coverage-indicator ${
+                          (brand.claude_mentions || 0) > 0
+                            ? "covered"
+                            : "not-covered"
+                        }">${
+                      (brand.claude_mentions || 0) > 0 ? "✓" : "✗"
+                    }</span></td>
+                        <td><span class="coverage-indicator ${
+                          (brand.perplexity_mentions || 0) > 0
+                            ? "covered"
+                            : "not-covered"
+                        }">${
+                      (brand.perplexity_mentions || 0) > 0 ? "✓" : "✗"
+                    }</span></td>
+                        <td><span class="coverage-indicator ${
+                          (brand.gemini_mentions || 0) > 0
+                            ? "covered"
+                            : "not-covered"
+                        }">${
+                      (brand.gemini_mentions || 0) > 0 ? "✓" : "✗"
+                    }</span></td>
+                        <td><span class="coverage-indicator ${
+                          (brand.ai_overview_mentions || 0) > 0
+                            ? "covered"
+                            : "not-covered"
+                        }">${
+                      (brand.ai_overview_mentions || 0) > 0 ? "✓" : "✗"
+                    }</span></td>
+                        <td><span class="coverage-indicator ${
+                          (brand.google_ai_mode_mentions || 0) > 0
+                            ? "covered"
+                            : "not-covered"
+                        }">${
+                      (brand.google_ai_mode_mentions || 0) > 0 ? "✓" : "✗"
+                    }</span></td>
+                    </tr>
+                `
+                  )
+                  .join("")}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="page-break"></div>
+    
+    <div class="section">
+        <h2>📈 Visual Analytics</h2>
+        
+        <div class="chart-container">
+            <div class="chart-title">Top 10 Brands - Visibility Score Analysis</div>
+            <div style="position: relative; height: 400px; width: 100%;">
+                <canvas id="visibilityChart" class="chart-canvas"></canvas>
+            </div>
+        </div>
+        
+        <div class="chart-container">
+            <div class="chart-title">AI Model Coverage Comparison</div>
+            <div style="position: relative; height: 400px; width: 100%;">
+                <canvas id="modelChart" class="chart-canvas"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Generate charts after page loads
+        window.addEventListener('load', function() {
+            // Visibility Score Chart
+            const visibilityCtx = document.getElementById('visibilityChart').getContext('2d');
+            const topBrands = ${JSON.stringify(
+              sortedBrands.slice(0, 10).map((brand) => ({
+                name: brand.brand_name,
+                score: getVisibilityScore(brand),
+              }))
+            )};
+            
+            new Chart(visibilityCtx, {
+                type: 'bar',
+                data: {
+                    labels: topBrands.map(brand => brand.name),
+                    datasets: [{
+                        label: 'Visibility Score (%)',
+                        data: topBrands.map(brand => brand.score),
+                        backgroundColor: '#366092',
+                        borderColor: '#366092',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            title: { display: true, text: 'Visibility Score (%)' }
+                        },
+                        x: {
+                            title: { display: true, text: 'Brands' }
+                        }
+                    },
+                    layout: {
+                        padding: 10
+                    }
+                }
+            });
+
+            // Model Coverage Chart
+            const modelCtx = document.getElementById('modelChart').getContext('2d');
+            const modelStats = [
+                { name: 'GPT 4.1', count: ${
+                  validBrands.filter((b) => (b.gpt_mentions || 0) > 0).length
+                } },
+                { name: 'GPT 4o Search', count: ${
+                  validBrands.filter((b) => (b.gpt_search_mentions || 0) > 0)
+                    .length
+                } },
+                { name: 'Claude 3.5', count: ${
+                  validBrands.filter((b) => (b.claude_mentions || 0) > 0).length
+                } },
+                { name: 'Perplexity', count: ${
+                  validBrands.filter((b) => (b.perplexity_mentions || 0) > 0)
+                    .length
+                } },
+                { name: 'Gemini 2.0', count: ${
+                  validBrands.filter((b) => (b.gemini_mentions || 0) > 0).length
+                } },
+                { name: 'AI Overview', count: ${
+                  validBrands.filter((b) => (b.ai_overview_mentions || 0) > 0)
+                    .length
+                } },
+                { name: 'AI Mode', count: ${
+                  validBrands.filter(
+                    (b) => (b.google_ai_mode_mentions || 0) > 0
+                  ).length
+                } }
+            ];
+            
+            new Chart(modelCtx, {
+                type: 'bar',
+                data: {
+                    labels: modelStats.map(stat => stat.name),
+                    datasets: [{
+                        label: 'Brands Mentioned',
+                        data: modelStats.map(stat => stat.count),
+                        backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#C9CBCF'],
+                        borderColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#C9CBCF'],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: { display: true, text: 'Number of Brands' }
+                        },
+                        x: {
+                            title: { display: true, text: 'AI Models' }
+                        }
+                    },
+                    layout: {
+                        padding: 10
+                    }
+                }
+            });
+        });
+    </script>
+
+    <div class="footer">
+        <div class="footer-content">
+            <img src="https://airankia.com/icons/air-logo-dark.png" alt="AI Rankia Logo" class="footer-logo">
+            <div class="footer-text">
+                Report created on AI Rankia
+            </div>
+        </div>
+    </div>
+</body>
+</html>`;
+
+      // Create and download HTML file
+      const blob = new Blob([reportHTML], { type: "text/html" });
+      const url = URL.createObjectURL(blob);
+
+      // Open in new window for printing/PDF
+      const newWindow = window.open(url, "_blank");
+      if (newWindow) {
+        newWindow.focus();
+      } else {
+        // Fallback: download as file
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `brand-analysis-report-${(
+          selectedQuery?.query || "export"
+        )
+          .replace(/[^a-z0-9]/gi, "_")
+          .toLowerCase()}-${new Date().toISOString().split("T")[0]}.html`;
+        link.click();
+      }
+
+      toastSonner.success(
+        "🎉 HTML Report generated! Use Print → Save as PDF for PDF export."
+      );
+    } catch (error) {
+      console.error("HTML Report export error:", error);
+      toastSonner.error("Failed to generate HTML report");
+    }
   };
 
   const getDisplayValue = () => {
@@ -1218,11 +2802,21 @@ function DashboardContent() {
   useEffect(() => {
     if (brandMentionsInSummaries && brandMentionsInSummaries.length > 0) {
       const firstBrandName = brandMentionsInSummaries[0]?.brand_name;
-      if (firstBrandName) {
+      if (selectedBrands.size === 0) {
         setSelectedBrands(new Set([firstBrandName]));
+      } else if (selectedBrands.size > 0) {
+        // Get the first selected brand name
+        const firstSelectedBrand = Array.from(selectedBrands)[0];
+        // Check if the selected brand exists in the current brand mentions
+        const brandExists = brandMentionsInSummaries.some(
+          (brand) => brand.brand_name === firstSelectedBrand
+        );
+        if (!brandExists) {
+          setSelectedBrands(new Set([firstBrandName]));
+        }
       }
     }
-  }, [brandMentionsInSummaries]);
+  }, [brandMentionsInSummaries, selectedBrands]);
 
   // Effect to reset filters when prompt changes
   useEffect(() => {
@@ -1935,560 +3529,779 @@ function DashboardContent() {
           >
             <div className="min-h-screen ">
               <div className="space-y-6">
-                <motion.div
-                  className="w-full flex justify-between items-center gap-2 rounded-md p-3 bg-blue-500/10 border-dashed border-1 border-blue-500/20 cursor-pointer hover:bg-blue-500/20 transition duration-300"
-                  onClick={() => setIsExpanded(!isExpanded)}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <div className="flex items-center gap-2">
-                    <Clock9 className="w-4 h-4 text-muted-foreground" />
-                    <p className="text-muted-foreground">
-                      {currentTime.toLocaleTimeString(undefined, {
-                        hour: "numeric",
-                        minute: "2-digit",
-                        second: "2-digit",
-                        hour12: false,
-                      })}
-                    </p>
-                    {"•"}
-                    <p>{queries.length} total prompts ({queries.filter((query) => query.status === "active").length} active)</p>
-                    {"•"}
-                    <p className="text-muted-foreground">Currently viewing: <em className="text-white">&quot;{selectedQuery?.query}&quot;</em></p>
-                  </div>
-                  <motion.div
-                    animate={{ rotate: isExpanded ? 180 : 0 }}
-                    transition={{ duration: 0.3, ease: "easeInOut" }}
-                  >
-                    <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                  </motion.div>
-                </motion.div>
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.3 }}
-                  className="w-full"
-                >
-                  <div className="flex md:flex-row flex-col justify-start md:items-center gap-4 w-full">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className="w-full !border !border-accent md:w-fit"
-                        >
-                          {getDisplayValue()}
-                          <span>
-                            <ChevronDown className="w-4 h-4 opacity-40" />
-                          </span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent className="w-56">
-                        {" "}
-                        <DropdownMenuLabel>Filter by Brand</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuCheckboxItem
-                          checked={selectedBrands.has("all")}
-                          onCheckedChange={(checked) =>
-                            handleCheckedChange("all", checked)
-                          }
-                        >
-                          All Brands
-                        </DropdownMenuCheckboxItem>
-                        <ScrollArea className="h-[200px]">
-                          {analysis_brands?.map((brand, index) => (
-                            <DropdownMenuCheckboxItem
-                              key={index}
-                              checked={selectedBrands.has(brand.name)}
-                              onCheckedChange={(checked) =>
-                                handleCheckedChange(brand.name, checked)
-                              }
-                            >
-                              {brand.name}
-                            </DropdownMenuCheckboxItem>
-                          ))}
-                        </ScrollArea>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-
-                    {/* Date Range Selection */}
-                    {isNotDesktop ? (
-                        <div className="grid grid-cols-4 w-full items-center gap-2 whitespace-nowrap">
-                        <Button
-                          variant={
-                            selectedDateRange === "today"
-                              ? "default"
-                              : "outline"
-                          }
-                          size="sm"
-                          onClick={() => {
-                            setSelectedDateRange("today");
-                            setCustomDateRange({
-                              from: undefined,
-                              to: undefined,
-                            });
-                          }}
-                          className={`text-xs ${
-                            selectedDateRange === "today" &&
-                            "rounded-full bg-blue-500/20 text-blue-500 border border-blue-500 hover:text-white"
-                          }`}
-                        >
-                          Today
-                        </Button>
-                        <Button
-                          variant={
-                            selectedDateRange === "7days"
-                              ? "default"
-                              : "outline"
-                          }
-                          size="sm"
-                          onClick={() => {
-                            setSelectedDateRange("7days");
-                            setCustomDateRange({
-                              from: undefined,
-                              to: undefined,
-                            });
-                          }}
-                          className={`text-xs ${
-                            selectedDateRange === "7days" &&
-                            "rounded-full bg-blue-500/20 text-blue-500 border border-blue-500 hover:text-white"
-                          }`}
-                        >
-                          7 Days
-                        </Button>
-                        <Button
-                          variant={
-                            selectedDateRange === "30days"
-                              ? "default"
-                              : "outline"
-                          }
-                          size="sm"
-                          onClick={() => {
-                            setSelectedDateRange("30days");
-                            setCustomDateRange({
-                              from: undefined,
-                              to: undefined,
-                            });
-                          }}
-                          className={`text-xs ${
-                            selectedDateRange === "30days" &&
-                            "rounded-full bg-blue-500/20 text-blue-500 border border-blue-500 hover:text-white"
-                          }`}
-                        >
-                          30 Days
-                        </Button>
-                        <Button
-                          variant={
-                            selectedDateRange === "all" ? "default" : "outline"
-                          }
-                          size="sm"
-                          onClick={() => {
-                            setSelectedDateRange("all");
-                            setCustomDateRange({
-                              from: undefined,
-                              to: undefined,
-                            });
-                          }}
-                          className={`text-xs ${
-                            selectedDateRange === "all" &&
-                            "rounded-full bg-blue-500/20 text-blue-500 border border-blue-500 hover:text-white"
-                          }`}
-                        >
-                          All Time
-                        </Button>
-
-                        {/* Custom Date Range Picker */}
-                        <Popover >
-                          <PopoverTrigger asChild>
-                            <Button
-                              variant={
-                                selectedDateRange === "custom"
-                                  ? "default"
-                                  : "outline"
-                              }
-                              size="sm"
-                              className={cn(
-                                "text-xs justify-start text-left font-normal col-span-2",
-                                !customDateRange.from &&
-                                  !customDateRange.to &&
-                                  "text-muted-foreground"
-                              )}
-                            >
-                              <CalendarIcon className="mr-2 h-4 w-4" />
-                              {customDateRange.from ? (
-                                customDateRange.to ? (
-                                  <>
-                                    {format(customDateRange.from, "LLL dd, y")}{" "}
-                                    - {format(customDateRange.to, "LLL dd, y")}
-                                  </>
-                                ) : (
-                                  format(customDateRange.from, "LLL dd, y")
-                                )
-                              ) : (
-                                <span>Pick a date range</span>
-                              )}
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                              initialFocus
-                              mode="range"
-                              defaultMonth={customDateRange.from}
-                              selected={customDateRange}
-                              onSelect={(range) => {
-                                setCustomDateRange(
-                                  range || { from: undefined, to: undefined }
-                                );
-                                if (range?.from && range?.to) {
-                                  setSelectedDateRange("custom");
-                                }
-                              }}
-                              numberOfMonths={2}
-                            />
-                          </PopoverContent>
-                        </Popover>
+                <Tabs defaultValue="ai-analysis" className="w-full">
+                  <TabsList className="w-full bg-background h-14">
+                    <TabsTrigger
+                      value="ai-analysis"
+                      className="data-[state=active]:!bg-blue-500/20 border-none rounded-full"
+                    >
+                      <Gemini.Color className="w-4 h-4" />
+                      AI Analysis
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="citations"
+                      className="data-[state=active]:!bg-blue-500/20 border-none rounded-lg"
+                    >
+                      <TextSearch className="w-4 h-4" />
+                      Citations
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="google-search"
+                      className="data-[state=active]:!bg-blue-500/20 border-none rounded-full"
+                    >
+                      <Search className="w-4 h-4" />
+                      Google Search
+                    </TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="ai-analysis" className="space-y-4">
+                    <motion.div
+                      className="w-full flex justify-between items-center gap-2 rounded-md p-3 bg-blue-500/10 border-dashed border-1 border-blue-500/20 cursor-pointer hover:bg-blue-500/20 transition duration-300"
+                      onClick={() => setIsExpanded(!isExpanded)}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Clock9 className="w-4 h-4 text-muted-foreground" />
+                        <p className="text-muted-foreground">
+                          {currentTime.toLocaleTimeString(undefined, {
+                            hour: "numeric",
+                            minute: "2-digit",
+                            second: "2-digit",
+                            hour12: false,
+                          })}
+                        </p>
+                        {"•"}
+                        <p className="text-muted-foreground">{queries.length} total prompts</p>
+                        {"•"}
+                        <p className="text-muted-foreground">{queries.filter((query) => query.status === "active").length} active</p>
                       </div>
-
-                    ): (
-                    <div className="flex items-center gap-2 group">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className={`min-w-[120px] text-sm py-4 rounded-full !border !border-accent`}
+                      <motion.div
+                        animate={{ rotate: isExpanded ? 180 : 0 }}
+                        transition={{ duration: 0.3, ease: "easeInOut" }}
                       >
-                        <span className="group-hover:hidden">
-                          {selectedDateRange === "today" ? (
-                            "Today"
-                          ) : selectedDateRange === "7days" ? (
-                            "7 Days"
-                          ) : selectedDateRange === "30days" ? (
-                            "30 Days"
-                          ) : selectedDateRange === "all" ? (
-                            "All Time"
-                          ) : customDateRange.from ? (
-                            customDateRange.to ? (
-                              <>
-                                {format(customDateRange.from, "LLL dd, y")} -{" "}
-                                {format(customDateRange.to, "LLL dd, y")}
-                              </>
-                            ) : (
-                              format(customDateRange.from, "LLL dd, y")
-                            )
-                          ) : (
-                            <span>Select Date Range</span>
-                          )}
-                        </span>
-                        <span className="hidden group-hover:block">
-                          Select Date Range
-                        </span>
-                      </Button>
-                      <div className="flex items-center gap-2 opacity-0 max-w-0 group-hover:max-w-[600px] group-hover:ml-2 group-hover:opacity-100 transition-all duration-300 ease-in-out overflow-hidden whitespace-nowrap">
-                        <Button
-                          variant={
-                            selectedDateRange === "today"
-                              ? "default"
-                              : "outline"
-                          }
-                          size="sm"
-                          onClick={() => {
-                            setSelectedDateRange("today");
-                            setCustomDateRange({
-                              from: undefined,
-                              to: undefined,
-                            });
-                          }}
-                          className={`text-xs ${
-                            selectedDateRange === "today" &&
-                            "rounded-full bg-blue-500/20 text-blue-500 border border-blue-500 hover:text-white"
-                          }`}
-                        >
-                          Today
-                        </Button>
-                        <Button
-                          variant={
-                            selectedDateRange === "7days"
-                              ? "default"
-                              : "outline"
-                          }
-                          size="sm"
-                          onClick={() => {
-                            setSelectedDateRange("7days");
-                            setCustomDateRange({
-                              from: undefined,
-                              to: undefined,
-                            });
-                          }}
-                          className={`text-xs ${
-                            selectedDateRange === "7days" &&
-                            "rounded-full bg-blue-500/20 text-blue-500 border border-blue-500 hover:text-white"
-                          }`}
-                        >
-                          7 Days
-                        </Button>
-                        <Button
-                          variant={
-                            selectedDateRange === "30days"
-                              ? "default"
-                              : "outline"
-                          }
-                          size="sm"
-                          onClick={() => {
-                            setSelectedDateRange("30days");
-                            setCustomDateRange({
-                              from: undefined,
-                              to: undefined,
-                            });
-                          }}
-                          className={`text-xs ${
-                            selectedDateRange === "30days" &&
-                            "rounded-full bg-blue-500/20 text-blue-500 border border-blue-500 hover:text-white"
-                          }`}
-                        >
-                          30 Days
-                        </Button>
-                        <Button
-                          variant={
-                            selectedDateRange === "all" ? "default" : "outline"
-                          }
-                          size="sm"
-                          onClick={() => {
-                            setSelectedDateRange("all");
-                            setCustomDateRange({
-                              from: undefined,
-                              to: undefined,
-                            });
-                          }}
-                          className={`text-xs ${
-                            selectedDateRange === "all" &&
-                            "rounded-full bg-blue-500/20 text-blue-500 border border-blue-500 hover:text-white"
-                          }`}
-                        >
-                          All Time
-                        </Button>
+                        <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                      </motion.div>
+                    </motion.div>
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.3 }}
+                      className="w-full"
+                    >
+                      <div className="flex md:flex-row flex-col justify-start md:items-center gap-4 w-full">
+                        {/* Export Buttons */}
+                        <div className="flex gap-2">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="outline"
+                                className="w-full !border !border-accent md:w-fit rounded-full"
+                              >
+                                <Download className="w-4 h-4" />
+                                Export
+                                <ChevronDown className="w-4 h-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent
+                              align="start"
+                              className="pb-2 px-2 space-y-3 rounded-xl w-50"
+                            >
+                              <DropdownMenuLabel className="text-xs text-white/20 ">
+                                Export Options
+                              </DropdownMenuLabel>
+                              <DropdownMenuItem
+                                onClick={exportToCSV}
+                                className="rounded-md"
+                              >
+                                <div className="flex items-center gap-2">
+                                  <span>Export as CSV</span>
+                                </div>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={exportToExcelWithCharts}
+                                className="rounded-md"
+                              >
+                                <div className="flex items-center gap-2">
+                                  <span>Export as Excel</span>
+                                </div>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={exportToHTMLReport}
+                                className="rounded-md"
+                              >
+                                <div className="flex items-center gap-2">
+                                  <span>Generate HTML Report</span>
+                                </div>
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
 
-                        {/* Custom Date Range Picker */}
-                        <Popover>
-                          <PopoverTrigger asChild>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="outline"
+                              className="w-full !border !border-accent md:w-fit"
+                            >
+                              {getDisplayValue()}
+                              <span>
+                                <ChevronDown className="w-4 h-4 opacity-40" />
+                              </span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent className="w-80">
+                            <DropdownMenuLabel>
+                              Filter by Brand
+                            </DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+
+                            {/* Search Input */}
+                            <div className="px-2 py-2">
+                              <div className="relative">
+                                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                  placeholder="Search brands..."
+                                  value={brandSearchQuery}
+                                  onChange={(e) =>
+                                    setBrandSearchQuery(e.target.value)
+                                  }
+                                  className="pl-8"
+                                />
+                              </div>
+                            </div>
+
+                            {/* Selected Brands Grid */}
+                            {selectedBrands.size > 0 &&
+                              !selectedBrands.has("all") && (
+                                <div className="px-2 py-2">
+                                  <div className="text-xs text-muted-foreground mb-2">
+                                    Selected ({selectedBrands.size})
+                                  </div>
+                                  <div className="flex flex-wrap gap-1">
+                                    {Array.from(selectedBrands).map(
+                                      (brandName) => (
+                                        <div
+                                          key={brandName}
+                                          className="flex items-center gap-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 px-2 py-1 rounded-full text-xs"
+                                        >
+                                          <span className="truncate max-w-24">
+                                            {brandName}
+                                          </span>
+                                          <button
+                                            onClick={(e) => {
+                                              e.preventDefault();
+                                              e.stopPropagation();
+                                              removeBrandFromSelection(
+                                                brandName
+                                              );
+                                            }}
+                                            className="hover:bg-blue-200 dark:hover:bg-blue-800 rounded-full p-0.5 transition-colors"
+                                          >
+                                            <X className="h-3 w-3" />
+                                          </button>
+                                        </div>
+                                      )
+                                    )}
+                                  </div>
+                                  <DropdownMenuSeparator className="my-2" />
+                                </div>
+                              )}
+
+                            {/* All Brands Option */}
+                            <DropdownMenuCheckboxItem
+                              checked={selectedBrands.has("all")}
+                              onCheckedChange={(checked) =>
+                                handleCheckedChange("all", checked)
+                              }
+                            >
+                              All Brands
+                            </DropdownMenuCheckboxItem>
+
+                            {/* Scrollable Brand List */}
+                            <ScrollArea className="h-[200px]">
+                              {filteredBrandsForSearch?.length > 0 ? (
+                                filteredBrandsForSearch.map((brand, index) => (
+                                  <DropdownMenuCheckboxItem
+                                    key={index}
+                                    checked={selectedBrands.has(brand.name)}
+                                    onCheckedChange={(checked) =>
+                                      handleCheckedChange(brand.name, checked)
+                                    }
+                                  >
+                                    {brand.name}
+                                  </DropdownMenuCheckboxItem>
+                                ))
+                              ) : (
+                                <div className="px-2 py-2 text-sm text-muted-foreground text-center">
+                                  {brandSearchQuery
+                                    ? "No brands found"
+                                    : "No brands available"}
+                                </div>
+                              )}
+                            </ScrollArea>
+
+                            {/* Clear Search */}
+                            {brandSearchQuery && (
+                              <>
+                                <DropdownMenuSeparator />
+                                <div className="px-2 py-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setBrandSearchQuery("")}
+                                    className="w-full text-xs"
+                                  >
+                                    Clear Search
+                                  </Button>
+                                </div>
+                              </>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+
+                        {/* Date Range Selection */}
+                        {isNotDesktop ? (
+                          <div className="grid grid-cols-4 w-full items-center gap-2 whitespace-nowrap">
                             <Button
                               variant={
-                                selectedDateRange === "custom"
+                                selectedDateRange === "today"
                                   ? "default"
                                   : "outline"
                               }
                               size="sm"
-                              className={cn(
-                                "text-xs justify-start text-left font-normal",
-                                !customDateRange.from &&
-                                  !customDateRange.to &&
-                                  "text-muted-foreground"
-                              )}
-                            >
-                              <CalendarIcon className="mr-2 h-4 w-4" />
-                              {customDateRange.from ? (
-                                customDateRange.to ? (
-                                  <>
-                                    {format(customDateRange.from, "LLL dd, y")}{" "}
-                                    - {format(customDateRange.to, "LLL dd, y")}
-                                  </>
-                                ) : (
-                                  format(customDateRange.from, "LLL dd, y")
-                                )
-                              ) : (
-                                <span>Pick a date range</span>
-                              )}
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                              initialFocus
-                              mode="range"
-                              defaultMonth={customDateRange.from}
-                              selected={customDateRange}
-                              onSelect={(range) => {
-                                setCustomDateRange(
-                                  range || { from: undefined, to: undefined }
-                                );
-                                if (range?.from && range?.to) {
-                                  setSelectedDateRange("custom");
-                                }
-                              }}
-                              numberOfMonths={2}
-                            />
-                          </PopoverContent>
-                        </Popover>
-                      </div>
-                    </div>
-
-                    )}
-
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className="w-full !border !border-accent md:w-fit"
-                        >
-                          {selectedModel.size === 0
-                            ? "All Models"
-                            : selectedModel.size === 1
-                            ? Array.from(selectedModel)[0]
-                            : `${selectedModel.size} models selected`}
-                          <span>
-                            <ChevronDown className="w-4 h-4 opacity-40" />
-                          </span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent className="w-56">
-                        <DropdownMenuLabel>Filter by Model</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuCheckboxItem
-                          checked={selectedModel.size === 0}
-                          onCheckedChange={(checked) => {
-                            if (checked) {
-                              setSelectedModel(new Set<string>([]));
-                            }
-                          }}
-                        >
-                          All Models
-                        </DropdownMenuCheckboxItem>
-                        <ScrollArea className="h-[200px]">
-                          {analysis_models?.map((model: string) => (
-                            <DropdownMenuCheckboxItem
-                              key={model}
-                              checked={selectedModel.has(model)}
-                              onCheckedChange={(checked) => {
-                                setSelectedModel((prev) => {
-                                  const newSelection = new Set(prev);
-                                  if (checked) {
-                                    newSelection.add(model);
-                                  } else {
-                                    newSelection.delete(model);
-                                  }
-                                  return newSelection;
+                              onClick={() => {
+                                setSelectedDateRange("today");
+                                setCustomDateRange({
+                                  from: undefined,
+                                  to: undefined,
                                 });
                               }}
+                              className={`text-xs ${
+                                selectedDateRange === "today" &&
+                                "rounded-full bg-blue-500/20 text-blue-500 border border-blue-500 hover:text-white"
+                              }`}
                             >
-                              {model}
+                              Today
+                            </Button>
+                            <Button
+                              variant={
+                                selectedDateRange === "7days"
+                                  ? "default"
+                                  : "outline"
+                              }
+                              size="sm"
+                              onClick={() => {
+                                setSelectedDateRange("7days");
+                                setCustomDateRange({
+                                  from: undefined,
+                                  to: undefined,
+                                });
+                              }}
+                              className={`text-xs ${
+                                selectedDateRange === "7days" &&
+                                "rounded-full bg-blue-500/20 text-blue-500 border border-blue-500 hover:text-white"
+                              }`}
+                            >
+                              7 Days
+                            </Button>
+                            <Button
+                              variant={
+                                selectedDateRange === "30days"
+                                  ? "default"
+                                  : "outline"
+                              }
+                              size="sm"
+                              onClick={() => {
+                                setSelectedDateRange("30days");
+                                setCustomDateRange({
+                                  from: undefined,
+                                  to: undefined,
+                                });
+                              }}
+                              className={`text-xs ${
+                                selectedDateRange === "30days" &&
+                                "rounded-full bg-blue-500/20 text-blue-500 border border-blue-500 hover:text-white"
+                              }`}
+                            >
+                              30 Days
+                            </Button>
+                            <Button
+                              variant={
+                                selectedDateRange === "all"
+                                  ? "default"
+                                  : "outline"
+                              }
+                              size="sm"
+                              onClick={() => {
+                                setSelectedDateRange("all");
+                                setCustomDateRange({
+                                  from: undefined,
+                                  to: undefined,
+                                });
+                              }}
+                              className={`text-xs ${
+                                selectedDateRange === "all" &&
+                                "rounded-full bg-blue-500/20 text-blue-500 border border-blue-500 hover:text-white"
+                              }`}
+                            >
+                              All Time
+                            </Button>
+
+                            {/* Custom Date Range Picker */}
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button
+                                  variant={
+                                    selectedDateRange === "custom"
+                                      ? "default"
+                                      : "outline"
+                                  }
+                                  size="sm"
+                                  className={cn(
+                                    "text-xs justify-start text-left font-normal col-span-2",
+                                    !customDateRange.from &&
+                                      !customDateRange.to &&
+                                      "text-muted-foreground"
+                                  )}
+                                >
+                                  <CalendarIcon className="mr-2 h-4 w-4" />
+                                  {customDateRange.from ? (
+                                    customDateRange.to ? (
+                                      <>
+                                        {format(
+                                          customDateRange.from,
+                                          "LLL dd, y"
+                                        )}{" "}
+                                        -{" "}
+                                        {format(
+                                          customDateRange.to,
+                                          "LLL dd, y"
+                                        )}
+                                      </>
+                                    ) : (
+                                      format(customDateRange.from, "LLL dd, y")
+                                    )
+                                  ) : (
+                                    <span>Pick a date range</span>
+                                  )}
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent
+                                className="w-auto p-0"
+                                align="start"
+                              >
+                                <Calendar
+                                  initialFocus
+                                  mode="range"
+                                  defaultMonth={customDateRange.from}
+                                  selected={customDateRange}
+                                  onSelect={(range) => {
+                                    setCustomDateRange(
+                                      range || {
+                                        from: undefined,
+                                        to: undefined,
+                                      }
+                                    );
+                                    if (range?.from && range?.to) {
+                                      setSelectedDateRange("custom");
+                                    }
+                                  }}
+                                  numberOfMonths={2}
+                                />
+                              </PopoverContent>
+                            </Popover>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2 group">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className={`min-w-[120px] text-sm py-4 rounded-full !border !border-accent`}
+                            >
+                              <span className="group-hover:hidden">
+                                {selectedDateRange === "today" ? (
+                                  "Today"
+                                ) : selectedDateRange === "7days" ? (
+                                  "7 Days"
+                                ) : selectedDateRange === "30days" ? (
+                                  "30 Days"
+                                ) : selectedDateRange === "all" ? (
+                                  "All Time"
+                                ) : customDateRange.from ? (
+                                  customDateRange.to ? (
+                                    <>
+                                      {format(
+                                        customDateRange.from,
+                                        "LLL dd, y"
+                                      )}{" "}
+                                      -{" "}
+                                      {format(customDateRange.to, "LLL dd, y")}
+                                    </>
+                                  ) : (
+                                    format(customDateRange.from, "LLL dd, y")
+                                  )
+                                ) : (
+                                  <span>Select Date Range</span>
+                                )}
+                              </span>
+                              <span className="hidden group-hover:block">
+                                Select Date Range
+                              </span>
+                            </Button>
+                            <div className="flex items-center gap-2 opacity-0 max-w-0 group-hover:max-w-[600px] group-hover:ml-2 group-hover:opacity-100 transition-all duration-300 ease-in-out overflow-hidden whitespace-nowrap">
+                              <Button
+                                variant={
+                                  selectedDateRange === "today"
+                                    ? "default"
+                                    : "outline"
+                                }
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedDateRange("today");
+                                  setCustomDateRange({
+                                    from: undefined,
+                                    to: undefined,
+                                  });
+                                }}
+                                className={`text-xs ${
+                                  selectedDateRange === "today" &&
+                                  "rounded-full bg-blue-500/20 text-blue-500 border border-blue-500 hover:text-white"
+                                }`}
+                              >
+                                Today
+                              </Button>
+                              <Button
+                                variant={
+                                  selectedDateRange === "7days"
+                                    ? "default"
+                                    : "outline"
+                                }
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedDateRange("7days");
+                                  setCustomDateRange({
+                                    from: undefined,
+                                    to: undefined,
+                                  });
+                                }}
+                                className={`text-xs ${
+                                  selectedDateRange === "7days" &&
+                                  "rounded-full bg-blue-500/20 text-blue-500 border border-blue-500 hover:text-white"
+                                }`}
+                              >
+                                7 Days
+                              </Button>
+                              <Button
+                                variant={
+                                  selectedDateRange === "30days"
+                                    ? "default"
+                                    : "outline"
+                                }
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedDateRange("30days");
+                                  setCustomDateRange({
+                                    from: undefined,
+                                    to: undefined,
+                                  });
+                                }}
+                                className={`text-xs ${
+                                  selectedDateRange === "30days" &&
+                                  "rounded-full bg-blue-500/20 text-blue-500 border border-blue-500 hover:text-white"
+                                }`}
+                              >
+                                30 Days
+                              </Button>
+                              <Button
+                                variant={
+                                  selectedDateRange === "all"
+                                    ? "default"
+                                    : "outline"
+                                }
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedDateRange("all");
+                                  setCustomDateRange({
+                                    from: undefined,
+                                    to: undefined,
+                                  });
+                                }}
+                                className={`text-xs ${
+                                  selectedDateRange === "all" &&
+                                  "rounded-full bg-blue-500/20 text-blue-500 border border-blue-500 hover:text-white"
+                                }`}
+                              >
+                                All Time
+                              </Button>
+
+                              {/* Custom Date Range Picker */}
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <Button
+                                    variant={
+                                      selectedDateRange === "custom"
+                                        ? "default"
+                                        : "outline"
+                                    }
+                                    size="sm"
+                                    className={cn(
+                                      "text-xs justify-start text-left font-normal",
+                                      !customDateRange.from &&
+                                        !customDateRange.to &&
+                                        "text-muted-foreground"
+                                    )}
+                                  >
+                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                    {customDateRange.from ? (
+                                      customDateRange.to ? (
+                                        <>
+                                          {format(
+                                            customDateRange.from,
+                                            "LLL dd, y"
+                                          )}{" "}
+                                          -{" "}
+                                          {format(
+                                            customDateRange.to,
+                                            "LLL dd, y"
+                                          )}
+                                        </>
+                                      ) : (
+                                        format(
+                                          customDateRange.from,
+                                          "LLL dd, y"
+                                        )
+                                      )
+                                    ) : (
+                                      <span>Pick a date range</span>
+                                    )}
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent
+                                  className="w-auto p-0"
+                                  align="start"
+                                >
+                                  <Calendar
+                                    initialFocus
+                                    mode="range"
+                                    defaultMonth={customDateRange.from}
+                                    selected={customDateRange}
+                                    onSelect={(range) => {
+                                      setCustomDateRange(
+                                        range || {
+                                          from: undefined,
+                                          to: undefined,
+                                        }
+                                      );
+                                      if (range?.from && range?.to) {
+                                        setSelectedDateRange("custom");
+                                      }
+                                    }}
+                                    numberOfMonths={2}
+                                  />
+                                </PopoverContent>
+                              </Popover>
+                            </div>
+                          </div>
+                        )}
+
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="outline"
+                              className="w-full !border !border-accent md:w-fit"
+                            >
+                              {selectedModel.size === 0
+                                ? "All Models"
+                                : selectedModel.size === 1
+                                ? Array.from(selectedModel)[0]
+                                : `${selectedModel.size} models selected`}
+                              <span>
+                                <ChevronDown className="w-4 h-4 opacity-40" />
+                              </span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent className="w-56">
+                            <DropdownMenuLabel>
+                              Filter by Model
+                            </DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuCheckboxItem
+                              checked={selectedModel.size === 0}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setSelectedModel(new Set<string>([]));
+                                }
+                              }}
+                            >
+                              All Models
                             </DropdownMenuCheckboxItem>
-                          ))}
-                        </ScrollArea>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                            <ScrollArea className="h-[200px]">
+                              {analysis_models?.map((model: string) => (
+                                <DropdownMenuCheckboxItem
+                                  key={model}
+                                  checked={selectedModel.has(model)}
+                                  onCheckedChange={(checked) => {
+                                    setSelectedModel((prev) => {
+                                      const newSelection = new Set(prev);
+                                      if (checked) {
+                                        newSelection.add(model);
+                                      } else {
+                                        newSelection.delete(model);
+                                      }
+                                      return newSelection;
+                                    });
+                                  }}
+                                >
+                                  {model}
+                                </DropdownMenuCheckboxItem>
+                              ))}
+                            </ScrollArea>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
 
-                    <Button
-                      onClick={() => setShowGoogleResults(!showGoogleResults)}
-                      variant="outline"
-                      className={`rounded-full !border !border-accent group ${showGoogleResults && "opacity-60"}`}
-                    >
-                      <Eye className="w-4 h-4" />
-                      <span className="hidden group-hover:block">
-                        {showGoogleResults
-                          ? "Hide Google Results"
-                          : "Show Google Results"}
-                      </span>
-                    </Button>
-                  </div>
-                </motion.div>
-                <AnimatePresence>
-                  {isExpanded && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.3, ease: "easeInOut" }}
-                      className="overflow-hidden"
-                    >
-                      <Card className="bg-background rounded-md p-4 border-[#e2e2e2]/70 dark:border-accent">
-                        <ScheduledQueriesList
-                          queries={queries}
-                          selectedQuery={selectedQuery?.query}
-                          onSelectQuery={(query) => {
-                            setSelectedQuery(query);
-                            setIsExpanded(false); // Close the list after selection
-                          }}
-                        />
-                      </Card>
+                        <Button
+                          onClick={() =>
+                            setShowGoogleResults(!showGoogleResults)
+                          }
+                          variant="outline"
+                          className={`rounded-full !border !border-accent group ${
+                            showGoogleResults && "opacity-60"
+                          }`}
+                        >
+                          <Eye className="w-4 h-4" />
+                          <span className="hidden group-hover:block">
+                            {showGoogleResults
+                              ? "Hide Google Results"
+                              : "Show Google Results"}
+                          </span>
+                        </Button>
+                      </div>
                     </motion.div>
-                  )}
-                </AnimatePresence>
-                <div className="flex md:flex-row flex-col gap-4 w-full h-full">
-                  <MetricsHeader
-                    brands={brandMentionsInSummaries}
-                    temporalBrands={temportalBrandMentionsInSummaries}
-                    selectedBrand={selectedBrands}
-                    selectedModel={selectedModel}
-                  />
-                  <IndustryRankingsTable
-                    brands={brandMentionsInSummaries}
-                    setSelectedBrand={setSelectedBrands}
-                    selectedBrand={selectedBrands}
-                    selectedModel={selectedModel}
-                  />
-                </div>
+                    <p className="text-muted-foreground items-center flex">
+                      <Eye className="w-4 h-4 mr-2" />
+                        Currently viewing:{" "}
+                        <em className="text-white">
+                          &quot;{selectedQuery?.query}&quot;
+                        </em>
+                      </p>
+                    <AnimatePresence>
+                      {isExpanded && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.3, ease: "easeInOut" }}
+                          className="overflow-hidden"
+                        >
+                          <Card className="bg-background rounded-md p-4 border-[#e2e2e2]/70 dark:border-accent">
+                            <ScheduledQueriesList
+                              queries={queries}
+                              selectedQuery={selectedQuery?.query}
+                              onSelectQuery={(query) => {
+                                setSelectedQuery(query);
+                                setIsExpanded(false); // Close the list after selection
+                              }}
+                            />
+                          </Card>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                    <div className="flex md:flex-row flex-col gap-4 w-full h-full">
+                      <MetricsHeader
+                        brands={brandMentionsInSummaries}
+                        temporalBrands={temportalBrandMentionsInSummaries}
+                        selectedBrand={selectedBrands}
+                        selectedModel={selectedModel}
+                      />
+                      <IndustryRankingsTable
+                        brands={brandMentionsInSummaries}
+                        setSelectedBrand={setSelectedBrands}
+                        selectedBrand={selectedBrands}
+                        selectedModel={selectedModel}
+                      />
+                    </div>
+                    <Tabs defaultValue="keywords" className="w-full">
+                      <TabsList className="grid w-full grid-cols-2 bg-muted/20">
+                        <TabsTrigger
+                          value="keywords"
+                          className="data-[state=active]:bg-blue-500/10"
+                        >
+                          Keywords
+                        </TabsTrigger>
+                        <TabsTrigger
+                          value="steps"
+                          className="data-[state=active]:bg-blue-500/10"
+                        >
+                          Steps
+                        </TabsTrigger>
+                      </TabsList>
+                      <TabsContent value="keywords">
+                        <KeywordAnalysisCard />
+                      </TabsContent>
+                      <TabsContent value="steps">
+                        <StepsTabContent
+                          citations={(() => {
+                            if (!results || results.length === 0) return null;
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 w-full h-full">
-                  <CitationsCard
+                            // Extract citations from model_summary
+                            const allCitations = results
+                              .flatMap(
+                                (result: any) => result.model_summary || []
+                              )
+                              .flatMap(
+                                (summary: any) => summary.reasoning || []
+                              )
+                              .filter((item: any) => item?.url_citation)
+                              .map((item: any) => ({
+                                url: item.url_citation.url,
+                                title: item.url_citation.title,
+                                snippet: item.url_citation.snippet,
+                              }));
+
+                            return allCitations.length > 0
+                              ? allCitations
+                              : null;
+                          })()}
+                          monitoringId={selectedQuery?.mode_id || ""}
+                          prompt={selectedQuery?.query || ""}
+                          country={selectedQuery?.location || ""}
+                        />
+                      </TabsContent>
+                    </Tabs>
+                  </TabsContent>
+                  <TabsContent value="citations">
+                    <CitationsCard
                       results={results || []}
                       selectedDateRange={selectedDateRange}
                       customDateRange={customDateRange}
                       selectedModel={selectedModel}
                       googleSearchResults={googleSearchResults}
                     />
-                
+                  </TabsContent>
+                  <TabsContent value="google-search">
+                    <div className="">
+                      {showGoogleResults &&
+                        googleSearchResults &&
+                        googleSearchResults.search_results &&
+                        googleSearchResults.search_results.length > 0 && (
+                          <ScrollArea className="min-h-[500px] w-full">
+                            <GoogleResults
+                              googleResults={
+                                googleSearchResults.search_results[0].results
+                              }
+                              rankings={
+                                googleSearchResults.search_results[0]?.rankings
+                              }
+                            />
+                          </ScrollArea>
+                        )}
+                    </div>
+                  </TabsContent>
+                </Tabs>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 w-full h-full">
                   {/* {keywords && (
                       <KeywordCloud keywords={keywords} />
                   )} */}
-
-                  <Tabs defaultValue="keywords" className="w-full">
-                    <TabsList className="grid w-full grid-cols-2 bg-muted/20">
-                      <TabsTrigger value="keywords" className="data-[state=active]:bg-blue-500/10">Keywords</TabsTrigger>
-                      <TabsTrigger value="steps" className="data-[state=active]:bg-blue-500/10">Steps</TabsTrigger>
-                    </TabsList>
-                    <TabsContent value="keywords">
-                      <KeywordAnalysisCard />
-                    </TabsContent>
-                    <TabsContent value="steps">
-                      <StepsTabContent 
-                        citations={(() => {
-                          if (!results || results.length === 0) return null;
-                          
-                          // Extract citations from model_summary
-                          const allCitations = results
-                            .flatMap((result: any) => result.model_summary || [])
-                            .flatMap((summary: any) => summary.reasoning || [])
-                            .filter((item: any) => item?.url_citation)
-                            .map((item: any) => ({
-                              url: item.url_citation.url,
-                              title: item.url_citation.title,
-                              snippet: item.url_citation.snippet
-                            }));
-                          
-                          return allCitations.length > 0 ? allCitations : null;
-                        })()}
-                        monitoringId={selectedQuery?.mode_id || ''}
-                        prompt={selectedQuery?.query || ''}
-                        country={selectedQuery?.location || ''}
-                      />
-                    </TabsContent>
-                  </Tabs>
-
-                  {/* Citations Section */}
-                  <div className="lg:col-span-2">
-                  {showGoogleResults &&
-                    googleSearchResults &&
-                    googleSearchResults.search_results &&
-                    googleSearchResults.search_results.length > 0 && (
-                      <ScrollArea className="h-[500px] w-full">
-                        <GoogleResults
-                          googleResults={
-                            googleSearchResults.search_results[0].results
-                          }
-                          rankings={
-                            googleSearchResults.search_results[0]?.rankings
-                          }
-                        />
-                      </ScrollArea>
-                    )}
-
-                   
-                  </div>
                 </div>
               </div>
             </div>
