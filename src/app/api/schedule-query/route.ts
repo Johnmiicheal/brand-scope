@@ -24,7 +24,7 @@ if (
   );
 }
 
-export const maxDuration = 60;
+export const maxDuration = 200;
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 const openrouter = createOpenRouter({ apiKey: openRouterApiKey });
