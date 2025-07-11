@@ -4,6 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { generateObject, generateText } from "ai";
 import { z } from "zod";
+import { countries } from "@/lib/countries";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -470,42 +471,34 @@ async function processQueryDirectly(query: any) {
     // This helps enrich our analysis with current web data
     await callSearchGoogleEndpoint(query.query, query.mode_id, query.user_id, query.location);
   
-    // --- Define Models ---
-    const textModels = [
-      { modelId: "openai/gpt-4o-search-preview", name: "GPT 4o Web Search" },
-    { modelId: "openai/gpt-4.1", name: "GPT 4.1"},
+      // --- Define Models ---
+  const textModels = [
+    { modelId: "openai/gpt-4o-search-preview", name: "GPT 4o Web Search" },
+    {
+      modelId: "claude-search",
+      name: "Claude 4.0 Sonnet",
+    },
+    {
+      modelId: "gemini-search",
+      name: "Gemini 2.5 Flash",
+    },
+    { modelId: "perplexity/sonar", name: "Perplexity Sonar" }, // Keep Perplexity here
+    { modelId: "google-ai-mode", name: "Google AI Mode" }, // Custom Google AI Mode
+  ];
 
-      {
-        modelId: "anthropic/claude-3.5-sonnet",
-        name: "Claude 3.5 Sonnet",
-      },
-      // {
-      //   modelId: "deepseek/deepseek-r1:free",
-      //   name: "DeepSeek R1",
-      // },
-      {
-        modelId: "google/gemini-2.0-flash-001",
-        name: "Gemini 2.0 Flash",
-      },
-      // { modelId: "meta-llama/llama-3.3-70b-instruct", name: "Llama 3.3 70B Instruct" },
-      { modelId: "perplexity/sonar", name: "Perplexity Sonar" }, // Keep Perplexity here
-      { modelId: "google-ai-mode", name: "Google AI Mode" }, // Custom Google AI Mode
-    ];
-  
-    const objectModels = [
-      { model: openrouter("openai/gpt-4o"), name: "GPT 4o Web Search" },
-      { model: openrouter("openai/gpt-4.1"), name: "GPT 4.1"},
-      {
-        model: openrouter("anthropic/claude-3.5-sonnet"),
-        name: "Claude 3.5 Sonnet",
-      },
-      {
-        model: openrouter("google/gemini-2.0-flash-001"),
-        name: "Gemini 2.0 Flash",
-      },
-      { model: openrouter("perplexity/sonar"), name: "Perplexity Sonar" }, // Keep Perplexity here
-      { model: "google-ai-mode", name: "Google AI Mode" }, // Custom Google AI Mode
-    ];
+  const objectModels = [
+    { model: openrouter("openai/gpt-4o"), name: "GPT 4o Web Search" },
+    {
+      model: "claude-search", // Use string to indicate special handling
+      name: "Claude 4.0 Sonnet",
+    },
+    {
+      model: "gemini-search", // Use string to indicate special handling
+      name: "Gemini 2.5 Flash",
+    },
+    { model: openrouter("perplexity/sonar"), name: "Perplexity Sonar" }, // Keep Perplexity here
+    { model: "google-ai-mode", name: "Google AI Mode" }, // Custom Google AI Mode
+  ];
   
     // --- Fetch Existing Results ---
     let existingResultsArray: z.infer<typeof AnalysisRunSchema>[] = [];
@@ -559,6 +552,38 @@ async function processQueryDirectly(query: any) {
             citations: googleResult.citations,
             success: googleResult.success,
             error: googleResult.error,
+          };
+        }
+
+        // Handle Claude Search specially
+        if (modelId === "claude-search") {
+          // Convert location to country code format using comprehensive countries list
+          let countryCode = 'US'; // Default
+          if (query.location) {
+            // Create mapping from country label to uppercase country code
+            const country = countries.find(c => c.label === query.location);
+            countryCode = country ? country.value.toUpperCase() : 'US';
+          }
+          
+          const claudeResult = await callClaudeSearch(query.query, countryCode);
+          return {
+            name,
+            text: claudeResult.text,
+            citations: claudeResult.citations,
+            success: claudeResult.success,
+            error: claudeResult.error,
+          };
+        }
+
+        // Handle Gemini Search specially
+        if (modelId === "gemini-search") {
+          const geminiResult = await callGeminiSearch(query.query);
+          return {
+            name,
+            text: geminiResult.text,
+            citations: geminiResult.citations,
+            success: geminiResult.success,
+            error: geminiResult.error,
           };
         }
 
@@ -640,6 +665,80 @@ async function processQueryDirectly(query: any) {
             }
             
             console.log(`      ${name} successful (via OpenAI GPT-4o).`);
+            return {
+              llm_name: name,
+              status: "fulfilled" as const,
+              data: validation.data,
+              error: null,
+            };
+          } catch (error: any) {
+            console.error(`    Error during extraction phase for ${name}:`, error.message);
+            return {
+              llm_name: name,
+              status: "rejected" as const,
+              data: null,
+              error: error.message || "Extraction phase failed",
+            };
+          }
+        }
+
+        // Handle Claude Search specially - use Claude 3.5 Sonnet for extraction
+        if (name === "Claude 4.0 Sonnet") {
+          try {
+            console.log(`      Using Claude 4.0 Sonnet for ${name} extraction...`);
+            const formattedExtractionPrompt = RANKING_PROMPT.replace("{text}", text);
+            
+            const { object } = await generateObject({
+              model: openrouter("anthropic/claude-3.5-sonnet"),
+              schema: LLMOutputSchema,
+              prompt: formattedExtractionPrompt,
+              maxRetries: 2,
+              temperature: 0.0,
+            });
+            
+            const validation = LLMOutputSchema.safeParse(object);
+            if (!validation.success) {
+              throw new Error(`Schema validation failed for ${name}.`);
+            }
+            
+            console.log(`      ${name} successful (via Claude 4.0 Sonnet).`);
+            return {
+              llm_name: name,
+              status: "fulfilled" as const,
+              data: validation.data,
+              error: null,
+            };
+          } catch (error: any) {
+            console.error(`    Error during extraction phase for ${name}:`, error.message);
+            return {
+              llm_name: name,
+              status: "rejected" as const,
+              data: null,
+              error: error.message || "Extraction phase failed",
+            };
+          }
+        }
+
+        // Handle Gemini Search specially - use Gemini 2.0 Flash for extraction
+        if (name === "Gemini 2.5 Flash") {
+          try {
+            console.log(`      Using Gemini 2.5 Flash for ${name} extraction...`);
+            const formattedExtractionPrompt = RANKING_PROMPT.replace("{text}", text);
+            
+            const { object } = await generateObject({
+              model: openrouter("google/gemini-2.5-flash"),
+              schema: LLMOutputSchema,
+              prompt: formattedExtractionPrompt,
+              maxRetries: 2,
+              temperature: 0.0,
+            });
+            
+            const validation = LLMOutputSchema.safeParse(object);
+            if (!validation.success) {
+              throw new Error(`Schema validation failed for ${name}.`);
+            }
+            
+            console.log(`      ${name} successful (via Gemini 2.5 Flash).`);
             return {
               llm_name: name,
               status: "fulfilled" as const,
@@ -923,6 +1022,163 @@ async function callGoogleAiMode(prompt: string): Promise<{
       citations: [],
       success: false,
       error: error.message || "Google AI Mode call failed"
+    };
+  }
+}
+
+/**
+ * Calls the Claude Search webhook and processes the response
+ * @param prompt - The query prompt to analyze
+ * @param country - Country code for location-based search
+ * @returns Object with text content and citations
+ */
+async function callClaudeSearch(prompt: string, country: string = 'US'): Promise<{
+  text: string;
+  citations: any[];
+  success: boolean;
+  error: string | null;
+}> {
+  try {
+    console.log(`    Calling Claude Search for prompt: "${prompt}" with country: ${country}`);
+    
+    const response = await fetch('https://primary-production-20a3.up.railway.app/webhook/claudesearch', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        chatInput: prompt,
+        country: country
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Claude Search API returned ${response.status}: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    
+    // Claude webhook returns an array with the first element containing the response
+    if (!Array.isArray(data) || data.length === 0) {
+      throw new Error('Invalid response format from Claude Search webhook');
+    }
+
+    const responseData = data[0];
+    
+    // Extract content and references
+    const text = responseData.numbered_content || '';
+    const references = responseData.references || [];
+    
+    // Transform references to our standard citation format
+    const citations = references.map((ref: any) => ({
+      url: ref.url,
+      title: ref.title,
+      text: ref.quote || '', // Use quote if available
+      domain: ref.url ? new URL(ref.url).hostname : '',
+      source: ref.title,
+      number: ref.number
+    }));
+
+    console.log(`    Claude Search success. Extracted ${text.length} chars of content and ${citations.length} citations`);
+    
+    return {
+      text: text || 'No content found',
+      citations: citations,
+      success: true,
+      error: null
+    };
+
+  } catch (error: any) {
+    console.error(`    Error calling Claude Search:`, error.message);
+    return {
+      text: '',
+      citations: [],
+      success: false,
+      error: error.message || "Claude Search call failed"
+    };
+  }
+}
+
+/**
+ * Calls the Gemini Search webhook and processes the response
+ * @param prompt - The query prompt to analyze
+ * @returns Object with text content and citations
+ */
+async function callGeminiSearch(prompt: string): Promise<{
+  text: string;
+  citations: any[];
+  success: boolean;
+  error: string | null;
+}> {
+  try {
+    console.log(`    Calling Gemini Search for prompt: "${prompt}"`);
+    
+    const response = await fetch('https://primary-production-20a3.up.railway.app/webhook/geminisearch', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        chatInput: prompt
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Gemini Search API returned ${response.status}: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    
+    // Gemini webhook returns an array with the first element containing the response
+    if (!Array.isArray(data) || data.length === 0) {
+      throw new Error('Invalid response format from Gemini Search webhook');
+    }
+
+    const responseData = data[0];
+    
+    // Extract content from output field
+    const text = responseData.output || '';
+    
+    // Extract sources from the text (they appear at the bottom)
+    const citations: any[] = [];
+    const lines = text.split('\n');
+    let inSourcesSection = false;
+    
+    for (const line of lines) {
+      if (line.includes('Sources:')) {
+        inSourcesSection = true;
+        continue;
+      }
+      if (inSourcesSection && line.trim().startsWith('*')) {
+        const domain = line.replace('*', '').trim();
+        if (domain) {
+          citations.push({
+            url: `https://${domain}`,
+            title: domain,
+            text: '',
+            domain: domain,
+            source: domain
+          });
+        }
+      }
+    }
+
+    console.log(`    Gemini Search success. Extracted ${text.length} chars of content and ${citations.length} citations`);
+    
+    return {
+      text: text || 'No content found',
+      citations: citations,
+      success: true,
+      error: null
+    };
+
+  } catch (error: any) {
+    console.error(`    Error calling Gemini Search:`, error.message);
+    return {
+      text: '',
+      citations: [],
+      success: false,
+      error: error.message || "Gemini Search call failed"
     };
   }
 }
