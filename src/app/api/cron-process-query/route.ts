@@ -1136,31 +1136,23 @@ async function callGeminiSearch(prompt: string): Promise<{
 
     const responseData = data[0];
     
-    // Extract content from output field
-    const text = responseData.output || '';
+    // Extract content from new nested output structure
+    const text = responseData.output?.output?.[0] || '';
     
-    // Extract sources from the text (they appear at the bottom)
+    // Extract citations from groundingChunks
     const citations: any[] = [];
-    const lines = text.split('\n');
-    let inSourcesSection = false;
-    
-    for (const line of lines) {
-      if (line.includes('Sources:')) {
-        inSourcesSection = true;
-        continue;
-      }
-      if (inSourcesSection && line.trim().startsWith('*')) {
-        const domain = line.replace('*', '').trim();
-        if (domain) {
+    if (responseData.output?.groundingChunks) {
+      responseData.output.groundingChunks.forEach((chunk: any) => {
+        if (chunk.web?.uri && chunk.web?.titledomain) {
           citations.push({
-            url: `https://${domain}`,
-            title: domain,
+            url: chunk.web.uri,
+            title: chunk.web.titledomain,
             text: '',
-            domain: domain,
-            source: domain
+            domain: chunk.web.titledomain,
+            source: chunk.web.titledomain
           });
         }
-      }
+      });
     }
 
     console.log(`    Gemini Search success. Extracted ${text.length} chars of content and ${citations.length} citations`);

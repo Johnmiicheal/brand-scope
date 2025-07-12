@@ -35,7 +35,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "../ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -79,6 +78,8 @@ export function ScheduledQueriesList({
     mode: "all",
     status: "all",
   });
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [queryToDelete, setQueryToDelete] = useState<ScheduledQuery | null>(null);
 
   // Update local queries when initialQueries changes
   useEffect(() => {
@@ -213,12 +214,20 @@ export function ScheduledQueriesList({
         currentQueries.filter(q => q.id !== query.id)
       );
       
-     toast.info("Prompt deleted successfully");
+      toast.info("Prompt deleted successfully");
     } catch (error) {
       console.error('Error deleting prompt:', error);
-        toast.error("Failed to delete the prompt. Please try again.")
+      toast.error("Failed to delete the prompt. Please try again.")
     } finally {
       setLoadingStates(prev => ({ ...prev, [query.id]: false }));
+      setDeleteDialogOpen(false);
+      setQueryToDelete(null);
+    }
+  };
+
+  const handleDeleteConfirm = () => {
+    if (queryToDelete) {
+      handleDelete(queryToDelete);
     }
   };
 
@@ -341,21 +350,22 @@ export function ScheduledQueriesList({
                             variant="ghost"
                             size="icon"
                             aria-label="Query Actions"
+                            onClick={(e) => e.stopPropagation()}
                           >
                             <EllipsisVertical className="w-4 h-4 text-muted-foreground" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={(e) => {e.preventDefault(); handleViewOnDashboard(query)}}>
+                          <DropdownMenuItem onClick={(e) => {e.preventDefault(); e.stopPropagation(); handleViewOnDashboard(query)}}>
                             View on Dashboard
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={(e) => {e.preventDefault(); handleRowClick(query?.mode_id!)}}>
+                          <DropdownMenuItem onClick={(e) => {e.preventDefault(); e.stopPropagation(); handleRowClick(query?.mode_id!)}}>
                             View on Page
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem 
                             className="text-amber-500 hover:!bg-amber-500/10 hover:!text-amber-500"
-                            onClick={() => handleDeactivate(query)}
+                            onClick={(e) => {e.preventDefault(); e.stopPropagation(); handleDeactivate(query)}}
                             disabled={loadingStates[query.id]}
                           >
                             {loadingStates[query.id] ? (
@@ -367,41 +377,25 @@ export function ScheduledQueriesList({
                               `${query.status === 'active' ? 'Deactivate' : 'Activate'} Prompt`
                             )}
                           </DropdownMenuItem>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <DropdownMenuItem 
-                                className="text-destructive hover:!bg-destructive/10 hover:!text-destructive"
-                                onSelect={(e) => e.preventDefault()}
-                                disabled={loadingStates[query.id]}
-                              >
-                                {loadingStates[query.id] ? (
-                                  <div className="flex items-center">
-                                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-destructive border-t-transparent mr-2" />
-                                    Deleting...
-                                  </div>
-                                ) : (
-                                  'Delete Prompt'
-                                )}
-                              </DropdownMenuItem>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  This action cannot be undone. This will permanently delete this prompt and all its analysis history.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => handleDelete(query)}
-                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                >
-                                  Delete
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
+                          <DropdownMenuItem 
+                            className="text-destructive hover:!bg-destructive/10 hover:!text-destructive"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setQueryToDelete(query);
+                              setDeleteDialogOpen(true);
+                            }}
+                            disabled={loadingStates[query.id]}
+                          >
+                            {loadingStates[query.id] ? (
+                              <div className="flex items-center">
+                                <div className="h-4 w-4 animate-spin rounded-full border-2 border-destructive border-t-transparent mr-2" />
+                                Deleting...
+                              </div>
+                            ) : (
+                              'Delete Prompt'
+                            )}
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -433,6 +427,32 @@ export function ScheduledQueriesList({
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the prompt &quot;{queryToDelete?.query}&quot; and all its analysis history.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setDeleteDialogOpen(false);
+              setQueryToDelete(null);
+            }}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

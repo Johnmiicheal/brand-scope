@@ -77,11 +77,10 @@ export function CompetitorChart({
   );
 
 
-  const maxModels = selectedModel.size === 0 ? 7 : selectedModel.size;
+  const maxModels = selectedModel.size === 0 ? 6 : selectedModel.size;
 
   const getCoverageRatio = (brand: BrandAnalysis, type: "ratio" | "count") => {
     const totalMentionsPerModel =
-      (brand.gpt_mentions > 0 ? 1 : 0) +
       (brand.claude_mentions > 0 ? 1 : 0) +
       (brand.perplexity_mentions > 0 ? 1 : 0) +
       (brand.gemini_mentions > 0 ? 1 : 0) +
@@ -91,16 +90,14 @@ export function CompetitorChart({
        // Check selected models and add to total mentions count
     let selectedModelTotalMentions = 0;
     
-    if (selectedModel.has("GPT 4.1") && brand.gpt_mentions > 0) {
-      selectedModelTotalMentions++;
-    }
-    if (selectedModel.has("Claude 3.5 Sonnet") && brand.claude_mentions > 0) {
+
+    if (selectedModel.has("Claude 4.0 Sonnet") && brand.claude_mentions > 0) {
       selectedModelTotalMentions++;
     }
     if (selectedModel.has("Perplexity Sonar") && brand.perplexity_mentions > 0) {
       selectedModelTotalMentions++;
     }
-    if (selectedModel.has("Gemini 2.0 Flash") && brand.gemini_mentions > 0) {
+    if (selectedModel.has("Gemini 2.5 Flash") && brand.gemini_mentions > 0) {
       selectedModelTotalMentions++;
     }
     if (selectedModel.has("GPT 4o Web Search") && brand.gpt_search_mentions > 0) {

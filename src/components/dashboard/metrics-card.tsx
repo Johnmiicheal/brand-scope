@@ -155,13 +155,12 @@ export function MetricsHeader({
   );
   // const visibilityScore = total_mentions / all_total_mentions || 0;
   const mentions = total_mentions || 0;
-  const maxModels = selectedModel.size === 0 ? 7 : selectedModel.size;
+  const maxModels = selectedModel.size === 0 ? 6 : selectedModel.size;
   const maxMentions = Math.max(...brands.map((brand) => brand.total_mentions));
   const getCoverageRatio = (brands: Brand[], type: "ratio" | "count") => {
     const totalMentionsPerModel = brands.reduce((acc, brand) => {
       return (
         acc +
-        (brand.gpt_mentions > 0 ? 1 : 0) +
         (brand.claude_mentions > 0 ? 1 : 0) +
         (brand.perplexity_mentions > 0 ? 1 : 0) +
         (brand.gemini_mentions > 0 ? 1 : 0) +
@@ -177,12 +176,8 @@ export function MetricsHeader({
      if (selectedModel.size > 0) {
        finalTotalMentions = brands.reduce((acc, brand) => {
          let brandModelCount = 0;
-
-         if (selectedModel.has("GPT 4.1") && brand.gpt_mentions > 0) {
-           brandModelCount++;
-         }
          if (
-           selectedModel.has("Claude 3.5 Sonnet") &&
+           selectedModel.has("Claude 4.0 Sonnet") &&
            brand.claude_mentions > 0
          ) {
            brandModelCount++;
@@ -194,7 +189,7 @@ export function MetricsHeader({
            brandModelCount++;
          }
          if (
-           selectedModel.has("Gemini 2.0 Flash") &&
+           selectedModel.has("Gemini 2.5 Flash") &&
            brand.gemini_mentions > 0
          ) {
            brandModelCount++;
@@ -242,24 +237,21 @@ export function MetricsHeader({
     const modelCounts: Record<string, number> = {};
 
     selectedBrandsData.forEach((brand) => {
-      if (brand.gpt_mentions > 0) {
-        modelCounts["GPT 4.1"] = (modelCounts["GPT 4.1"] || 0) + 1;
-      }
       if (brand.gpt_search_mentions > 0) {
         modelCounts["GPT 4o Web Search"] =
           (modelCounts["GPT 4o Web Search"] || 0) + 1;
       }
       if (brand.claude_mentions > 0) {
-        modelCounts["Claude 3.5 Sonnet"] =
-          (modelCounts["Claude 3.5 Sonnet"] || 0) + 1;
+        modelCounts["Claude 4.0 Sonnet"] =
+          (modelCounts["Claude 4.0 Sonnet"] || 0) + 1;
       }
       if (brand.perplexity_mentions > 0) {
         modelCounts["Perplexity Sonar"] =
           (modelCounts["Perplexity Sonar"] || 0) + 1;
       }
       if (brand.gemini_mentions > 0) {
-        modelCounts["Gemini 2.0 Flash"] =
-          (modelCounts["Gemini 2.0 Flash"] || 0) + 1;
+        modelCounts["Gemini 2.5 Flash"] =
+          (modelCounts["Gemini 2.5 Flash"] || 0) + 1;
       }
       if (brand.ai_overview_mentions > 0) {
         modelCounts["Google AI Overview"] =
@@ -282,11 +274,10 @@ export function MetricsHeader({
     string,
     React.ComponentType<{ className?: string }>
   > = {
-    "GPT 4.1": OpenAI,
     "GPT 4o Web Search": OpenAI,
-    "Claude 3.5 Sonnet": Claude,
+    "Claude 4.0 Sonnet": Claude,
     "Perplexity Sonar": Perplexity,
-    "Gemini 2.0 Flash": Gemini,
+    "Gemini 2.5 Flash": Gemini,
     "Google AI Overview": Gemini.Color,
     "Google AI Mode": AiStudio.Color,
   };
@@ -339,12 +330,11 @@ export function MetricsHeader({
       const maxMentions = Math.max(
         ...temporalBrands.map((b) => b.total_mentions)
       );
-      const maxModels = selectedModel.size === 0 ? 7 : selectedModel.size;
+      const maxModels = selectedModel.size === 0 ? 6 : selectedModel.size;
 
       const totalMentionsPerModel = brandsData.reduce((acc, brand) => {
         return (
           acc +
-          (brand.gpt_mentions > 0 ? 1 : 0) +
           (brand.claude_mentions > 0 ? 1 : 0) +
           (brand.perplexity_mentions > 0 ? 1 : 0) +
           (brand.gemini_mentions > 0 ? 1 : 0) +
@@ -362,11 +352,8 @@ export function MetricsHeader({
         finalTotalMentions = brandsData.reduce((acc, brand) => {
           let brandModelCount = 0;
 
-          if (selectedModel.has("GPT 4.1") && brand.gpt_mentions > 0) {
-            brandModelCount++;
-          }
           if (
-            selectedModel.has("Claude 3.5 Sonnet") &&
+            selectedModel.has("Claude 4.0 Sonnet") &&
             brand.claude_mentions > 0
           ) {
             brandModelCount++;
@@ -378,7 +365,7 @@ export function MetricsHeader({
             brandModelCount++;
           }
           if (
-            selectedModel.has("Gemini 2.0 Flash") &&
+            selectedModel.has("Gemini 2.5 Flash") &&
             brand.gemini_mentions > 0
           ) {
             brandModelCount++;
@@ -467,11 +454,10 @@ export function MetricsHeader({
     const previousData = dataByDate[previousDate];
 
     const calculateCoverageRatio = (brandsData: TemporalBrand[]) => {
-      const maxModels = selectedModel.size === 0 ? 7 : selectedModel.size;
+      const maxModels = selectedModel.size === 0 ? 6 : selectedModel.size;
       const totalMentionsPerModel = brandsData.reduce((acc, brand) => {
         return (
           acc +
-          (brand.gpt_mentions > 0 ? 1 : 0) +
           (brand.claude_mentions > 0 ? 1 : 0) +
           (brand.perplexity_mentions > 0 ? 1 : 0) +
           (brand.gemini_mentions > 0 ? 1 : 0) +
@@ -488,12 +474,8 @@ export function MetricsHeader({
       if (selectedModel.size > 0) {
         finalTotalMentions = brandsData.reduce((acc, brand) => {
           let brandModelCount = 0;
-
-          if (selectedModel.has("GPT 4.1") && brand.gpt_mentions > 0) {
-            brandModelCount++;
-          }
           if (
-            selectedModel.has("Claude 3.5 Sonnet") &&
+            selectedModel.has("Claude 4.0 Sonnet") &&
             brand.claude_mentions > 0
           ) {
             brandModelCount++;
@@ -505,7 +487,7 @@ export function MetricsHeader({
             brandModelCount++;
           }
           if (
-            selectedModel.has("Gemini 2.0 Flash") &&
+            selectedModel.has("Gemini 2.5 Flash") &&
             brand.gemini_mentions > 0
           ) {
             brandModelCount++;

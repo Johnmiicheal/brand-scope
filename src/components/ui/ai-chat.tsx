@@ -15,6 +15,7 @@ import {
   Repeat,
   MapPin,
   Loader2,
+  Paperclip,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "@/components/ui/use-toast";
@@ -300,7 +301,7 @@ export function AIChatInterface({ user, session, product, subscription, isLoadin
         setIsAnalyzing(false); // Reset analyzing state
       } else {
         // --- Search Mode Logic (Existing) ---
-        const response = await fetch(process.env.NEXT_PUBLIC_SEARCH as string, {
+        const response = await fetch('/api/search/prompt', {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -502,6 +503,17 @@ export function AIChatInterface({ user, session, product, subscription, isLoadin
           <div className="flex items-center justify-between p-3 flex-wrap gap-2">
             {/* Left Side Controls */}
             <div className="flex items-center gap-2 flex-wrap">
+              {/* Attach Brand Button */}
+              <button
+                    type="button"
+                    className="group p-[10px] bg-muted/50 dark:bg-black/20 dark:hover:bg-neutral-800 cursor-pointer rounded-full border border-[#e2e2e2]/20 dark:border-accent transition-all duration-400 ease flex items-center "
+                  >
+                    <Paperclip className="w-4 h-4 text-neutral-400 dark:text-white/60" />
+                    <span className="text-xs text-neutral-400 dark:text-white opacity-0 max-w-0 group-hover:max-w-[200px] group-hover:ml-2 group-hover:opacity-100 transition-all duration-300 ease-in-out overflow-hidden whitespace-nowrap">
+                      Attach Brand
+                    </span>
+                  </button>
+
               {/* Attach Location Button */}
               <Popover open={open} onOpenChange={setOpen}>
                 <PopoverTrigger asChild>
@@ -767,10 +779,9 @@ export function AIChatInterface({ user, session, product, subscription, isLoadin
                 <div>
                   <h4 className="font-medium text-sm text-neutral-700 dark:text-foreground">Voyager Mode</h4>
                   <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
-                    Leverages Llama 4 Scout, DeepSeek R1, and Qwen to create
+                    Leverages Llama 4 Maverick, DeepSeek R1, Grok 3 Mini, and GPT 4.1 to create
                     in-depth brand ranking and analysis with social sentiment
-                    insights. Includes citations for more credible results.
-                    Ideal for comprehensive market research.
+                    insights. Ideal for comprehensive market research.
                   </p>
                 </div>
               </div>
@@ -782,7 +793,7 @@ export function AIChatInterface({ user, session, product, subscription, isLoadin
                   <h4 className="font-medium text-sm text-neutral-700 dark:text-foreground">Explorer Mode</h4>
                   <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
                     Our most comprehensive analysis using GPT 4o Web Search, Perplexity
-                    Sonar, Google AI Overiew, Gemini 2.0 Flash and Claude 3.5 Extracts brands
+                    Sonar, Google AI Overiew, Google AI Mode, Gemini 2.5 Flash, and Claude 4.0 Sonnet. Extracts brands and keyword
                     insights from native AI search prompts
                   </p>
                 </div>

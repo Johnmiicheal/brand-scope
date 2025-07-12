@@ -1,218 +1,20 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @typescript-eslint/ban-ts-comment */
-// @ts-nocheck
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { z } from "https://esm.sh/zod@3.22.4";
-import { v4 as uuidv4 } from "https://esm.sh/uuid@11.0.0";
+import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
+import { z } from "zod";
+import { v4 as uuidv4 } from "uuid";
 import {
   generateObject,
   generateText,
-  extractReasoningMiddleware,
-  experimental_wrapLanguageModel as wrapLanguageModel,
-} from "https://esm.sh/ai@4.2.2";
-import { createOpenRouter } from "https://esm.sh/@openrouter/ai-sdk-provider@0.4.5";
+} from "ai";
+import { createOpenRouter } from "@openrouter/ai-sdk-provider";
+import { countries } from "@/lib/countries";
 
-// Countries data for location mapping
-const countries = [
-  { label: "Afghanistan", value: "af" },
-  { label: "Albania", value: "al" },
-  { label: "Algeria", value: "dz" },
-  { label: "Andorra", value: "ad" },
-  { label: "Angola", value: "ao" },
-  { label: "Antigua and Barbuda", value: "ag" },
-  { label: "Argentina", value: "ar" },
-  { label: "Armenia", value: "am" },
-  { label: "Australia", value: "au" },
-  { label: "Austria", value: "at" },
-  { label: "Azerbaijan", value: "az" },
-  { label: "Bahamas", value: "bs" },
-  { label: "Bahrain", value: "bh" },
-  { label: "Bangladesh", value: "bd" },
-  { label: "Barbados", value: "bb" },
-  { label: "Belarus", value: "by" },
-  { label: "Belgium", value: "be" },
-  { label: "Belize", value: "bz" },
-  { label: "Benin", value: "bj" },
-  { label: "Bhutan", value: "bt" },
-  { label: "Bolivia", value: "bo" },
-  { label: "Bosnia and Herzegovina", value: "ba" },
-  { label: "Botswana", value: "bw" },
-  { label: "Brazil", value: "br" },
-  { label: "Brunei", value: "bn" },
-  { label: "Bulgaria", value: "bg" },
-  { label: "Burkina Faso", value: "bf" },
-  { label: "Burundi", value: "bi" },
-  { label: "Cabo Verde", value: "cv" },
-  { label: "Cambodia", value: "kh" },
-  { label: "Cameroon", value: "cm" },
-  { label: "Canada", value: "ca" },
-  { label: "Central African Republic", value: "cf" },
-  { label: "Chad", value: "td" },
-  { label: "Chile", value: "cl" },
-  { label: "China", value: "cn" },
-  { label: "Colombia", value: "co" },
-  { label: "Comoros", value: "km" },
-  { label: "Congo", value: "cg" },
-  { label: "Costa Rica", value: "cr" },
-  { label: "Croatia", value: "hr" },
-  { label: "Cuba", value: "cu" },
-  { label: "Cyprus", value: "cy" },
-  { label: "Czech Republic", value: "cz" },
-  { label: "Denmark", value: "dk" },
-  { label: "Djibouti", value: "dj" },
-  { label: "Dominica", value: "dm" },
-  { label: "Dominican Republic", value: "do" },
-  { label: "Ecuador", value: "ec" },
-  { label: "Egypt", value: "eg" },
-  { label: "El Salvador", value: "sv" },
-  { label: "Equatorial Guinea", value: "gq" },
-  { label: "Eritrea", value: "er" },
-  { label: "Estonia", value: "ee" },
-  { label: "Eswatini", value: "sz" },
-  { label: "Ethiopia", value: "et" },
-  { label: "Fiji", value: "fj" },
-  { label: "Finland", value: "fi" },
-  { label: "France", value: "fr" },
-  { label: "Gabon", value: "ga" },
-  { label: "Gambia", value: "gm" },
-  { label: "Georgia", value: "ge" },
-  { label: "Germany", value: "de" },
-  { label: "Ghana", value: "gh" },
-  { label: "Greece", value: "gr" },
-  { label: "Grenada", value: "gd" },
-  { label: "Guatemala", value: "gt" },
-  { label: "Guinea", value: "gn" },
-  { label: "Guinea-Bissau", value: "gw" },
-  { label: "Guyana", value: "gy" },
-  { label: "Haiti", value: "ht" },
-  { label: "Honduras", value: "hn" },
-  { label: "Hungary", value: "hu" },
-  { label: "Iceland", value: "is" },
-  { label: "India", value: "in" },
-  { label: "Indonesia", value: "id" },
-  { label: "Iran", value: "ir" },
-  { label: "Iraq", value: "iq" },
-  { label: "Ireland", value: "ie" },
-  { label: "Israel", value: "il" },
-  { label: "Italy", value: "it" },
-  { label: "Jamaica", value: "jm" },
-  { label: "Japan", value: "jp" },
-  { label: "Jordan", value: "jo" },
-  { label: "Kazakhstan", value: "kz" },
-  { label: "Kenya", value: "ke" },
-  { label: "Kiribati", value: "ki" },
-  { label: "Korea, North", value: "kp" },
-  { label: "Korea, South", value: "kr" },
-  { label: "Kosovo", value: "xk" },
-  { label: "Kuwait", value: "kw" },
-  { label: "Kyrgyzstan", value: "kg" },
-  { label: "Laos", value: "la" },
-  { label: "Latvia", value: "lv" },
-  { label: "Lebanon", value: "lb" },
-  { label: "Lesotho", value: "ls" },
-  { label: "Liberia", value: "lr" },
-  { label: "Libya", value: "ly" },
-  { label: "Liechtenstein", value: "li" },
-  { label: "Lithuania", value: "lt" },
-  { label: "Luxembourg", value: "lu" },
-  { label: "Madagascar", value: "mg" },
-  { label: "Malawi", value: "mw" },
-  { label: "Malaysia", value: "my" },
-  { label: "Maldives", value: "mv" },
-  { label: "Mali", value: "ml" },
-  { label: "Malta", value: "mt" },
-  { label: "Marshall Islands", value: "mh" },
-  { label: "Mauritania", value: "mr" },
-  { label: "Mauritius", value: "mu" },
-  { label: "Mexico", value: "mx" },
-  { label: "Micronesia", value: "fm" },
-  { label: "Moldova", value: "md" },
-  { label: "Monaco", value: "mc" },
-  { label: "Mongolia", value: "mn" },
-  { label: "Montenegro", value: "me" },
-  { label: "Morocco", value: "ma" },
-  { label: "Mozambique", value: "mz" },
-  { label: "Myanmar", value: "mm" },
-  { label: "Namibia", value: "na" },
-  { label: "Nauru", value: "nr" },
-  { label: "Nepal", value: "np" },
-  { label: "Netherlands", value: "nl" },
-  { label: "New Zealand", value: "nz" },
-  { label: "Nicaragua", value: "ni" },
-  { label: "Niger", value: "ne" },
-  { label: "Nigeria", value: "ng" },
-  { label: "North Macedonia", value: "mk" },
-  { label: "Norway", value: "no" },
-  { label: "Oman", value: "om" },
-  { label: "Pakistan", value: "pk" },
-  { label: "Palau", value: "pw" },
-  { label: "Palestine", value: "ps" },
-  { label: "Panama", value: "pa" },
-  { label: "Papua New Guinea", value: "pg" },
-  { label: "Paraguay", value: "py" },
-  { label: "Peru", value: "pe" },
-  { label: "Philippines", value: "ph" },
-  { label: "Poland", value: "pl" },
-  { label: "Portugal", value: "pt" },
-  { label: "Qatar", value: "qa" },
-  { label: "Romania", value: "ro" },
-  { label: "Russia", value: "ru" },
-  { label: "Rwanda", value: "rw" },
-  { label: "Saint Kitts and Nevis", value: "kn" },
-  { label: "Saint Lucia", value: "lc" },
-  { label: "Saint Vincent and the Grenadines", value: "vc" },
-  { label: "Samoa", value: "ws" },
-  { label: "San Marino", value: "sm" },
-  { label: "Sao Tome and Principe", value: "st" },
-  { label: "Saudi Arabia", value: "sa" },
-  { label: "Senegal", value: "sn" },
-  { label: "Serbia", value: "rs" },
-  { label: "Seychelles", value: "sc" },
-  { label: "Sierra Leone", value: "sl" },
-  { label: "Singapore", value: "sg" },
-  { label: "Slovakia", value: "sk" },
-  { label: "Slovenia", value: "si" },
-  { label: "Solomon Islands", value: "sb" },
-  { label: "Somalia", value: "so" },
-  { label: "South Africa", value: "za" },
-  { label: "South Sudan", value: "ss" },
-  { label: "Spain", value: "es" },
-  { label: "Sri Lanka", value: "lk" },
-  { label: "Sudan", value: "sd" },
-  { label: "Suriname", value: "sr" },
-  { label: "Sweden", value: "se" },
-  { label: "Switzerland", value: "ch" },
-  { label: "Syria", value: "sy" },
-  { label: "Taiwan", value: "tw" },
-  { label: "Tajikistan", value: "tj" },
-  { label: "Tanzania", value: "tz" },
-  { label: "Thailand", value: "th" },
-  { label: "Timor-Leste", value: "tl" },
-  { label: "Togo", value: "tg" },
-  { label: "Tonga", value: "to" },
-  { label: "Trinidad and Tobago", value: "tt" },
-  { label: "Tunisia", value: "tn" },
-  { label: "Turkey", value: "tr" },
-  { label: "Turkmenistan", value: "tm" },
-  { label: "Tuvalu", value: "tv" },
-  { label: "Uganda", value: "ug" },
-  { label: "Ukraine", value: "ua" },
-  { label: "United Arab Emirates", value: "ae" },
-  { label: "United Kingdom", value: "gb" },
-  { label: "United States", value: "us" },
-  { label: "Uruguay", value: "uy" },
-  { label: "Uzbekistan", value: "uz" },
-  { label: "Vanuatu", value: "vu" },
-  { label: "Vatican City", value: "va" },
-  { label: "Venezuela", value: "ve" },
-  { label: "Vietnam", value: "vn" },
-  { label: "Yemen", value: "ye" },
-  { label: "Zambia", value: "zm" },
-  { label: "Zimbabwe", value: "zw" }
-];
+export const runtime = 'edge';
+export const maxDuration = 200;
 
+// Types
 interface AIRanking {
   id: string;
   entity_id: string;
@@ -236,7 +38,6 @@ interface CompetitorComparison {
   ranking_diff: number;
   analysis: string;
 }
-
 
 interface Recommendations {
   id: string;
@@ -266,12 +67,32 @@ interface Brand {
   description: string;
 }
 
+interface SocialInsight {
+  id: string;
+  search_id: string;
+  platform: string;
+  sentiment: string;
+  engagement: number;
+  content: string;
+  created_at: string;
+}
 
+// Initialize clients
 const openrouter = createOpenRouter({
-  apiKey: Deno.env.get("OPEN_ROUTER_API_KEY"),
+  apiKey: process.env.OPENROUTER_API_KEY!,
 });
 
-const openRouterApiKey = Deno.env.get("OPEN_ROUTER_API_KEY");
+const openRouterApiKey = process.env.OPENROUTER_API_KEY;
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY!,
+  {
+    auth: {
+      persistSession: false,
+    },
+  }
+);
 
 // Define analysis modes
 const analysisModes = ["DeepFocus", "Voyager", "Explorer"] as const;
@@ -285,189 +106,6 @@ const searchRequestSchema = z.object({
   location: z.string().optional(),
 });
 
-serve(async (req) => {
-  try {
-    // Set CORS headers
-    const headers = new Headers({
-      "Content-Type": "application/json",
-      "Access-Control-Allow-Origin":
-        req.headers.get("Origin") || "https://airankia.com",
-      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-      "Access-Control-Allow-Headers":
-        "authorization, x-client-info, apikey, content-type",
-      "Access-Control-Allow-Credentials": "true",
-    });
-
-    // Handle OPTIONS request
-    if (req.method === "OPTIONS") {
-      return new Response(null, { headers, status: 204 });
-    }
-
-    // Only allow POST and GET
-    if (!["POST", "GET"].includes(req.method)) {
-      return new Response(JSON.stringify({ error: "Method not allowed" }), {
-        headers,
-        status: 405,
-      });
-    }
-
-    // Handle GET request
-    if (req.method === "GET") {
-      const url = new URL(req.url);
-      const mode_id = url.searchParams.get("mode_id");
-      const user_id = url.searchParams.get("user_id");
-      
-      if (!mode_id && !user_id) {
-        return new Response(
-          JSON.stringify({ error: "Missing mode_id or user_id parameter" }),
-          { headers, status: 400 }
-        );
-      }
-      
-      // Initialize Supabase client
-      const supabaseClient = createClient(
-        Deno.env.get("SB_BRAND_URL") ?? "",
-        Deno.env.get("SB_BRAND_ANON_KEY") ?? "",
-        { 
-          global: { 
-            headers: { 
-              Authorization: req.headers.get("Authorization")!,
-            },
-          },
-            } 
-      );
-
-      let results;
-      if (mode_id) {
-        const { data, error } = await supabaseClient
-          .from("ai_rankings")
-          .select("*")
-          .eq("mode_id", mode_id);
-
-        if (error) throw error;
-        results = data;
-      } else if (user_id) {
-        const { data, error } = await supabaseClient
-          .from("ai_rankings")
-          .select("*")
-          .eq("user_id", user_id)
-          .order("analyzed_at", { ascending: false });
-
-        if (error) throw error;
-        results = data;
-      }
-      
-      if (!results) {
-        return new Response(JSON.stringify({ error: "No results found" }), {
-          headers,
-          status: 404,
-        });
-      }
-
-      return new Response(JSON.stringify(results), { headers });
-    }
-
-    // Handle POST request
-    const body = await req.json();
-    
-    // Validate request body
-    const { mode, user_id, query, location } =
-      searchRequestSchema.parse(body);
-
-    // Generate shared IDs for this search session
-    const mode_id = uuidv4();
-    const search_id = uuidv4();
-
-    // Run mode-specific analysis
-    let results;
-    try {
-      if(!mode_id){
-        throw new Error("Mode ID is required");
-      }
-      
-      if (mode === "Voyager") {
-        results = await voyagerAnalysis(user_id, query, mode_id, location);
-      } else if (mode === "Explorer") {
-        results = await explorerAnalysis(
-          user_id,
-          query,
-          mode_id,
-          location
-        );
-      } else {
-        return new Response(
-          JSON.stringify({ error: "Invalid analysis mode" }),
-          { headers, status: 400 }
-        );
-      }
-    } catch (analysisError) {
-      console.error("Error in analysis:", analysisError);
-      return new Response(
-        JSON.stringify({ 
-          error: "Analysis failed",
-          details:
-            analysisError instanceof Error
-              ? analysisError.message
-              : "Unknown analysis error",
-        }), 
-        { headers, status: 500 }
-      );
-    }
-
-    // Ensure results exist
-    if (!results) {
-      return new Response(
-        JSON.stringify({ error: "Analysis returned no results" }),
-        { headers, status: 500 }
-      );
-    }
-
-    // Save results to Supabase
-    try {
-      await saveToSupabase(results, user_id);
-    } catch (saveError) {
-      console.error("Error saving to Supabase:", saveError);
-      return new Response(
-        JSON.stringify({ 
-          error: "Failed to save results",
-          details:
-            saveError instanceof Error
-              ? saveError.message
-              : "Unknown save error",
-        }), 
-        { headers, status: 500 }
-      );
-    }
-
-    return new Response(
-      JSON.stringify({ 
-        success: true, 
-        message: `Analysis complete for mode ${mode}. Results have been stored with search ID: ${mode_id}`,
-        mode_id,
-      }),
-      { headers }
-    );
-  } catch (error) {
-    console.error("Error in search endpoint:", error);
-    if (error instanceof z.ZodError) {
-      return new Response(
-        JSON.stringify({ 
-          error: "Invalid request data",
-          details: error.errors,
-        }), 
-        { headers, status: 400 }
-      );
-    }
-    return new Response(
-      JSON.stringify({ 
-        error: "Internal server error",
-        details: error instanceof Error ? error.message : "Unknown error",
-      }), 
-      { headers, status: 500 }
-    );
-  }
-});
-
 // Helper function to call the search-google endpoint
 async function callSearchGoogleEndpoint(
   query: string,
@@ -478,7 +116,7 @@ async function callSearchGoogleEndpoint(
 ): Promise<void> {
   try {
     const apiUrl = `https://airankia.com/api/search-google`;
-    const internalApiKey = Deno.env.get("INTERNAL_API_KEY");
+    const internalApiKey = process.env.INTERNAL_API_KEY;
     
     // Log environment setup
     console.log("Google Search API call setup:");
@@ -545,7 +183,7 @@ async function callSearchGoogleEndpoint(
       
       const data = await response.json();
       console.log(`Search-google endpoint called successfully. Search ID: ${data.searchId}`);
-    } catch (fetchError) {
+    } catch (fetchError: any) {
       clearTimeout(timeoutId);
       if (fetchError.name === 'AbortError') {
         console.error('Search-google request timed out after 20 seconds');
@@ -814,8 +452,10 @@ export async function explorerAnalysis(
   user_id: string, 
   query: string,
   mode_id: string,
-  location: string  
+  location?: string  
 ): Promise<SearchResults> {
+  console.log(`🔍 [EXPLORER] Starting analysis for query: "${query}", user: ${user_id}, mode_id: ${mode_id}, location: ${location || 'Global'}`);
+  
   if(!mode_id){
     throw new Error("Mode ID is required - Cannot be undefined");
   }
@@ -823,9 +463,9 @@ export async function explorerAnalysis(
   // await callSearchGoogleEndpoint(query, mode_id, user_id, location);
   
   const rankings: AIRanking[] = [];
-  const socialInsights: SocialInsight[] = [];
 
   // 1. Define Models for Text Generation (Search-Enabled + Webhooks)
+  console.log(`📋 [EXPLORER] Defining ${5} text models and extraction models`);
   const textModels = [
     { modelId: "openai/gpt-4o-search-preview", name: "GPT 4o Web Search" },
     { modelId: "perplexity/sonar", name: "Perplexity Sonar" },
@@ -843,13 +483,17 @@ export async function explorerAnalysis(
   ];
 
   // 2. Generate Text Summaries for all models
-  async function generateTextForAllModels(models) {
+  console.log(`🤖 [EXPLORER] Starting text generation for ${textModels.length} models...`);
+  async function generateTextForAllModels(models: any[]) {
     return Promise.all(
       models.map(async ({ modelId, name }) => {
+        console.log(`  ⚡ [EXPLORER] Generating text for ${name}...`);
         try {
           // Handle Google AI Mode specially
           if (modelId === "google-ai-mode") {
+            console.log(`    🌐 [EXPLORER] Using Google AI Mode webhook for ${name}`);
             const googleResult = await callGoogleAiMode(location ? `${query} in ${location}` : query);
+            console.log(`    ✅ [EXPLORER] Google AI Mode ${googleResult.success ? 'succeeded' : 'failed'} for ${name}`);
             return {
               name,
               text: googleResult.text,
@@ -860,15 +504,18 @@ export async function explorerAnalysis(
 
           // Handle Claude Search specially
           if (modelId === "claude-search") {
+            console.log(`    🧠 [EXPLORER] Using Claude Search webhook for ${name}`);
             // Convert location to country code format using comprehensive countries list
             let countryCode = 'US'; // Default
             if (location) {
               // Create mapping from country label to uppercase country code
               const country = countries.find(c => c.label === location);
               countryCode = country ? country.value.toUpperCase() : 'US';
+              console.log(`    📍 [EXPLORER] Converted location "${location}" to country code "${countryCode}"`);
             }
             
             const claudeResult = await callClaudeSearch(location ? `${query} in ${location}` : query, countryCode);
+            console.log(`    ✅ [EXPLORER] Claude Search ${claudeResult.success ? 'succeeded' : 'failed'} for ${name}`);
             return {
               name,
               text: claudeResult.text,
@@ -879,6 +526,14 @@ export async function explorerAnalysis(
 
           // Handle Gemini Search specially
           if (modelId === "gemini-search") {
+            // Convert location to country code format using comprehensive countries list
+            let countryCode = 'US'; // Default
+            if (location) {
+              // Create mapping from country label to uppercase country code
+              const country = countries.find(c => c.label === location);
+              countryCode = country ? country.value.toUpperCase() : 'US';
+            }
+            
             const geminiResult = await callGeminiSearch(location ? `${query} in ${location}` : query, countryCode);
             return {
               name,
@@ -907,23 +562,35 @@ export async function explorerAnalysis(
           }).then(res => res.json());
 
           const text = response.choices[0].message.content;
-          const citations = null;
+          const citations = response.choices[0].message.annotations || null;
 
+          console.log(`    ✅ [EXPLORER] OpenRouter model ${name} succeeded`);
           return { name, text, citations, success: true };
         } catch (error) {
-          console.error(`Error generating text for ${name}:`, error);
+          console.error(`    ❌ [EXPLORER] Error generating text for ${name}:`, error);
           return { name, text: null, citations: null, success: false };
         }
       })
     );
   }
 
+  console.log(`🔄 [EXPLORER] Executing text generation for all models...`);
   const textGenerationResults = await generateTextForAllModels(textModels);
+  
+  const successfulResults = textGenerationResults.filter(r => r.success);
+  const failedResults = textGenerationResults.filter(r => !r.success);
+  console.log(`📊 [EXPLORER] Text generation complete - ✅ ${successfulResults.length} succeeded, ❌ ${failedResults.length} failed`);
+  
+  if (failedResults.length > 0) {
+    console.warn(`⚠️  [EXPLORER] Failed models: ${failedResults.map(r => r.name).join(', ')}`);
+  }
 
   // 3. Store Summaries in Supabase
+  console.log(`💾 [EXPLORER] Storing summaries in Supabase for ${successfulResults.length} models...`);
   const insertPromises = textGenerationResults
     .filter((result) => result.success && result.text)
     .map(async ({ name, text, citations }) => {
+      console.log(`  📝 [EXPLORER] Storing summary for ${name} (${text?.length || 0} characters)`);
       const { error } = await supabase.from("ai_summary").insert({
         model: name,
         summary: text,
@@ -933,14 +600,19 @@ export async function explorerAnalysis(
       });
 
       if (error) {
-        console.error(`Error inserting summary for ${name}:`, error);
+        console.error(`    ❌ [EXPLORER] Error inserting summary for ${name}:`, error);
+      } else {
+        console.log(`    ✅ [EXPLORER] Successfully stored summary for ${name}`);
       }
     });
 
   // Wait for all summary insertions to complete before proceeding
+  console.log(`⏳ [EXPLORER] Waiting for all summary insertions to complete...`);
   await Promise.all(insertPromises);
+  console.log(`✅ [EXPLORER] All summaries stored in Supabase`);
 
   // 4. Extract Structured Rankings from Text
+  console.log(`🔄 [EXPLORER] Starting structured data extraction from generated text...`);
   const rankingSchema = z.object({
     brands: z.array(
       z.object({
@@ -953,9 +625,11 @@ export async function explorerAnalysis(
     ),
   });
 
+  console.log(`🧮 [EXPLORER] Processing extraction for ${successfulResults.length} models...`);
   const extractionPromises = textGenerationResults
     .filter((result) => result.success && result.text)
     .map(async ({ name, text }) => {
+      console.log(`  🔍 [EXPLORER] Extracting structured data from ${name} (${text?.length || 0} chars)...`);
       try {
         let extractedObject: {
           brands: {
@@ -1007,7 +681,7 @@ export async function explorerAnalysis(
             model: openrouter("openai/gpt-4o"),
             schema: rankingSchema,
             prompt: formattedExtractionPrompt,
-            max_retries: 2,
+            maxRetries: 2,
             temperature: 0.0,
           });
           extractedObject = object;
@@ -1050,7 +724,7 @@ export async function explorerAnalysis(
             model: openrouter("anthropic/claude-sonnet-4"),
             schema: rankingSchema,
             prompt: formattedExtractionPrompt,
-            max_retries: 2,
+            maxRetries: 2,
             temperature: 0.0,
           });
           extractedObject = object;
@@ -1093,118 +767,118 @@ export async function explorerAnalysis(
             model: openrouter("google/gemini-2.5-flash"),
             schema: rankingSchema,
             prompt: formattedExtractionPrompt,
-            max_retries: 2,
+            maxRetries: 2,
             temperature: 0.0,
           });
           extractedObject = object;
         }
-                 else {
-           const modelConfig = objectModels.find((m) => m.name === name);
-           if (!modelConfig || typeof modelConfig.model === 'string') {
-             console.error(
-               `Cannot find model config for ${name} during extraction.`
-             );
-             return { name, success: false };
-           }
+        else {
+          const modelConfig = objectModels.find((m) => m.name === name);
+          if (!modelConfig || typeof modelConfig.model === 'string') {
+            console.error(
+              `Cannot find model config for ${name} during extraction.`
+            );
+            return { name, success: false };
+          }
 
-           if (name.toLowerCase().includes("perplexity")) {
-             // Use generateText for Perplexity, asking for JSON
-             const extractionPromptForText = `
-             Based ONLY on the text provided below, extract brands/companies/services, rank them, score them out of 100 and rate their sentiment. 
-             Output should be EXACTLY in this JSON format (a valid JSON array):
-             [
-               {
-                 "name": "Brand Name",
-                 "rank": 1-10, // Two brands cannot have the same rank
-                 "sentiment": "positive|negative|neutral",
-                 "score": 1-100,
-                 "reasoning": "Key benefits or features in 1-2 lines"
-               }
-             ]
+          if (name.toLowerCase().includes("perplexity")) {
+            // Use generateText for Perplexity, asking for JSON
+            const extractionPromptForText = `
+            Based ONLY on the text provided below, extract brands/companies/services, rank them, score them out of 100 and rate their sentiment. 
+            Output should be EXACTLY in this JSON format (a valid JSON array):
+            [
+              {
+                "name": "Brand Name",
+                "rank": 1-10, // Two brands cannot have the same rank
+                "sentiment": "positive|negative|neutral",
+                "score": 1-100,
+                "reasoning": "Key benefits or features in 1-2 lines"
+              }
+            ]
 
-             Rules:
-             1. ONLY output the valid JSON array. No introductory text, no markdown backticks.
-             2. Include ALL mentioned brands and order them as they appeared in the text.
-             3. Keep reasons factual and concise based *only* on the provided text.
-             4. Use only positive/negative/neutral for sentiment.
-             5. Default sentiment to positive if benefits are mentioned and no negative sentiment is apparent.
-             6. Each object in the array must have exactly these 5 fields.
-             7. Two brands cannot have the same rank and always start with 1, rank based on your analysis and the score you determined.
+            Rules:
+            1. ONLY output the valid JSON array. No introductory text, no markdown backticks.
+            2. Include ALL mentioned brands and order them as they appeared in the text.
+            3. Keep reasons factual and concise based *only* on the provided text.
+            4. Use only positive/negative/neutral for sentiment.
+            5. Default sentiment to positive if benefits are mentioned and no negative sentiment is apparent.
+            6. Each object in the array must have exactly these 5 fields.
+            7. Two brands cannot have the same rank and always start with 1, rank based on your analysis and the score you determined.
 
-             Text Analysis:
-             ---
-             ${text}
-             ---
-             
-             Output the JSON array now:`;
+            Text Analysis:
+            ---
+            ${text}
+            ---
+            
+            Output the JSON array now:`;
 
-             const response = await generateText({
-               model: modelConfig.model,
-               prompt: extractionPromptForText,
-               temperature: 0.0,
-               max_retries: 2,
-             });
+            const response = await generateText({
+              model: modelConfig.model,
+              prompt: extractionPromptForText,
+              temperature: 0.0,
+              maxRetries: 2,
+            });
 
-             // Attempt to parse the text response as JSON
-             try {
-               // Basic cleanup: remove potential markdown backticks
-               const cleanedText = response.text
-                 .replace(/^```json\n?|\n?```$/g, "")
-                 .trim();
-               extractedObject = JSON.parse(cleanedText);
-               // Optionally, validate with Zod: rankingSchema.parse(extractedObject);
-             } catch (parseError) {
-               console.error(
-                 `Failed to parse JSON from Perplexity for ${name}:`,
-                 parseError,
-                 "Raw Text:",
-                 response.text
-               );
-               throw new Error(`JSON parsing failed for ${name}`);
-             }
-           } else {
-             // Use generateObject for other models
-             const extractionPromptForObject = `
-             Extract brands/companies/services from the text, rank them, score them out of 100 and rate their sentiment. 
-                   Output should be EXACTLY in this JSON format:
-                   {
-                     "brands": [
-                       {
-                         "name": "Brand Name",
-                         "rank": 1-10, // Two brands cannot have the same rank
-                         "sentiment": "positive|negative|neutral",
-                         "score": 1-100, 
-                         "reasoning": "Key benefits or features in 1-2 lines"
-                       }
-                     ]
-                   }
+            // Attempt to parse the text response as JSON
+            try {
+              // Basic cleanup: remove potential markdown backticks
+              const cleanedText = response.text
+                .replace(/^```json\n?|\n?```$/g, "")
+                .trim();
+              extractedObject = JSON.parse(cleanedText);
+              // Optionally, validate with Zod: rankingSchema.parse(extractedObject);
+            } catch (parseError) {
+              console.error(
+                `Failed to parse JSON from Perplexity for ${name}:`,
+                parseError,
+                "Raw Text:",
+                response.text
+              );
+              throw new Error(`JSON parsing failed for ${name}`);
+            }
+          } else {
+            // Use generateObject for other models
+            const extractionPromptForObject = `
+            Extract brands/companies/services from the text, rank them, score them out of 100 and rate their sentiment. 
+                  Output should be EXACTLY in this JSON format:
+                  {
+                    "brands": [
+                      {
+                        "name": "Brand Name",
+                        "rank": 1-10, // Two brands cannot have the same rank
+                        "sentiment": "positive|negative|neutral",
+                        "score": 1-100, 
+                        "reasoning": "Key benefits or features in 1-2 lines"
+                      }
+                    ]
+                  }
 
-                   Rules:
-                   1. ONLY output valid JSON object conforming to the schema.
-                   2. Include ALL mentioned brands and order it the way it was provided in the text
-                   3. Keep reasons factual and concise based *only* on the provided text
-                   4. Use only positive/negative/neutral for sentiment
-                   5. Default to positive if benefits are mentioned
-                   6. Each brand must have exactly these 5 fields
-                   7. Two brands cannot have the same rank and always start with 1, rank based on your analysis and the score you determined.
-           
-                   Text Analysis:
-                   ---
-                   ${text}
-                   ---
-                   
-                   Respond ONLY with the valid JSON object.`;
+                  Rules:
+                  1. ONLY output valid JSON object conforming to the schema.
+                  2. Include ALL mentioned brands and order it the way it was provided in the text
+                  3. Keep reasons factual and concise based *only* on the provided text
+                  4. Use only positive/negative/neutral for sentiment
+                  5. Default to positive if benefits are mentioned
+                  6. Each brand must have exactly these 5 fields
+                  7. Two brands cannot have the same rank and always start with 1, rank based on your analysis and the score you determined.
+          
+                  Text Analysis:
+                  ---
+                  ${text}
+                  ---
+                  
+                  Respond ONLY with the valid JSON object.`;
 
-             const { object } = await generateObject({
-               model: modelConfig.model, // Use the OpenRouter model
-               schema: rankingSchema,
-               prompt: extractionPromptForObject,
-               max_retries: 2,
-               temperature: 0.0,
-             });
-             extractedObject = object;
-           }
-         }
+            const { object } = await generateObject({
+              model: modelConfig.model,
+              schema: rankingSchema,
+              prompt: extractionPromptForObject,
+              maxRetries: 2,
+              temperature: 0.0,
+            });
+            extractedObject = object;
+          }
+        }
 
         // Add extracted rankings to the main rankings array
         let brandsToProcess:
@@ -1247,21 +921,21 @@ export async function explorerAnalysis(
             const score = typeof brand.score === "number" ? brand.score : 0;
             const rank = typeof brand.rank === "number" ? brand.rank : null;
 
-      rankings.push({
-        id: uuidv4(),
+            rankings.push({
+              id: uuidv4(),
               entity_id: uuidv4(), // Will be updated later
               entity_name: brand.name || "Unknown Brand",
               entity_type: "brand",
-        user_id,
+              user_id,
               llm_name: name, // Attribute ranking to the original text model
-        query,
+              query,
               rank: rank,
               score: score,
               sentiment: sentiment, // Use checked sentiment
               reasoning: brand.reasoning || "",
               mode: "Explorer",
-        mode_id,
-        analyzed_at: new Date().toISOString(),
+              mode_id,
+              analyzed_at: new Date().toISOString(),
             });
           }
           return { name, success: true };
@@ -1271,15 +945,19 @@ export async function explorerAnalysis(
           throw new Error(`Invalid structure processed for ${name}`);
         }
       } catch (error) {
-        console.error(`Error extracting rankings using ${name}:`, error);
+        console.error(`    ❌ [EXPLORER] Error extracting rankings using ${name}:`, error);
         return { name, success: false }; // Indicate failure
       }
     });
 
   // Wait for all extraction attempts
+  console.log(`⏳ [EXPLORER] Waiting for all extraction attempts to complete...`);
   await Promise.all(extractionPromises);
+  
+  console.log(`📈 [EXPLORER] Extraction complete - found ${rankings.length} total rankings`);
 
   // 5. Process Unique Brands and Social Insights (using the extracted rankings)
+  console.log(`🔄 [EXPLORER] Processing unique brands and assigning consistent entity IDs...`);
   const uniqueBrands = new Set();
   const brandEntityMap = new Map();
 
@@ -1297,7 +975,10 @@ export async function explorerAnalysis(
     finalRankings.push({ ...ranking, entity_id: entityId });
   }
 
+  console.log(`🏢 [EXPLORER] Processed ${uniqueBrands.size} unique brands with ${rankings.length} total rankings`);
+
   // 6. Return results
+  console.log(`✅ [EXPLORER] Analysis complete! Returning results for mode: Explorer, mode_id: ${mode_id}`);
   return {
     mode: "Explorer",
     mode_id,
@@ -1305,75 +986,27 @@ export async function explorerAnalysis(
   };
 }
 
-// Edge Function handler if you want to expose this as a standalone function
-serve(async (req) => {
-  const headers = new Headers({
-    "Content-Type": "application/json",
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-  });
-
-  try {
-    if (req.method === "OPTIONS") {
-      return new Response(null, { headers });
-    }
-
-    if (req.method !== "POST") {
-      return new Response(JSON.stringify({ error: "Method not allowed" }), {
-        status: 405,
-        headers,
-      });
-    }
-
-    const {
-      user_id,
-      query,
-      mode_id,
-    } = await req.json();
-    
-    if (!user_id || !query || !brand_name) {
-      return new Response(
-        JSON.stringify({
-          error:
-            "Query and Brand Name are required to perform this search analysis",
-        }),
-        { status: 400, headers }
-      );
-    }
-
-    const results = await explorerAnalysis(
-      user_id,
-      query,
-      mode_id,
-    );
-
-    return new Response(JSON.stringify(results), { headers });
-  } catch (error) {
-    console.error("Error in explorerAnalysis edge function:", error);
-    return new Response(JSON.stringify({ error: "Internal server error" }), {
-      status: 500,
-      headers,
-    });
-  }
-});
-
 // Voyager: Multi-model analysis with social sentiment - Optimized
 export async function voyagerAnalysis(
   user_id: string, 
   query: string,
   mode_id: string,
-  location: string
+  location?: string
 ): Promise<SearchResults> {
+  console.log(`🚀 [VOYAGER] Starting analysis for query: "${query}", user: ${user_id}, mode_id: ${mode_id}, location: ${location || 'Global'}`);
+  
   if(!mode_id){
     throw new Error("Mode ID is required - Cannot be undefined");
   }
   // Call the search-google endpoint after mode_id is defined
-  await callSearchGoogleEndpoint(query, mode_id, user_id, location);
+  console.log(`🔍 [VOYAGER] Calling search-google endpoint...`);
+//   await callSearchGoogleEndpoint(query, mode_id, user_id, location);
   
+  console.log(`📋 [VOYAGER] Defining ${4} AI models for analysis`);
   const models = [
     {
-      model: openrouter("deepseek/deepseek-r1-0528:free"),
-      name: "DeepSeek R1",
+      model: openrouter("deepseek/deepseek-chat-v3-0324:free"),
+      name: "DeepSeek v3",
     },
     {
       model: openrouter("openai/gpt-4.1-nano"),
@@ -1390,12 +1023,13 @@ export async function voyagerAnalysis(
   ];
 
   const rankings: AIRanking[] = [];
-  const socialInsights: SocialInsight[] = [];
 
   // 2. Generate Text Summaries for all models
-  async function generateTextForAllModels(models) {
+  console.log(`🤖 [VOYAGER] Starting text generation for ${models.length} models...`);
+  async function generateTextForAllModels(models: any[]) {
     return Promise.all(
       models.map(async ({ model, name }) => {
+        console.log(`  ⚡ [VOYAGER] Generating text for ${name}...`);
         try {
           // Extract model ID from the model object
           let modelId;
@@ -1406,6 +1040,7 @@ export async function voyagerAnalysis(
             modelId = model.model || model.modelId;
           }
           
+          console.log(`    🔗 [VOYAGER] Calling OpenRouter API for ${name} (model: ${modelId})`);
           const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
             method: 'POST',
             headers: {
@@ -1423,21 +1058,33 @@ export async function voyagerAnalysis(
           const text = response.choices[0].message.content;
           const citations = null;
 
+          console.log(`    ✅ [VOYAGER] Successfully generated text for ${name} (${text?.length || 0} characters)`);
           return { name, text, citations, success: true };
         } catch (error) {
-          console.error(`Error generating text for ${name}:`, error);
+          console.error(`    ❌ [VOYAGER] Error generating text for ${name}:`, error);
           return { name, text: null, citations: null, success: false };
         }
       })
     );
   }
 
+  console.log(`🔄 [VOYAGER] Executing text generation for all models...`);
   const textGenerationResults = await generateTextForAllModels(models);
+  
+  const successfulResults = textGenerationResults.filter(r => r.success);
+  const failedResults = textGenerationResults.filter(r => !r.success);
+  console.log(`📊 [VOYAGER] Text generation complete - ✅ ${successfulResults.length} succeeded, ❌ ${failedResults.length} failed`);
+  
+  if (failedResults.length > 0) {
+    console.warn(`⚠️  [VOYAGER] Failed models: ${failedResults.map(r => r.name).join(', ')}`);
+  }
 
   // 3. Store Summaries in Supabase
+  console.log(`💾 [VOYAGER] Storing summaries in Supabase for ${successfulResults.length} models...`);
   const insertPromises = textGenerationResults
     .filter((result) => result.success && result.text)
     .map(async ({ name, text, citations }) => {
+      console.log(`  📝 [VOYAGER] Storing summary for ${name} (${text?.length || 0} characters)`);
       const { error } = await supabase.from("ai_summary").insert({
         model: name,
         summary: text,
@@ -1447,33 +1094,40 @@ export async function voyagerAnalysis(
       });
 
       if (error) {
-        console.error(`Error inserting summary for ${name}:`, error);
+        console.error(`    ❌ [VOYAGER] Error inserting summary for ${name}:`, error);
+      } else {
+        console.log(`    ✅ [VOYAGER] Successfully stored summary for ${name}`);
       }
     });
 
   // Wait for all summary insertions to complete before proceeding
+  console.log(`⏳ [VOYAGER] Waiting for all summary insertions to complete...`);
   await Promise.all(insertPromises);
+  console.log(`✅ [VOYAGER] All summaries stored in Supabase`);
 
   // 4. Extract Structured Rankings from Text
+  console.log(`🔄 [VOYAGER] Starting structured data extraction from generated text...`);
   const rankingSchema = z.object({
     brands: z.array(
       z.object({
-      name: z.string(),
-      rank: z.number().nullable(),
+        name: z.string(),
+        rank: z.number().nullable(),
         sentiment: z.string(),
-      score: z.number(),
+        score: z.number(),
         reasoning: z.string(),
       })
     ),
   });
 
+  console.log(`🧮 [VOYAGER] Processing extraction for ${successfulResults.length} models...`);
   const extractionPromises = textGenerationResults
     .filter((result) => result.success && result.text)
     .map(async ({ name, text }) => {
+      console.log(`  🔍 [VOYAGER] Extracting structured data from ${name} (${text?.length || 0} chars)...`);
       const modelConfig = models.find((m) => m.name === name);
       if (!modelConfig) {
         console.error(
-          `Cannot find model config for ${name} during extraction.`
+          `    ❌ [VOYAGER] Cannot find model config for ${name} during extraction.`
         );
         return { name, success: false };
       }
@@ -1524,7 +1178,7 @@ export async function voyagerAnalysis(
             model: modelConfig.model,
             prompt: extractionPromptForText,
             temperature: 0.0,
-            max_retries: 2,
+            maxRetries: 2,
           });
 
           // Attempt to parse the text response as JSON
@@ -1581,7 +1235,7 @@ export async function voyagerAnalysis(
             model: openrouter("openai/gpt-4o"), 
             schema: rankingSchema,
             prompt: extractionPromptForObject,
-            max_retries: 2,
+            maxRetries: 2,
             temperature: 0.0,
           });
           extractedObject = object;
@@ -1628,21 +1282,21 @@ export async function voyagerAnalysis(
             const score = typeof brand.score === "number" ? brand.score : 0;
             const rank = typeof brand.rank === "number" ? brand.rank : null;
 
-      rankings.push({
-        id: uuidv4(),
+            rankings.push({
+              id: uuidv4(),
               entity_id: uuidv4(), // Will be updated later
               entity_name: brand.name || "Unknown Brand",
               entity_type: "brand",
-        user_id,
+              user_id,
               llm_name: name, // Attribute ranking to the original text model
-        query,
+              query,
               rank: rank,
               score: score,
               sentiment: sentiment, // Use checked sentiment
               reasoning: brand.reasoning || "",
               mode: "Voyager",
-        mode_id,
-        analyzed_at: new Date().toISOString(),
+              mode_id,
+              analyzed_at: new Date().toISOString(),
             });
           }
           return { name, success: true };
@@ -1652,15 +1306,19 @@ export async function voyagerAnalysis(
           throw new Error(`Invalid structure processed for ${name}`);
         }
       } catch (error) {
-        console.error(`Error extracting rankings using ${name}:`, error);
+        console.error(`    ❌ [VOYAGER] Error extracting rankings using ${name}:`, error);
         return { name, success: false }; // Indicate failure
       }
     });
 
   // Wait for all extraction attempts
+  console.log(`⏳ [VOYAGER] Waiting for all extraction attempts to complete...`);
   await Promise.all(extractionPromises);
+  
+  console.log(`📈 [VOYAGER] Extraction complete - found ${rankings.length} total rankings`);
 
   // 5. Process Unique Brands and Social Insights (using the extracted rankings)
+  console.log(`🔄 [VOYAGER] Processing unique brands and assigning consistent entity IDs...`);
   const uniqueBrands = new Set();
   const brandEntityMap = new Map();
 
@@ -1678,67 +1336,15 @@ export async function voyagerAnalysis(
     finalRankings.push({ ...ranking, entity_id: entityId });
   }
 
+  console.log(`🏢 [VOYAGER] Processed ${uniqueBrands.size} unique brands with ${rankings.length} total rankings`);
+
+  console.log(`✅ [VOYAGER] Analysis complete! Returning results for mode: Voyager, mode_id: ${mode_id}`);
   return {
     mode: "Voyager",
     mode_id,
     ai_rankings: rankings,
   };
 }
-
-
-// Edge Function handler for direct invocation
-
-serve(async (req) => {
-  const headers = new Headers({
-    "Content-Type": "application/json",
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-  });
-
-  try {
-    if (req.method === "OPTIONS") {
-      return new Response(null, { headers });
-    }
-
-    if (req.method !== "POST") {
-      return new Response(JSON.stringify({ error: "Method not allowed" }), {
-        status: 405,
-        headers,
-      });
-    }
-
-    const { user_id, query } = await req.json();
-    
-    if (!user_id || !query) {
-      return new Response(
-        JSON.stringify({ error: "user_id and query are required" }),
-        { status: 400, headers }
-      );
-    }
-
-    const results = await voyagerAnalysis(user_id, query);
-    
-    return new Response(JSON.stringify(results), { headers });
-  } catch (error) {
-    console.error("Error in voyagerAnalysis edge function:", error);
-    return new Response(JSON.stringify({ error: "Internal server error" }), {
-      status: 500,
-      headers,
-    });
-  }
-});
-
-
-// Initialize Supabase client
-const supabase = createClient(
-  Deno.env.get("SB_BRAND_URL") ?? "",
-  Deno.env.get("SB_BRAND_SERVICE_ROLE_KEY") ?? "",
-  {
-    auth: {
-      persistSession: false,
-    },
-    }
-);
 
 // Save search results to Supabase using optimized structure
 export async function saveToSupabase(
@@ -1886,14 +1492,6 @@ export async function saveToSupabase(
       }
     } else {
       console.log(`Successfully saved AI ranking session with ${totalRankings} rankings grouped by ${queryCount} queries`);
-      
-      // Update user summary stats asynchronously
-      supabase.rpc('update_ai_ranking_summary', { p_user_id: user_id })
-        .then(({ error: summaryError }) => {
-          if (summaryError) {
-            console.error('Error updating AI ranking summary stats:', summaryError);
-          }
-        });
     }
 
   } catch (error) {
@@ -1902,233 +1500,143 @@ export async function saveToSupabase(
   }
 }
 
-// Fetch search results by search ID (fallback to old structure if needed)
-export async function getSearchResultsBySearchId(
-  search_id: string
-): Promise<SearchResults | null> {
+// Handle POST requests
+export async function POST(request: NextRequest) {
   try {
-    // First try optimized structure
-    const { data: sessionData, error: sessionError } = await supabase
-      .from("ai_ranking_sessions")
-      .select("*")
-      .eq("id", search_id)
-      .single();
+    const body = await request.json();
     
-    if (sessionData && !sessionError) {
-      // Convert JSONB rankings back to array format
-      const ai_rankings: AIRanking[] = [];
-      
-      if (sessionData.rankings_data) {
-        Object.entries(sessionData.rankings_data as Record<string, AIRanking[]>).forEach(([query, rankings]) => {
-          ai_rankings.push(...rankings);
-        });
-      }
-      
-      return {
-        search_id,
-        mode: sessionData.mode,
-        mode_id: sessionData.id,
-        ai_rankings,
-      };
-    }
-    
-    // Fallback to old structure
-    const { data: rankingsData, error: rankingsError } = await supabase
-      .from("ai_rankings")
-      .select("*")
-      .eq("id", search_id);
-    
-    if (rankingsError || !rankingsData || rankingsData.length === 0) {
-      return null;
-    }
-    
-    return {
-      search_id,
-      mode: rankingsData[0].mode,
-      mode_id: rankingsData[0].mode_id,
-      ai_rankings: rankingsData as AIRanking[],
-    };
-  } catch (error) {
-    console.error("Error in getSearchResultsBySearchId:", error);
-    throw error;
-  }
-}
+    // Validate request body
+    const { mode, user_id, query, location } = searchRequestSchema.parse(body);
 
-// Fetch results by mode ID (optimized)
-export async function getSearchResultsByModeId(
-  mode_id: string
-): Promise<SearchResults | null> {
-  try {
-    // Try optimized structure first
-    const { data: sessionData, error: sessionError } = await supabase
-      .from("ai_ranking_sessions")
-      .select("*")
-      .eq("id", mode_id)
-      .single();
-    
-    if (sessionData && !sessionError) {
-      // Convert JSONB rankings back to array format
-      const ai_rankings: AIRanking[] = [];
-      
-      if (sessionData.rankings_data) {
-        Object.entries(sessionData.rankings_data as Record<string, AIRanking[]>).forEach(([query, rankings]) => {
-          ai_rankings.push(...rankings);
-        });
+    // Generate shared IDs for this search session
+    const mode_id = uuidv4();
+
+    // Run mode-specific analysis
+    let results;
+    try {
+      if (!mode_id) {
+        throw new Error("Mode ID is required");
       }
       
-      return {
-        search_id: mode_id,
-        mode: sessionData.mode,
-        mode_id,
-        ai_rankings,
-        social_insights: [], // Would need to fetch separately if needed
-      };
+      if (mode === "Voyager") {
+        results = await voyagerAnalysis(user_id, query, mode_id, location);
+      } else if (mode === "Explorer") {
+        results = await explorerAnalysis(user_id, query, mode_id, location);
+      } else {
+        return NextResponse.json(
+          { error: "Invalid analysis mode" },
+          { status: 400 }
+        );
+      }
+    } catch (analysisError) {
+      console.error("Error in analysis:", analysisError);
+      return NextResponse.json(
+        { 
+          error: "Analysis failed",
+          details: analysisError instanceof Error ? analysisError.message : "Unknown analysis error",
+        }, 
+        { status: 500 }
+      );
     }
-    
-    // Fallback to old structure
-    const { data: rankingsData, error: rankingsError } = await supabase
-      .from("ai_rankings")
-      .select("*")
-      .eq("mode_id", mode_id);
-    
-    if (rankingsError || !rankingsData || rankingsData.length === 0) {
-      return null;
+
+    // Ensure results exist
+    if (!results) {
+      return NextResponse.json(
+        { error: "Analysis returned no results" },
+        { status: 500 }
+      );
     }
-    
-    // Get social insights if any
-    const { data: insightsData } = await supabase
-      .from("social_insights")
-      .select("*")
-      .eq("search_id", rankingsData[0].id);
-    
-    return {
-      search_id: rankingsData[0].id,
-      mode: rankingsData[0].mode,
+
+    // Save results to Supabase
+    try {
+      await saveToSupabase(results, user_id);
+    } catch (saveError) {
+      console.error("Error saving to Supabase:", saveError);
+      return NextResponse.json(
+        { 
+          error: "Failed to save results",
+          details: saveError instanceof Error ? saveError.message : "Unknown save error",
+        }, 
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ 
+      success: true, 
+      message: `Analysis complete for mode ${mode}. Results have been stored with search ID: ${mode_id}`,
       mode_id,
-      ai_rankings: rankingsData as AIRanking[],
-      social_insights: (insightsData as SocialInsight[]) || [],
-    };
+    });
   } catch (error) {
-    console.error("Error in getSearchResultsByModeId:", error);
-    throw error;
-  }
-}
-
-// Fetch all search results for a user (optimized)
-export async function getUserSearchResults(
-  user_id: string
-): Promise<SearchResults[]> {
-  try {
-    // Try optimized structure first
-    const { data: sessionsData, error: sessionsError } = await supabase
-      .from("ai_ranking_sessions")
-      .select("*")
-      .eq("user_id", user_id)
-      .order("analyzed_at", { ascending: false });
-    
-    if (sessionsData && !sessionsError && sessionsData.length > 0) {
-      return sessionsData.map((session): SearchResults => {
-        // Convert JSONB rankings back to array format
-        const ai_rankings: AIRanking[] = [];
-        
-        if (session.rankings_data) {
-          Object.entries(session.rankings_data as Record<string, AIRanking[]>).forEach(([query, rankings]) => {
-            ai_rankings.push(...rankings);
-          });
-        }
-        
-        return {
-          search_id: session.id,
-          mode: session.mode as AnalysisMode,
-          mode_id: session.id,
-          ai_rankings,
-          social_insights: [], // Would need to fetch separately if needed
-        };
-      });
+    console.error("Error in search endpoint:", error);
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { 
+          error: "Invalid request data",
+          details: error.errors,
+        }, 
+        { status: 400 }
+      );
     }
-    
-    // Fallback to old structure
-    const { data: rankingsData, error: rankingsError } = await supabase
-      .from("ai_rankings")
-      .select("*")
-      .eq("user_id", user_id)
-      .order("analyzed_at", { ascending: false });
-    
-    if (rankingsError || !rankingsData || rankingsData.length === 0) {
-      return [];
-    }
-    
-    // Group rankings by mode_id
-    const modeGroups = rankingsData.reduce((acc, ranking) => {
-      if (!acc[ranking.mode_id]) {
-        acc[ranking.mode_id] = [];
-      }
-      acc[ranking.mode_id].push(ranking);
-      return acc;
-    }, {} as Record<string, AIRanking[]>);
-    
-    // Create SearchResults for each mode group
-    return Object.entries(modeGroups).map(
-      ([mode_id, rankings]): SearchResults => {
-        const firstRanking = rankings[0] as AIRanking;
-        return {
-          search_id: firstRanking.id,
-          mode: firstRanking.mode as AnalysisMode,
-          mode_id,
-          ai_rankings: rankings as AIRanking[],
-          social_insights: [], // Would need to fetch separately if needed
-        };
-      }
+    return NextResponse.json(
+      { 
+        error: "Internal server error",
+        details: error instanceof Error ? error.message : "Unknown error",
+      }, 
+      { status: 500 }
     );
-  } catch (error) {
-    console.error("Error in getUserSearchResults:", error);
-    throw error;
   }
 }
 
-// Edge Function handler for direct invocation if needed
-
-serve(async (req) => {
-  const headers = new Headers({
-    "Content-Type": "application/json",
-    "Access-Control-Allow-Origin": "*",
-  });
-
-  const { searchParams } = new URL(req.url);
+// Handle GET requests
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
   const mode_id = searchParams.get("mode_id");
   const user_id = searchParams.get("user_id");
+  
+  if (!mode_id && !user_id) {
+    return NextResponse.json(
+      { error: "Missing mode_id or user_id parameter" },
+      { status: 400 }
+    );
+  }
 
   try {
-    if (req.method === "OPTIONS") {
-      return new Response(null, { headers });
-    }
-
-    if (req.method !== "GET") {
-      return new Response(JSON.stringify({ error: "Method not allowed" }), {
-        status: 405,
-        headers,
-      });
-    }
-
-     let results;
+    let results;
     if (mode_id) {
-      results = await getSearchResultsByModeId(mode_id);
+      const { data, error } = await supabase
+        .from("ai_rankings")
+        .select("*")
+        .eq("mode_id", mode_id);
+
+      if (error) throw error;
+      results = data;
     } else if (user_id) {
-      results = await getUserSearchResults(user_id);
-    }
+      const { data, error } = await supabase
+        .from("ai_rankings")
+        .select("*")
+        .eq("user_id", user_id)
+        .order("analyzed_at", { ascending: false });
 
+      if (error) throw error;
+      results = data;
+    }
+    
     if (!results) {
-      return new Response(JSON.stringify({ error: "Not found" }), { headers });
+      return NextResponse.json(
+        { error: "No results found" },
+        { status: 404 }
+      );
     }
 
-    return new Response(JSON.stringify(results || { error: "Not found" }), {
-      headers,
-    });
+    return NextResponse.json(results);
   } catch (error) {
-    console.error("Error in supabaseUtils edge function:", error);
-    return new Response(JSON.stringify({ error: "Internal server error" }), {
-      status: 500,
-      headers,
-    });
+    console.error("Error fetching results:", error);
+    return NextResponse.json(
+      { 
+        error: "Failed to fetch results",
+        details: error instanceof Error ? error.message : "Unknown error",
+      }, 
+      { status: 500 }
+    );
   }
-});
+}

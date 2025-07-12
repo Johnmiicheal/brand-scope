@@ -25,8 +25,8 @@ export async function POST(req: NextRequest) {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Extract request data (including user from request body)
-    const { businessBrief, keyword, website, user } = await req.json();
-    console.log("Request Body Parsed:", { businessBrief, keyword, website, user: user?.id });
+    const { businessBrief, keyword, website, user, language } = await req.json();
+    console.log("Request Body Parsed:", { businessBrief, keyword, website, user: user?.id, language });
 
     // Validate user authentication
     if (!user || !user.id) {
@@ -76,7 +76,8 @@ export async function POST(req: NextRequest) {
     // Prepare webhook payload as query parameters
     const chatInputData = {
       url: website || "",
-      "business_brief or main keyword": businessBrief || keyword || ""
+      "business_brief or main keyword": businessBrief || keyword || "",
+      language: language || "en"
     };
     
     const chatInputParam = encodeURIComponent(JSON.stringify(chatInputData));

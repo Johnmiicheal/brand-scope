@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 // @ts-nocheck
@@ -58,7 +59,7 @@ import {
 } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { Claude, Gemini, OpenAI, Perplexity } from "@lobehub/icons";
+import { AiStudio, Claude, Gemini, Google, OpenAI, Perplexity } from "@lobehub/icons";
 import { GoogleResults } from "@/components/ui/google-results";
 import remarkGfm from 'remark-gfm';
 
@@ -70,11 +71,14 @@ interface Brand {
 
 // Type for citation data
 interface Citation {
-  url_citation: {
+  url_citation?: {
     url: string;
     title: string;
     snippet: string;
   };
+  source?: string;
+  title?: string;
+  url?: string;
 }
 
 function AnalysisContent() {
@@ -233,7 +237,14 @@ function AnalysisContent() {
     .map((s) => s.reasoning)
     .filter(Boolean);
   const citationsLinks = citations?.flatMap((c) => JSON.parse(c));
-  // console.log(citationsLinks)
+  const uniqueCitations = citationsLinks?.filter(
+    (citation, index, self) =>
+      index ===
+      self.findIndex(
+        (c) => c.url_citation?.url === citation.url_citation?.url && c?.title === citation.title
+      )
+  );
+  console.log(citations)
 
   if (loading) {
     return <AnalysisLoadingState />;
@@ -372,7 +383,7 @@ function AnalysisContent() {
           </TabsContent>
 
           <TabsContent value="citations" className="space-y-4">
-            <CitationsTabContent citations={citationsLinks} />
+            <CitationsTabContent citations={uniqueCitations} />
           </TabsContent>
 
           <TabsContent value="searches" className="space-y-4">
@@ -669,6 +680,9 @@ function SummaryTabContent({ item }: { item: Summary | null }) {
                 {item.model?.toLowerCase().includes("perplexity") && (
                   <Perplexity.Combine className="h-5 w-5" />
                 )}
+                {item.model?.toLowerCase().includes("google") && (
+                  <AiStudio.Combine className="h-5 w-5" />
+                )}
               </div>
             </div>
 
@@ -684,9 +698,10 @@ function SummaryTabContent({ item }: { item: Summary | null }) {
               prose-table:table-auto prose-td:border prose-td:border-neutral-800 prose-td:p-2 
               prose-th:border prose-th:border-neutral-800 prose-th:p-2 prose-table:border-collapse"
             >
-              <ReactMarkdown 
-                remarkPlugins={[remarkGfm]}
-                components={{
+              <div className="markdown-content [&_p:has(img)]:grid [&_p:has(img)]:grid-cols-1 [&_p:has(img)]:md:grid-cols-2 [&_p:has(img)]:lg:grid-cols-3 [&_p:has(img)]:gap-4 [&_p:has(img)]:my-4">
+                <ReactMarkdown 
+                  remarkPlugins={[remarkGfm]}
+                  components={{
                   table: ({ node, ...props }) => (
                     <table className="border border-neutral-800 w-full" {...props} />
                   ),
@@ -703,11 +718,19 @@ function SummaryTabContent({ item }: { item: Summary | null }) {
                     inline ? 
                     <code className="bg-neutral-800 px-1 py-0.5 rounded text-sm" {...props} /> :
                     <code className="block bg-neutral-800 p-4 rounded-lg text-sm my-4 overflow-auto" {...props} />
+                  ),
+                  img: ({ node, ...props }) => (
+                    <img 
+                      alt="Image"
+                      className="w-full h-auto rounded-lg border border-neutral-700 shadow-lg hover:shadow-xl transition-shadow duration-300 object-cover" 
+                      {...props} 
+                    />
                   )
                 }}
               >
                 {item.summary}
               </ReactMarkdown>
+              </div>
             </div>
 
             {parseReasoning &&
@@ -721,12 +744,12 @@ function SummaryTabContent({ item }: { item: Summary | null }) {
                     {parseReasoning.map((citation, idx) => (
                       <a
                         key={idx}
-                        href={citation.url_citation.url}
+                        href={citation?.url_citation?.url || citation?.url}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center rounded-md bg-secondary px-2.5 py-0.5 text-xs font-medium text-secondary-foreground transition-colors hover:bg-secondary/80"
                       >
-                        {citation.url_citation.title}
+                        {citation?.url_citation?.title || citation?.title}
                         <svg
                           className="ml-1 h-3 w-3"
                           fill="none"
@@ -791,17 +814,17 @@ function CitationsTabContent({
               <Card className="h-full bg-zinc-800/50 border-accent hover:bg-zinc-800/70 transition-colors">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base font-medium line-clamp-2">
-                    {citation.url_citation.title}
+                    {citation?.url_citation?.title || citation?.title}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
                     <div className="flex items-center justify-between pt-2">
                       <Badge variant="outline" className="text-xs">
-                        {new URL(citation.url_citation.url).hostname}
+                        {new URL(citation?.url_citation?.url || citation?.url || "").hostname}
                       </Badge>
                       <a
-                        href={citation.url_citation.url}
+                        href={citation?.url_citation?.url || citation?.url}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center text-xs text-blue-400 hover:text-blue-300 transition-colors"

@@ -230,10 +230,9 @@ function IndustryRankingsTable({
   // console.log(brandFetch)
 
   const maxMentions = Math.max(...brands.map((brand) => brand.total_mentions));
-  const maxModels = selectedModel.size === 0 ? 7 : selectedModel.size;
+  const maxModels = selectedModel.size === 0 ? 6 : selectedModel.size;
   const getCoverageRatio = (brand: any, type: "ratio" | "count") => {
     const totalMentionsPerModel =
-      (brand.gpt_mentions > 0 ? 1 : 0) +
       (brand.claude_mentions > 0 ? 1 : 0) +
       (brand.perplexity_mentions > 0 ? 1 : 0) +
       (brand.gemini_mentions > 0 ? 1 : 0) +
@@ -243,10 +242,7 @@ function IndustryRankingsTable({
     // Check selected models and add to total mentions count
     let selectedModelTotalMentions = 0;
 
-    if (selectedModel.has("GPT 4.1") && brand.gpt_mentions > 0) {
-      selectedModelTotalMentions++;
-    }
-    if (selectedModel.has("Claude 3.5 Sonnet") && brand.claude_mentions > 0) {
+    if (selectedModel.has("Claude 4.0 Sonnet") && brand.claude_mentions > 0) {
       selectedModelTotalMentions++;
     }
     if (
@@ -255,7 +251,7 @@ function IndustryRankingsTable({
     ) {
       selectedModelTotalMentions++;
     }
-    if (selectedModel.has("Gemini 2.0 Flash") && brand.gemini_mentions > 0) {
+    if (selectedModel.has("Gemini 2.5 Flash") && brand.gemini_mentions > 0) {
       selectedModelTotalMentions++;
     }
     if (
@@ -817,7 +813,7 @@ function DashboardContent() {
 
     try {
       const exportData: any[] = [];
-      const maxModels = selectedModel.size === 0 ? 7 : selectedModel.size;
+      const maxModels = selectedModel.size === 0 ? 6 : selectedModel.size;
       const maxMentions = Math.max(
         ...brandMentionsInSummaries.map((brand) => brand.total_mentions)
       );
@@ -825,7 +821,6 @@ function DashboardContent() {
       // Helper function to calculate coverage ratio for a brand
       const getCoverageRatio = (brand: any) => {
         const totalMentionsPerModel =
-          (brand.gpt_mentions > 0 ? 1 : 0) +
           (brand.claude_mentions > 0 ? 1 : 0) +
           (brand.perplexity_mentions > 0 ? 1 : 0) +
           (brand.gemini_mentions > 0 ? 1 : 0) +
@@ -836,10 +831,8 @@ function DashboardContent() {
         let selectedModelTotalMentions = 0;
 
         if (selectedModel.size > 0) {
-          if (selectedModel.has("GPT 4.1") && brand.gpt_mentions > 0)
-            selectedModelTotalMentions++;
           if (
-            selectedModel.has("Claude 3.5 Sonnet") &&
+            selectedModel.has("Claude 4.0 Sonnet") &&
             brand.claude_mentions > 0
           )
             selectedModelTotalMentions++;
@@ -849,7 +842,7 @@ function DashboardContent() {
           )
             selectedModelTotalMentions++;
           if (
-            selectedModel.has("Gemini 2.0 Flash") &&
+            selectedModel.has("Gemini 2.5 Flash") &&
             brand.gemini_mentions > 0
           )
             selectedModelTotalMentions++;
@@ -890,11 +883,10 @@ function DashboardContent() {
       // Helper function to get listed models for a brand
       const getListedModels = (brand: any) => {
         const models: string[] = [];
-        if (brand.gpt_mentions > 0) models.push("GPT 4.1");
         if (brand.gpt_search_mentions > 0) models.push("GPT 4o Web Search");
-        if (brand.claude_mentions > 0) models.push("Claude 3.5 Sonnet");
+        if (brand.claude_mentions > 0) models.push("Claude 4.0 Sonnet");
         if (brand.perplexity_mentions > 0) models.push("Perplexity Sonar");
-        if (brand.gemini_mentions > 0) models.push("Gemini 2.0 Flash");
+        if (brand.gemini_mentions > 0) models.push("Gemini 2.5 Flash");
         if (brand.ai_overview_mentions > 0) models.push("Google AI Overview");
         if (brand.google_ai_mode_mentions > 0) models.push("Google AI Mode");
         return models.join("; ");
@@ -953,11 +945,10 @@ function DashboardContent() {
           "Coverage Ratio (%)": getCoverageRatio(brand),
           "Visibility Score (%)": getVisibilityScore(brand),
           "Listed in Models": getListedModels(brand),
-          "GPT 4.1 Mentions": brand.gpt_mentions > 0,
           "GPT 4o Web Search Mentions": brand.gpt_search_mentions > 0,
-          "Claude 3.5 Sonnet Mentions": brand.claude_mentions > 0,
+          "Claude 4.0 Sonnet Mentions": brand.claude_mentions > 0,
           "Perplexity Sonar Mentions": brand.perplexity_mentions > 0,
-          "Gemini 2.0 Flash Mentions": brand.gemini_mentions > 0,
+          "Gemini 2.5 Flash Mentions": brand.gemini_mentions > 0,
           "Google AI Overview Mentions": brand.ai_overview_mentions > 0,
           "Google AI Mode Mentions": brand.google_ai_mode_mentions > 0,
           "All Citations (URLs)": citations,
@@ -994,11 +985,10 @@ function DashboardContent() {
         ) / totalBrands
       ).toFixed(1);
       const allModels = [
-        "GPT 4.1",
         "GPT 4o Web Search",
-        "Claude 3.5 Sonnet",
+        "Claude 4.0 Sonnet",
         "Perplexity Sonar",
-        "Gemini 2.0 Flash",
+        "Gemini 2.5 Flash",
         "Google AI Overview",
         "Google AI Mode",
       ];
@@ -1013,18 +1003,14 @@ function DashboardContent() {
         "Coverage Ratio (%)": `Avg: ${avgCoverage}%`,
         "Visibility Score (%)": `Avg: ${avgVisibility}%`,
         "Listed in Models": activeModels,
-        "GPT 4.1 Mentions": exportData.reduce(
-          (sum, brand) => sum + brand["GPT 4.1 Mentions"],
-          0
-        ),
         "GPT 4o Web Search Mentions":
           exportData.reduce(
             (sum, brand) => sum + brand["GPT 4o Web Search Mentions"],
             0
           ) || 0,
-        "Claude 3.5 Sonnet Mentions":
+        "Claude 4.0 Sonnet Mentions":
           exportData.reduce(
-            (sum, brand) => sum + brand["Claude 3.5 Sonnet Mentions"],
+            (sum, brand) => sum + brand["Claude 4.0 Sonnet Mentions"],
             0
           ) || 0,
         "Perplexity Sonar Mentions":
@@ -1032,9 +1018,9 @@ function DashboardContent() {
             (sum, brand) => sum + brand["Perplexity Sonar Mentions"],
             0
           ) || 0,
-        "Gemini 2.0 Flash Mentions":
+        "Gemini 2.5 Flash Mentions":
           exportData.reduce(
-            (sum, brand) => sum + brand["Gemini 2.0 Flash Mentions"],
+            (sum, brand) => sum + brand["Gemini 2.5 Flash Mentions"],
             0
           ) || 0,
         "Google AI Overview Mentions":
@@ -1184,7 +1170,6 @@ function DashboardContent() {
       const getCoverageRatio = (brand: any) => {
         if (!brand) return 0;
         const totalMentionsPerModel =
-          ((brand.gpt_mentions || 0) > 0 ? 1 : 0) +
           ((brand.claude_mentions || 0) > 0 ? 1 : 0) +
           ((brand.perplexity_mentions || 0) > 0 ? 1 : 0) +
           ((brand.gemini_mentions || 0) > 0 ? 1 : 0) +
@@ -1194,10 +1179,8 @@ function DashboardContent() {
 
         let selectedModelTotalMentions = 0;
         if (selectedModel.size > 0) {
-          if (selectedModel.has("GPT 4.1") && (brand.gpt_mentions || 0) > 0)
-            selectedModelTotalMentions++;
           if (
-            selectedModel.has("Claude 3.5 Sonnet") &&
+            selectedModel.has("Claude 4.0 Sonnet") &&
             (brand.claude_mentions || 0) > 0
           )
             selectedModelTotalMentions++;
@@ -1207,7 +1190,7 @@ function DashboardContent() {
           )
             selectedModelTotalMentions++;
           if (
-            selectedModel.has("Gemini 2.0 Flash") &&
+              selectedModel.has("Gemini 2.5 Flash") &&
             (brand.gemini_mentions || 0) > 0
           )
             selectedModelTotalMentions++;
@@ -1256,11 +1239,10 @@ function DashboardContent() {
         "Total Mentions",
         "Coverage Ratio (%)",
         "Visibility Score (%)",
-        "GPT 4.1",
         "GPT 4o Search",
-        "Claude 3.5",
+        "Claude 4.0",
         "Perplexity",
-        "Gemini 2.0",
+        "Gemini 2.5",
         "AI Overview",
         "AI Mode",
       ];
@@ -1495,11 +1477,10 @@ function DashboardContent() {
 
       // Model comparison data
       const modelNames = [
-        "GPT 4.1",
         "GPT 4o Search",
-        "Claude 3.5",
+        "Claude 4.0",
         "Perplexity",
-        "Gemini 2.0",
+        "Gemini 2.5",
         "AI Overview",
         "AI Mode",
       ];
@@ -1518,16 +1499,12 @@ function DashboardContent() {
       const totalBrands = validBrands.length;
       const modelStats = [
         {
-          name: "GPT 4.1",
-          count: validBrands.filter((b) => (b.gpt_mentions || 0) > 0).length,
-        },
-        {
           name: "GPT 4o Search",
           count: validBrands.filter((b) => (b.gpt_search_mentions || 0) > 0)
             .length,
         },
         {
-          name: "Claude 3.5",
+          name: "Claude 4.0",
           count: validBrands.filter((b) => (b.claude_mentions || 0) > 0).length,
         },
         {
@@ -1536,7 +1513,7 @@ function DashboardContent() {
             .length,
         },
         {
-          name: "Gemini 2.0",
+          name: "Gemini 2.5",
           count: validBrands.filter((b) => (b.gemini_mentions || 0) > 0).length,
         },
         {
@@ -1761,7 +1738,7 @@ function DashboardContent() {
         return;
       }
 
-      const maxModels = selectedModel.size === 0 ? 7 : selectedModel.size;
+      const maxModels = selectedModel.size === 0 ? 6 : selectedModel.size;
       const maxMentions = Math.max(
         ...validBrands.map((brand) => brand.total_mentions || 0)
       );
@@ -1770,7 +1747,6 @@ function DashboardContent() {
       const getCoverageRatio = (brand: any) => {
         if (!brand) return 0;
         const totalMentionsPerModel =
-          ((brand.gpt_mentions || 0) > 0 ? 1 : 0) +
           ((brand.claude_mentions || 0) > 0 ? 1 : 0) +
           ((brand.perplexity_mentions || 0) > 0 ? 1 : 0) +
           ((brand.gemini_mentions || 0) > 0 ? 1 : 0) +
@@ -2085,11 +2061,10 @@ function DashboardContent() {
                     <th>Total Mentions</th>
                     <th>Coverage Ratio</th>
                     <th>Visibility Score</th>
-                    <th>GPT 4.1</th>
                     <th>GPT 4o</th>
-                    <th>Claude 3.5</th>
+                    <th>Claude 4.0</th>
                     <th>Perplexity</th>
-                    <th>Gemini 2.0</th>
+                    <th>Gemini 2.5</th>
                     <th>AI Overview</th>
                     <th>AI Mode</th>
                 </tr>
@@ -2106,13 +2081,6 @@ function DashboardContent() {
                         <td>${brand.total_mentions || 0}</td>
                         <td>${getCoverageRatio(brand).toFixed(1)}%</td>
                         <td>${getVisibilityScore(brand).toFixed(1)}%</td>
-                        <td><span class="coverage-indicator ${
-                          (brand.gpt_mentions || 0) > 0
-                            ? "covered"
-                            : "not-covered"
-                        }">${
-                      (brand.gpt_mentions || 0) > 0 ? "✓" : "✗"
-                    }</span></td>
                         <td><span class="coverage-indicator ${
                           (brand.gpt_search_mentions || 0) > 0
                             ? "covered"
@@ -2232,21 +2200,18 @@ function DashboardContent() {
             // Model Coverage Chart
             const modelCtx = document.getElementById('modelChart').getContext('2d');
             const modelStats = [
-                { name: 'GPT 4.1', count: ${
-                  validBrands.filter((b) => (b.gpt_mentions || 0) > 0).length
-                } },
                 { name: 'GPT 4o Search', count: ${
                   validBrands.filter((b) => (b.gpt_search_mentions || 0) > 0)
                     .length
                 } },
-                { name: 'Claude 3.5', count: ${
+                { name: 'Claude 4.0', count: ${
                   validBrands.filter((b) => (b.claude_mentions || 0) > 0).length
                 } },
                 { name: 'Perplexity', count: ${
                   validBrands.filter((b) => (b.perplexity_mentions || 0) > 0)
                     .length
                 } },
-                { name: 'Gemini 2.0', count: ${
+                { name: 'Gemini 2.5', count: ${
                   validBrands.filter((b) => (b.gemini_mentions || 0) > 0).length
                 } },
                 { name: 'AI Overview', count: ${
@@ -2565,7 +2530,6 @@ function DashboardContent() {
       analysis_brands.forEach((brand) => {
         const brandName = brand.name;
         const mentions = {
-          gpt_mentions: 0,
           claude_mentions: 0,
           perplexity_mentions: 0,
           gemini_mentions: 0,
@@ -2605,9 +2569,7 @@ function DashboardContent() {
               }
 
               // Assign mentions to the appropriate model
-              if (modelName.includes("4.1")) {
-                mentions.gpt_mentions += mentionCount;
-              } else if (modelName.includes("claude")) {
+              if (modelName.includes("claude")) {
                 mentions.claude_mentions += mentionCount;
               } else if (modelName.includes("perplexity")) {
                 mentions.perplexity_mentions += mentionCount;
@@ -2687,7 +2649,6 @@ function DashboardContent() {
     analysis_brands.forEach((brand) => {
       const brandName = brand.name;
       const mentions = {
-        gpt_mentions: 0,
         claude_mentions: 0,
         perplexity_mentions: 0,
         gemini_mentions: 0,
@@ -2728,9 +2689,7 @@ function DashboardContent() {
               }
 
               // Assign mentions to the appropriate model
-              if (modelName.includes("4.1")) {
-                mentions.gpt_mentions += mentionCount;
-              } else if (modelName.includes("claude")) {
+              if (modelName.includes("claude")) {
                 mentions.claude_mentions += mentionCount;
               } else if (modelName.includes("perplexity")) {
                 mentions.perplexity_mentions += mentionCount;

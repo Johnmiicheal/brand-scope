@@ -13,11 +13,13 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/components/ui/use-toast";
 import { KeywordAnalysisResults } from "@/components/keywords/keyword-analysis-results";
+import { Select, SelectItem, SelectContent, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type FormData = {
   businessBrief: string;
   keyword: string;
   website: string;
+  language: string;
 };
 
 type KeywordAnalysisResponse = {
@@ -54,6 +56,7 @@ export default function KeywordAnalysisPage() {
     businessBrief: "",
     keyword: "",
     website: "",
+    language: "en",
   });
   const [isLoading, setIsLoading] = useState(false);
   const [results, setResults] = useState<KeywordAnalysisResponse['data'] | null>(null);
@@ -237,15 +240,15 @@ export default function KeywordAnalysisPage() {
                 </div>
 
                 {/* Right Column */}
-                <div className="space-y-4">
-                  <div className="space-y-2">
+                <div className="space-y-4 flex gap-4">
+                  <div className="space-y-2 w-full">
                     <Label htmlFor="website" className="text-base font-medium">
                       Website URL
                     </Label>
                     <Input
                       id="website"
                       type="url"
-                      placeholder="e.g., https://otterly.ai"
+                      placeholder="e.g., https://denticlinic.ai"
                       value={formData.website}
                       onChange={handleInputChange}
                       disabled={isLoading}
@@ -254,7 +257,27 @@ export default function KeywordAnalysisPage() {
                       Your business website (optional if other fields are provided)
                     </p>
                   </div>
+                  <div className="space-y-2 md:w-[300px]">
+                    <Label htmlFor="language" className="text-base font-medium">
+                      Language
+                    </Label>
+                    <Select value={formData.language} onValueChange={(value) => setFormData(prev => ({ ...prev, language: value }))}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select a language" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="en">English</SelectItem>
+                        <SelectItem value="es">Spanish</SelectItem>
+                        <SelectItem value="fr">French</SelectItem>
+                        <SelectItem value="de">German</SelectItem>
+                        <SelectItem value="it">Italian</SelectItem>
+                        <SelectItem value="pt">Portuguese</SelectItem>
+                        <SelectItem value="ru">Russian</SelectItem>
+                      </SelectContent>
+                    </Select> 
+                  </div>
 
+                </div>
                   <div className="pt-8">
                     <Button
                       type="submit"
@@ -275,7 +298,6 @@ export default function KeywordAnalysisPage() {
                       )}
                     </Button>
                   </div>
-                </div>
               </div>
 
               {/* Error Display */}

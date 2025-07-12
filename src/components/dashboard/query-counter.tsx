@@ -35,7 +35,7 @@ export const QueryCounter = ({ product, subscription, isMonitoringMode=true }: Q
             <div className="flex items-center justify-between w-full">
                 <div className="flex gap-1 items-center">
                     {[...Array(5)].map((_, index) => {
-                        const percentage = (isMonitoringMode ? monitoringCount : userCount / (isMonitoringMode ? constraints.max_scheduled_queries : constraints.max_queries)) * 100;
+                        const percentage = ((isMonitoringMode ? monitoringCount : userCount) / (isMonitoringMode ? constraints.max_scheduled_queries : constraints.max_queries)) * 100;
                         const barFillPercentage = (percentage / 100) * 5;
                         const isActive = index < barFillPercentage;
                         

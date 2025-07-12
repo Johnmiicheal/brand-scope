@@ -24,19 +24,25 @@ import {
   DialogDescription,
   DialogOverlay,
 } from "../ui/dialog";
+import { countries } from "@/lib/countries";
 
 interface CreateBrandModalProps {
   showBrandModal: boolean;
   setShowBrandModal: (show: boolean) => void;
 }
 
-export const CreateBrandModal = ({ showBrandModal, setShowBrandModal }: CreateBrandModalProps) => {
+export const CreateBrandModal = ({
+  showBrandModal,
+  setShowBrandModal,
+}: CreateBrandModalProps) => {
   const [sessionKey, setSessionKey] = useState("");
 
   const [brandName, setBrandName] = useState("");
   const [brandWebsite, setBrandWebsite] = useState("");
   const [brandIndustry, setBrandIndustry] = useState("");
   const [brandLogo, setBrandLogo] = useState<File | null>(null);
+  const [brandLocation, setBrandLocation] = useState<string>("Global");
+  const [brandLanguage, setBrandLanguage] = useState<string>("en");
   const [brandLogoPreview, setBrandLogoPreview] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -139,6 +145,7 @@ export const CreateBrandModal = ({ showBrandModal, setShowBrandModal }: CreateBr
             website: brandWebsite,
             industry: brandIndustry,
             user_id: user.id,
+            location: brandLocation,
           },
         ])
         .select();
@@ -278,7 +285,7 @@ export const CreateBrandModal = ({ showBrandModal, setShowBrandModal }: CreateBr
 
   return (
     <Dialog open={showBrandModal} onOpenChange={setShowBrandModal}>
-        <DialogOverlay />
+      <DialogOverlay />
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>Create Brand</DialogTitle>
@@ -311,24 +318,64 @@ export const CreateBrandModal = ({ showBrandModal, setShowBrandModal }: CreateBr
             />
           </div>
 
-          <div className="grid gap-2">
-            <Label htmlFor="industry">Industry</Label>
-            <Select value={brandIndustry} onValueChange={setBrandIndustry}>
-              <SelectTrigger className="bg-zinc-800 w-full">
-                <SelectValue placeholder="Select industry" />
-              </SelectTrigger>
-              <SelectContent>
-                {INDUSTRIES.map((industry) => (
-                  <SelectItem key={industry} value={industry}>
-                    {industry}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="flex gap-2 w-full">
+            <div className="grid gap-2 w-full">
+              <Label htmlFor="industry">Industry</Label>
+              <Select value={brandIndustry} onValueChange={setBrandIndustry}>
+                <SelectTrigger className="bg-zinc-800 w-full">
+                  <SelectValue placeholder="Select industry" />
+                </SelectTrigger>
+                <SelectContent>
+                  {INDUSTRIES.map((industry) => (
+                    <SelectItem key={industry} value={industry}>
+                      {industry}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2 md:w-[300px]">
+              <Label htmlFor="language" className="">
+                Language
+              </Label>
+              <Select
+                value={brandLanguage}
+                onValueChange={(value) => setBrandLanguage(value)}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select a language" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="en">English</SelectItem>
+                  <SelectItem value="es">Spanish</SelectItem>
+                  <SelectItem value="fr">French</SelectItem>
+                  <SelectItem value="de">German</SelectItem>
+                  <SelectItem value="it">Italian</SelectItem>
+                  <SelectItem value="pt">Portuguese</SelectItem>
+                  <SelectItem value="ru">Russian</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
+          <div className="grid gap-2 w-full">
+              <Label htmlFor="country">Country</Label>
+              <Select value={brandLocation} onValueChange={setBrandLocation}>
+                <SelectTrigger className="bg-zinc-800 w-full">
+                  <SelectValue placeholder="Select country" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Global">Global</SelectItem>
+                  {countries.map((country) => (
+                    <SelectItem key={country.label} value={country.label}>
+                      {country.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="logo">Logo</Label>
+            <Label htmlFor="logo">Logo (optional)</Label>
             <div className="flex items-center gap-4">
               <input
                 ref={fileInputRef}
