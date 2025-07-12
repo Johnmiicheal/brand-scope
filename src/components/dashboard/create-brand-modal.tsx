@@ -146,6 +146,7 @@ export const CreateBrandModal = ({
             industry: brandIndustry,
             user_id: user.id,
             location: brandLocation,
+            language: brandLanguage,
           },
         ])
         .select();
@@ -162,6 +163,8 @@ export const CreateBrandModal = ({
       setBrandIndustry("");
       setBrandLogo(null);
       setBrandLogoPreview(null);
+      setBrandLanguage("en");
+      setBrandLocation("Global");
 
       // Close modal and refresh brands
       setShowBrandModal(false);
