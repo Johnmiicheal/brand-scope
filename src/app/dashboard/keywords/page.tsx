@@ -97,6 +97,7 @@ export default function KeywordAnalysisPage() {
           businessBrief: formData.businessBrief.trim(),
           keyword: formData.keyword.trim(),
           website: formData.website.trim(),
+          language: formData.language,
           user: user,
         }),
       });
