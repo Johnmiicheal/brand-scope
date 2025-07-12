@@ -448,7 +448,7 @@ async function callGoogleAiMode(prompt: string): Promise<{
 }
 
 // Explorer: Competitor comparison and analysis - Optimized
-export async function explorerAnalysis(
+async function explorerAnalysis(
   user_id: string, 
   query: string,
   mode_id: string,
@@ -987,7 +987,7 @@ export async function explorerAnalysis(
 }
 
 // Voyager: Multi-model analysis with social sentiment - Optimized
-export async function voyagerAnalysis(
+async function voyagerAnalysis(
   user_id: string, 
   query: string,
   mode_id: string,
@@ -1347,7 +1347,7 @@ export async function voyagerAnalysis(
 }
 
 // Save search results to Supabase using optimized structure
-export async function saveToSupabase(
+async function saveToSupabase(
   results: SearchResults,
   user_id: string
 ): Promise<void> {
