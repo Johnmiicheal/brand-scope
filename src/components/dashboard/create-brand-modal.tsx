@@ -29,13 +29,11 @@ import { countries } from "@/lib/countries";
 interface CreateBrandModalProps {
   showBrandModal: boolean;
   setShowBrandModal: (show: boolean) => void;
-  setAttachedBrandId: (id: string) => void;
 }
 
 export const CreateBrandModal = ({
   showBrandModal,
   setShowBrandModal,
-  setAttachedBrandId,
 }: CreateBrandModalProps) => {
   const [sessionKey, setSessionKey] = useState("");
 
@@ -167,7 +165,6 @@ export const CreateBrandModal = ({
       setBrandLogoPreview(null);
       setBrandLanguage("en");
       setBrandLocation("Global");
-      setAttachedBrandId(brandId);
       // Close modal and refresh brands
       setShowBrandModal(false);
       fetchBrands();
