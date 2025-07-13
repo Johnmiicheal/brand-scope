@@ -104,6 +104,7 @@ const searchRequestSchema = z.object({
   user_id: z.string().uuid(),
   query: z.string(),
   location: z.string().optional(),
+  attached_brand_id: z.string().uuid().optional(),
 });
 
 // Helper function to call the search-google endpoint
@@ -1349,7 +1350,8 @@ async function voyagerAnalysis(
 // Save search results to Supabase using optimized structure
 async function saveToSupabase(
   results: SearchResults,
-  user_id: string
+  user_id: string,
+  attached_brand_id: string | null
 ): Promise<void> {
   try {
     // Ensure brand records exist (using the consistent entity IDs)
@@ -1477,7 +1479,8 @@ async function saveToSupabase(
         rankings_data: rankingsByQuery,
         top_entities: topEntities,
         stats: stats,
-        analyzed_at: new Date().toISOString()
+        analyzed_at: new Date().toISOString(),
+        attached_brand_id: attached_brand_id
       });
 
     if (sessionError) {
@@ -1506,7 +1509,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     
     // Validate request body
-    const { mode, user_id, query, location } = searchRequestSchema.parse(body);
+    const { mode, user_id, query, location, attached_brand_id } = searchRequestSchema.parse(body);
 
     // Generate shared IDs for this search session
     const mode_id = uuidv4();
@@ -1549,7 +1552,7 @@ export async function POST(request: NextRequest) {
 
     // Save results to Supabase
     try {
-      await saveToSupabase(results, user_id);
+      await saveToSupabase(results, user_id, attached_brand_id || null);
     } catch (saveError) {
       console.error("Error saving to Supabase:", saveError);
       return NextResponse.json(

@@ -11,6 +11,8 @@ export interface Brand {
   website: string | null;
   industry: string | null;
   user_id: string;
+  location: string;
+  language: string;
   created_at: string;
 }
 

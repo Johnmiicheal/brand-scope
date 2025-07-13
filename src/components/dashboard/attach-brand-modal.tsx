@@ -26,17 +26,17 @@ import {
 } from "../ui/dialog";
 import { countries } from "@/lib/countries";
 
-interface CreateBrandModalProps {
+interface AttachBrandModalProps {
   showBrandModal: boolean;
   setShowBrandModal: (show: boolean) => void;
-  setAttachedBrandId: (id: string) => void;
+  setAttachedBrand: (brand: Brand) => void;
 }
 
-export const CreateBrandModal = ({
+export const AttachBrandModal = ({
   showBrandModal,
   setShowBrandModal,
-  setAttachedBrandId,
-}: CreateBrandModalProps) => {
+  setAttachedBrand,
+}: AttachBrandModalProps) => {
   const [sessionKey, setSessionKey] = useState("");
 
   const [brandName, setBrandName] = useState("");
@@ -52,11 +52,21 @@ export const CreateBrandModal = ({
   const [brands, setBrands] = useState<Brand[]>([]);
   const [selectedBrand, setSelectedBrand] = useState<Brand | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   useEffect(() => {
     fetchBrands();
   }, []);
+
+  useEffect(() => {
+    if (selectedBrand) {
+      setBrandName(selectedBrand.name);
+      setBrandWebsite(selectedBrand.website || "");
+      setBrandIndustry(selectedBrand.industry || "");
+      setBrandLogoPreview(selectedBrand.logo_url || null);
+      setBrandLocation(selectedBrand.location || "Global");
+      setBrandLanguage(selectedBrand.language || "en");
+    }
+  }, [selectedBrand]);
 
   const fetchBrands = async () => {
     try {
@@ -82,8 +92,6 @@ export const CreateBrandModal = ({
         .from("brand_project")
         .select("*")
         .eq("user_id", user.id)
-        .not("website", "is", null)
-        .not("logo_url", "is", null);
 
       if (error) {
         console.error("Error fetching brands:", error);
@@ -92,19 +100,19 @@ export const CreateBrandModal = ({
       }
 
       setBrands(data as unknown as Brand[]);
-
-      // Set the first brand as selected if available
-      if (data && data.length > 0) {
-        setSelectedBrand(data[0] as unknown as Brand);
-      } else {
-        // Show brand creation modal if no valid brands exist
-        setShowBrandModal(true);
-      }
-
       setLoading(false);
     } catch (error) {
       console.error("Error:", error);
       setLoading(false);
+    }
+  };
+
+  const handleAttachBrand = async () => {
+    if(selectedBrand) {
+      setAttachedBrand(selectedBrand as Brand);
+      setShowBrandModal(false);
+    } else {
+      handleCreateBrand();
     }
   };
 
@@ -137,7 +145,7 @@ export const CreateBrandModal = ({
 
       // Create brand record
       const brandId = uuidv4();
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("brand_project")
         .insert([
           {
@@ -167,54 +175,12 @@ export const CreateBrandModal = ({
       setBrandLogoPreview(null);
       setBrandLanguage("en");
       setBrandLocation("Global");
-      setAttachedBrandId(brandId);
-      // Close modal and refresh brands
-      setShowBrandModal(false);
-      fetchBrands();
-
-      // Trigger brand analysis
-      await analyzeBrand(brandId);
-
+      setAttachedBrand(data[0] as unknown as Brand);
       setSubmitting(false);
+      setShowBrandModal(false);
     } catch (error) {
       console.error("Error:", error);
       setSubmitting(false);
-    }
-  };
-
-  const analyzeBrand = async (brandId: string) => {
-    try {
-      setIsAnalyzing(true);
-      // Call the analysis API
-      const response = await fetch(
-        process.env.NEXT_PUBLIC_ANALYZE_BRAND as string,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${sessionKey}`,
-          },
-          body: JSON.stringify({
-            brandId,
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error("Brand analysis failed:", errorData);
-        setIsAnalyzing(false);
-        return;
-      }
-
-      const data = await response.json();
-      if (data) {
-        window.location.reload();
-      }
-      setIsAnalyzing(false);
-    } catch (error) {
-      console.error("Error analyzing brand:", error);
-      setIsAnalyzing(false);
     }
   };
 
@@ -293,12 +259,37 @@ export const CreateBrandModal = ({
       <DialogOverlay />
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Create Brand</DialogTitle>
+          <DialogTitle>Attach Brand to Analysis</DialogTitle>
           <DialogDescription>
-            Tell us about your brand to personalize your experience (optional)
+            Tell us about your brand to personalize your search analysis
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-6 py-4">
+          {/* Brand Select */}
+          {brands.length > 0 && (
+          <div className="grid gap-2 w-full bg-blue-500/10 border border-blue-500/20 border-dashed p-4 rounded-md">
+            <Label htmlFor="brand">Select your brand</Label>
+            <Select
+              value={selectedBrand?.id}
+              onValueChange={(value) =>
+                setSelectedBrand(
+                  brands.find((brand) => brand.id === value) as Brand
+                )
+              }
+            >
+              <SelectTrigger className="bg-zinc-800 w-full">
+                <SelectValue placeholder="Select brand" />
+              </SelectTrigger>
+              <SelectContent>
+                {brands.map((brand) => (
+                  <SelectItem key={brand.id} value={brand.id}>
+                    {brand.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          )}    
           <div className="grid gap-2">
             <Label htmlFor="name">Name</Label>
             <Input
@@ -363,21 +354,21 @@ export const CreateBrandModal = ({
             </div>
           </div>
           <div className="grid gap-2 w-full">
-              <Label htmlFor="country">Country</Label>
-              <Select value={brandLocation} onValueChange={setBrandLocation}>
-                <SelectTrigger className="bg-zinc-800 w-full">
-                  <SelectValue placeholder="Select country" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Global">Global</SelectItem>
-                  {countries.map((country) => (
-                    <SelectItem key={country.label} value={country.label}>
-                      {country.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <Label htmlFor="country">Country</Label>
+            <Select value={brandLocation} onValueChange={setBrandLocation}>
+              <SelectTrigger className="bg-zinc-800 w-full">
+                <SelectValue placeholder="Select country" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Global">Global</SelectItem>
+                {countries.map((country) => (
+                  <SelectItem key={country.label} value={country.label}>
+                    {country.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
           <div className="grid gap-2">
             <Label htmlFor="logo">Logo (optional)</Label>
@@ -449,11 +440,11 @@ export const CreateBrandModal = ({
         </div>
         <DialogFooter>
           <Button
-            onClick={handleCreateBrand}
+            onClick={handleAttachBrand}
             disabled={submitting}
             className="w-full"
           >
-            {submitting ? "Creating..." : "Create Brand"}
+            {submitting ? "Attaching..." : "Attach Brand"}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -43,12 +43,13 @@ import { Button } from "./button";
 import { motion } from "framer-motion";
 import { UserSubscription } from "@/hooks/useAuth";
 import { LoadingState } from "../loading-state";
-import { useBrandData } from "@/contexts/brand-data-context";
+import { Brand } from "@/contexts/brand-data-context";
 import { domains } from "@/types/domains";
 import { QueryCounter } from "../dashboard/query-counter";
 import { User } from "@supabase/supabase-js";
 import Stripe from "stripe";
 import { getConstraints } from "@/lib/constraints";
+import { AttachBrandModal } from "../dashboard/attach-brand-modal";
 
 interface UseAutoResizeTextareaProps {
   minHeight: number;
@@ -115,16 +116,16 @@ interface AIChatInterfaceProps {
 export function AIChatInterface({ user, session, product, subscription, isLoading, monitoring }: AIChatInterfaceProps) {
   const router = useRouter();
   const [value, setValue] = useState("");
-
-  const { brand } = useBrandData();
   const [mode, setMode] = useState<AnalysisMode>("Explorer");
   const [loading, setLoading] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isMonitoringMode, setIsMonitoringMode] = useState(monitoring === "true" ? true : false);
+  const [attachedBrand, setAttachedBrand] = useState<Brand | null>(null);
   const [monitorFrequency, setMonitorFrequency] = useState<"daily" | "weekly">(
     "daily"
   );
   const [open, setOpen] = useState(false);
+  const [openModal, setOpenModal] = useState(false);
   const [location, setLocation] = useState("");
   const { textareaRef, adjustHeight } = useAutoResizeTextarea({
     minHeight: 60,
@@ -133,6 +134,8 @@ export function AIChatInterface({ user, session, product, subscription, isLoadin
   const [currentTime, setCurrentTime] = useState(new Date());
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
+
+ 
   // Update time every second
   useEffect(() => {
     const timer = setInterval(() => {
@@ -279,6 +282,7 @@ export function AIChatInterface({ user, session, product, subscription, isLoadin
             frequency: monitorFrequency,
             mode,
             location: location,
+            brand_id: attachedBrand?.id || "No Brand ID",
           }),
         });
 
@@ -311,10 +315,11 @@ export function AIChatInterface({ user, session, product, subscription, isLoadin
             mode,
             user_id: user.id,
             query: value.trim(),
-            brand_name: brand?.name || "No Brand Name", // Use optional chaining
-            brand_industry: brand?.industry || "No Brand Industry", // Use optional chaining
-            brand_id: brand?.id || "No Brand ID", // Use optional chaining
+            brand_name: attachedBrand?.name || "No Brand Name", // Use optional chaining
+            brand_industry: attachedBrand?.industry || "No Brand Industry", // Use optional chaining
+            brand_id: attachedBrand?.id || "No Brand ID", // Use optional chaining
             location: location,
+            attached_brand_id: attachedBrand ? [attachedBrand?.id] : null,
           }),
         });
 
@@ -455,9 +460,10 @@ export function AIChatInterface({ user, session, product, subscription, isLoadin
 
   return (
     <div className="flex flex-col items-center w-full max-w-4xl mx-auto p-4 space-y-8">
-      <h1 className="text-4xl font-regular text-neutral-700 dark:text-white">
+      <h1 className="text-4xl font- text-center text-neutral-700 dark:text-white">
         {isMonitoringMode
           ? "Search and Monitor Prompts"
+          : attachedBrand ? "Search and Monitor Prompts for " + attachedBrand?.name + " (" + attachedBrand?.industry + ")"
           : "Let's help you understand your prompts"}
       </h1>
 
@@ -466,7 +472,8 @@ export function AIChatInterface({ user, session, product, subscription, isLoadin
           className={cn(
             "relative bg-[#e2e2e2]/20 dark:bg-neutral-900/10 rounded-xl border border-[#e2e2e2]/20 hover:border-[#e2e2e2]/40 dark:border-neutral-800",
             isMonitoringMode &&
-              "ring-3 ring-blue-500 ring-offset-2 ring-offset-background dark:ring-offset-neutral-950"
+              "ring-3 ring-blue-500 ring-offset-2 ring-offset-background dark:ring-offset-neutral-950",
+            attachedBrand && "ring-3 ring-purple-500 ring-offset-2 ring-offset-background dark:ring-offset-neutral-950"
           )}
         >
           <div className="overflow-y-auto">
@@ -506,11 +513,15 @@ export function AIChatInterface({ user, session, product, subscription, isLoadin
               {/* Attach Brand Button */}
               <button
                     type="button"
-                    className="group p-[10px] bg-muted/50 dark:bg-black/20 dark:hover:bg-neutral-800 cursor-pointer rounded-full border border-[#e2e2e2]/20 dark:border-accent transition-all duration-400 ease flex items-center "
+                    onClick={() => setOpenModal(true)}
+                    className={cn(
+                      "group p-[10px] bg-muted/50 dark:bg-black/20 dark:hover:bg-neutral-800 cursor-pointer rounded-full border border-[#e2e2e2]/20 dark:border-accent transition-all duration-400 ease flex items-center ",
+                      attachedBrand && "bg-purple-500/40 dark:bg-purple-900/40 hover:bg-purple-500/50 dark:hover:bg-purple-900/50"
+                    )}
                   >
                     <Paperclip className="w-4 h-4 text-neutral-400 dark:text-white/60" />
                     <span className="text-xs text-neutral-400 dark:text-white opacity-0 max-w-0 group-hover:max-w-[200px] group-hover:ml-2 group-hover:opacity-100 transition-all duration-300 ease-in-out overflow-hidden whitespace-nowrap">
-                      Attach Brand
+                      {attachedBrand ? "Change Brand" : "Attach Brand"}
                     </span>
                   </button>
 
@@ -810,6 +821,7 @@ export function AIChatInterface({ user, session, product, subscription, isLoadin
           </div>
         </div>
       </div>
+      <AttachBrandModal showBrandModal={openModal} setShowBrandModal={setOpenModal} setAttachedBrand={setAttachedBrand} />
     </div>
   );
 }
