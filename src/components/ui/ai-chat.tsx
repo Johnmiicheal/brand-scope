@@ -111,16 +111,17 @@ interface AIChatInterfaceProps {
   subscription: UserSubscription | null;
   isLoading: boolean;
   monitoring?: string | null;
+  attachedBrandId?: string | null;
 }
 
-export function AIChatInterface({ user, session, product, subscription, isLoading, monitoring }: AIChatInterfaceProps) {
+export function AIChatInterface({ user, session, product, subscription, isLoading, monitoring, attachedBrandId }: AIChatInterfaceProps) {
   const router = useRouter();
   const [value, setValue] = useState("");
   const [mode, setMode] = useState<AnalysisMode>("Explorer");
   const [loading, setLoading] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isMonitoringMode, setIsMonitoringMode] = useState(monitoring === "true" ? true : false);
-  const [attachedBrand, setAttachedBrand] = useState<Brand | null>(null);
+  const [attachedBrand, setAttachedBrand] = useState<Brand | null>(attachedBrandId ? { id: attachedBrandId, name: "Your Brand", industry: "", logo_url: "", website: "", language: "", location: "", created_at: "" } as Brand : null);
   const [monitorFrequency, setMonitorFrequency] = useState<"daily" | "weekly">(
     "daily"
   );
@@ -463,7 +464,7 @@ export function AIChatInterface({ user, session, product, subscription, isLoadin
       <h1 className="text-4xl font- text-center text-neutral-700 dark:text-white">
         {isMonitoringMode
           ? "Search and Monitor Prompts"
-          : attachedBrand ? "Search and Monitor Prompts for " + attachedBrand?.name + " (" + attachedBrand?.industry + ")"
+          : attachedBrand ? "Search and Monitor Prompts for " + attachedBrand?.name 
           : "Let's help you understand your prompts"}
       </h1>
 

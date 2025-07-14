@@ -104,7 +104,7 @@ const searchRequestSchema = z.object({
   user_id: z.string().uuid(),
   query: z.string(),
   location: z.string().optional(),
-  attached_brand_id: z.string().uuid().optional(),
+  attached_brand_id: z.array(z.string().uuid()).optional(),
 });
 
 // Helper function to call the search-google endpoint
@@ -1351,7 +1351,7 @@ async function voyagerAnalysis(
 async function saveToSupabase(
   results: SearchResults,
   user_id: string,
-  attached_brand_id: string | null
+  attached_brand_id: string[] | null
 ): Promise<void> {
   try {
     // Ensure brand records exist (using the consistent entity IDs)

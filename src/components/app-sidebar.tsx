@@ -19,7 +19,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { TbAt, TbBookmarks, TbLayoutGridAdd, TbListSearch, TbSquareLetterA, TbTrendingUp } from "react-icons/tb";
+import { TbAt, TbBookmarks, TbLayoutGridAdd, TbListSearch, TbSquareLetterA, TbTrendingUp, TbTriangleSquareCircle } from "react-icons/tb";
 import { RankiaIcon } from "./icon-rankia"
 
 
@@ -53,37 +53,37 @@ const data = {
     //   title: "Research",
     //   url: "/dashboard/research",
     //   icon: TbBuildings,
-    //   group: "metrics"
+    //   group: "analytics"
     // },
     {
       title: "Keywords",
       url: "/dashboard/keywords",
       icon: TbSquareLetterA,
-      group: "metrics"
+      group: "analytics"
     },
-    // {
-    //   title: "Model",
-    //   url: "/dashboard/model",
-    //   icon: TbSparkles,
-    //   group: "metrics"
-    // },
+    {
+      title: "Projects",
+      url: "/dashboard/projects",
+      icon: TbTriangleSquareCircle,
+      group: "analytics"
+    },
     {
       title: "Brand Mentions",
       url: "/dashboard/brand-mentions",
       icon: TbAt,
-      group: "metrics"
+      group: "analytics"
     },
     // {
     //   title: "Social Analysis",
     //   url: "/dashboard/social",
     //   icon: TbGrid,
-    //   group: "metrics"
+    //   group: "analytics"
     // },
     {
       title: "Improve",
       url: "/dashboard/improvement",
       icon: TbTrendingUp,
-      group: "metrics"
+      group: "analytics"
     },
   ],
   navSecondary: [

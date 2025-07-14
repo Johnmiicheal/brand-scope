@@ -18,6 +18,7 @@ function SearchContent() {
   const { user, session, product, subscription, isLoading } = useAuth();
   const searchParams = useSearchParams();
   const monitoring = searchParams.get("monitoring");
+  const attachedBrandId = searchParams.get("attached_brand_id");
 
   if (isLoading) {
     return (
@@ -92,6 +93,7 @@ function SearchContent() {
                 subscription={subscription} 
                 isLoading={isLoading} 
                 monitoring={monitoring} 
+                attachedBrandId={attachedBrandId}
               />
             </motion.div>
           </div>

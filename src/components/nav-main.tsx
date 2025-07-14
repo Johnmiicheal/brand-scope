@@ -28,7 +28,7 @@ export function NavMain({
   
   // Filter items by group
   const mainItems = items.filter(item => item.group === "main");
-  const metricsItems = items.filter(item => item.group === "metrics");
+  const analyticsItems = items.filter(item => item.group === "analytics");
   
   return (
     <>
@@ -56,9 +56,9 @@ export function NavMain({
       </SidebarGroup>
       
       <SidebarGroup>
-        <SidebarGroupLabel>Metrics</SidebarGroupLabel>
+        <SidebarGroupLabel>Analytics</SidebarGroupLabel>
         <SidebarMenu>
-          {metricsItems.map((item) => (
+          {analyticsItems.map((item) => (
             <SidebarMenuItem key={item.title}>
               <SidebarMenuButton 
                 asChild 
