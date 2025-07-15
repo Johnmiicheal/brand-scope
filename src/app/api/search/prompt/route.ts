@@ -11,7 +11,7 @@ import {
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { countries } from "@/lib/countries";
 
-export const runtime = 'edge';
+// export const runtime = 'edge';
 export const maxDuration = 200;
 
 // Types
@@ -461,7 +461,7 @@ async function explorerAnalysis(
     throw new Error("Mode ID is required - Cannot be undefined");
   }
   // Call the search-google endpoint after mode_id is defined
-  // await callSearchGoogleEndpoint(query, mode_id, user_id, location);
+  await callSearchGoogleEndpoint(query, mode_id, user_id, location);
   
   const rankings: AIRanking[] = [];
 
@@ -1001,7 +1001,7 @@ async function voyagerAnalysis(
   }
   // Call the search-google endpoint after mode_id is defined
   console.log(`🔍 [VOYAGER] Calling search-google endpoint...`);
-//   await callSearchGoogleEndpoint(query, mode_id, user_id, location);
+  await callSearchGoogleEndpoint(query, mode_id, user_id, location);
   
   console.log(`📋 [VOYAGER] Defining ${4} AI models for analysis`);
   const models = [

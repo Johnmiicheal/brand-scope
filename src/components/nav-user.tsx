@@ -90,7 +90,7 @@ export function NavUser() {
   const handleOpenBillingPortal = async () => {
     const session = await stripe.billingPortal.sessions.create({
       customer: user_subscriptions?.stripe_customer_id,
-      return_url: 'https://ai-rankia.com/dashboard',
+      return_url: 'https://airankia.com/dashboard',
     });
     if (session) {
       window.location.href = session.url
