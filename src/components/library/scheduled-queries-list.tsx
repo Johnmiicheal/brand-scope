@@ -58,6 +58,7 @@ export type ScheduledQuery = {
   mode: "DeepFocus" | "Voyager" | "Explorer" | null;
   mode_id: string | null;
   status: "active" | "paused" | "error"; // Ensure DB has this column
+  attached_brand_id: string[];
 };
 
 export function ScheduledQueriesList({

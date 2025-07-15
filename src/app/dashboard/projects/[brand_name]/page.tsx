@@ -16,6 +16,8 @@ import {
   Activity
 } from "lucide-react";
 import Link from "next/link";
+import { Tabs, TabsContent, TabsList, TabsTrigger, } from "@/components/ui/tabs";
+import { ScheduledQueriesList, ScheduledQuery } from "@/components/library/scheduled-queries-list";
 
 interface Brand {
   id: string;
@@ -51,6 +53,7 @@ export default function BrandProjectPage() {
   
   const [brand, setBrand] = useState<Brand | null>(null);
   const [sessions, setSessions] = useState<AnalysisSession[]>([]);
+  const [monitoredSessions, setMonitoredSessions] = useState<[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -97,6 +100,22 @@ export default function BrandProjectPage() {
       }
 
       setSessions((sessionsData as unknown as AnalysisSession[]) || []);
+
+      // Then, fetch monitored sessions that have this brand attached
+      const { data: monitoredSessionsData, error: monitoredSessionsError } = await supabase
+        .from("scheduled_queries")
+        .select("*")
+        .eq("user_id", user.id)
+        .contains("attached_brand_id", [brandData.id]);
+
+      if (monitoredSessionsError) {
+        console.error("Error fetching monitored sessions:", monitoredSessionsError);
+        setError("Failed to load monitored sessions");
+        return;
+      }
+
+      setMonitoredSessions((monitoredSessionsData as unknown as []) || []);
+
     } catch (error) {
       console.error("Error:", error);
       setError("Failed to load brand data");
@@ -221,7 +240,7 @@ export default function BrandProjectPage() {
           <div>
             <h2 className="text-2xl font-semibold">Analysis Sessions</h2>
             <p className="text-muted-foreground mt-1">
-              {sessions.length} {sessions.length === 1 ? "session" : "sessions"} found
+              {sessions.length + monitoredSessions.length} {sessions.length + monitoredSessions.length === 1 ? "session" : "sessions"} found
             </p>
           </div>
           <Button asChild variant="outline" className="rounded-full">
@@ -229,7 +248,7 @@ export default function BrandProjectPage() {
           </Button>
         </div>
 
-        {sessions.length === 0 ? (
+        {sessions.length + monitoredSessions.length === 0 ? (
           <div className="text-center py-12">
             <Activity className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg font-semibold mb-2">No Analysis Sessions Yet</h3>
@@ -241,7 +260,13 @@ export default function BrandProjectPage() {
             </Button>
           </div>
         ) : (
-          <div className="grid gap-4">
+          <Tabs defaultValue="analysis">
+            <TabsList className="bg-zinc-800/50 border-zinc-700 gap-4">
+              <TabsTrigger value="analysis" className="data-[state=active]:!bg-blue-600 data-[state=active]:!text-white">Analysis ({sessions.length})</TabsTrigger>
+              <TabsTrigger value="monitored" className="data-[state=active]:!bg-blue-600 data-[state=active]:!text-white">Monitored ({monitoredSessions.length})</TabsTrigger>
+            </TabsList>
+            <TabsContent value="analysis">
+            <div className="grid gap-4">
             {sessions.map((session) => (
               <Card key={session.id} className="hover:shadow-lg transition-shadow">
                 <CardHeader>
@@ -311,6 +336,12 @@ export default function BrandProjectPage() {
               </Card>
             ))}
           </div>
+            </TabsContent>
+            <TabsContent value="monitored">
+              <ScheduledQueriesList queries={monitoredSessions as unknown as ScheduledQuery[]} />
+            </TabsContent>
+          </Tabs>
+         
         )}
       </div>
     </div>

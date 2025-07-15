@@ -283,7 +283,7 @@ export function AIChatInterface({ user, session, product, subscription, isLoadin
             frequency: monitorFrequency,
             mode,
             location: location,
-            brand_id: attachedBrand?.id || "No Brand ID",
+            attached_brand_id: attachedBrand ? [attachedBrand?.id] : null,
           }),
         });
 

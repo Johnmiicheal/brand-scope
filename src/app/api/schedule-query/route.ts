@@ -1173,6 +1173,7 @@ export async function POST(req: Request) {
       mode: z.string().optional(), // Mode is optional
       user_id: z.string().uuid("Invalid user ID format."),
       location: z.string().optional(),
+      attached_brand_id: z.array(z.string()).optional(),
     });
 
     const validation = inputSchema.safeParse(body);
@@ -1185,7 +1186,7 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
-    const { query, frequency, mode, user_id, location } = validation.data;
+    const { query, frequency, mode, user_id, location, attached_brand_id } = validation.data;
 
     // --- Check for Duplicate Query ---
     const { data: existingQuery, error: checkError } = await supabase
@@ -1232,6 +1233,7 @@ export async function POST(req: Request) {
         status: "active",
         location: location,
         results: [], // Initialize with an empty array in the jsonb column
+        attached_brand_id: attached_brand_id,
       })
       .select("id, query, frequency, mode") // Select necessary fields
       .single();
