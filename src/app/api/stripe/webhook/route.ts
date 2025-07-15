@@ -108,6 +108,8 @@ export async function POST(request: Request) {
             .update({
               status: subscription.status,
               current_period_end: subscription.current_period_end || Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60,
+              price_id: subscription.items.data[0].price.id,
+              updated_at: new Date().toISOString(),
             })
             .eq('stripe_subscription_id', subscriptionId);
 
@@ -138,6 +140,8 @@ export async function POST(request: Request) {
         .update({
           status: subscription.status,
           current_period_end: subscription.current_period_end,
+          price_id: subscription.items.data[0].price.id,
+          updated_at: new Date().toISOString(),
         })
         .eq('stripe_subscription_id', subscription.id);
 
