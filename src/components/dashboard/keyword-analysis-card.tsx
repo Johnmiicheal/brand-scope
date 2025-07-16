@@ -13,6 +13,8 @@ import {
   Eye,
   Search,
   TextSearch,
+  Loader2,
+  Info,
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -47,6 +49,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { KeywordAnalysisResults } from "@/components/keywords/keyword-analysis-results";
 import { countries } from "@/lib/countries";
+import { Input } from "../ui/input";
 
 const fadeIn = {
   hidden: { opacity: 0, y: 20 },
@@ -108,6 +111,7 @@ export function KeywordAnalysisCard() {
   const [fullKeywordsData, setFullKeywordsData] = useState<Record<string, any>>(
     {}
   );
+  const [editedKeyword, setEditedKeyword] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -208,21 +212,26 @@ export function KeywordAnalysisCard() {
     if (!selectedKeyword || !user?.id) return;
 
     setIsScheduling(true);
+    toast({
+      title: "Monitoring Started",
+      description: `Monitoring "${selectedKeyword.conversational_keyword}" has started. You can now close this modal and continue with your work.`,
+    });
     try {
-      // Insert into scheduled_queries table
-      const { error } = await supabase.from("scheduled_queries").insert({
-        user_id: user.id,
-        query: selectedKeyword.conversational_keyword,
-        frequency: scheduleFrequency,
-        country: scheduleCountry,
-        is_active: true,
-        last_analysis_at: new Date().toISOString(),
+      const response = await fetch("/api/schedule-query", {
+        method: "POST",
+        body: JSON.stringify({
+          query: editedKeyword || selectedKeyword?.conversational_keyword || "",
+          frequency: scheduleFrequency,
+          location: scheduleCountry,
+          user_id: user.id,
+        }),
       });
-
-      if (error) throw error;
+      if (!response.ok) {
+        throw new Error("Failed to schedule keyword");
+      }
 
       toast({
-        title: "Keyword Scheduled",
+        title: "Keyword Monitoring Completed",
         description: `"${selectedKeyword.conversational_keyword}" has been scheduled for ${scheduleFrequency} monitoring.`,
       });
 
@@ -484,6 +493,7 @@ export function KeywordAnalysisCard() {
                   setSelectedKeyword(keywordData as KeywordRecommendation);
                   setScheduleFrequency(frequency);
                   setScheduleCountry(country);
+                  setEditedKeyword(keywordData.conversational_keyword);
                   await handleScheduleKeyword();
                 }
               }}
@@ -499,7 +509,7 @@ export function KeywordAnalysisCard() {
             <DialogTitle>Schedule Keyword Monitoring</DialogTitle>
             <DialogDescription>
               Configure monitoring settings for &quot;
-              {selectedKeyword?.conversational_keyword}&quot;
+              {editedKeyword || selectedKeyword?.conversational_keyword || ""}&quot;
             </DialogDescription>
           </DialogHeader>
 
@@ -518,7 +528,18 @@ export function KeywordAnalysisCard() {
               </div>
             )}
 
+              <div className="space-y-3 w-full">
+                <label className="text-sm font-medium">
+                  Keyword
+                </label>
+                <Input
+                  value={editedKeyword || selectedKeyword?.conversational_keyword || ""}
+                  onChange={(e) => setEditedKeyword(e.target.value)}
+                  className="w-full"
+                />
+              </div>
             <div className="flex gap-5 w-full items-center justify-between">
+
               <div className="space-y-2 w-full">
                 <label className="text-sm font-medium">
                   Monitoring Frequency
@@ -564,19 +585,26 @@ export function KeywordAnalysisCard() {
               <Button
                 onClick={handleScheduleKeyword}
                 disabled={isScheduling}
-                className="flex-1"
+                className="flex-1 bg-blue-600 hover:bg-blue-500"
               >
-                <Calendar className="w-4 h-4" />
+                {isScheduling ? <Loader2 className="w-4 h-4 animate-spin" /> : <Calendar className="w-4 h-4" />}
                 {isScheduling ? "Scheduling..." : "Schedule Monitoring"}
               </Button>
               <Button
                 variant="outline"
+                className="rounded-full"
                 onClick={() => setShowScheduleModal(false)}
                 disabled={isScheduling}
               >
                 Cancel
               </Button>
             </div>
+            {isScheduling && (
+              <div className="flex items-center gap-2 p-4 mt-5 bg-muted/50 rounded-lg text-sm text-muted-foreground">
+                <Info className="w-4 h-4" />
+                You can now close this modal and continue with your work.
+            </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>
