@@ -18,6 +18,19 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { Search } from "lucide-react";
 
+interface CitationData {
+  url_citation?: {
+    url: string;
+    title: string;
+    snippet: string;
+  };
+  domain?: string;
+  source?: string;
+  text?: string;
+  url?: string;
+  title?: string;
+}
+
 // Types for the webhook response
 interface StepsData {
   output: {
@@ -132,25 +145,38 @@ export function StepsTabContent({
     setError(null);
 
     try {
-      // Ensure citations have the correct structure
-      const validCitations = citations
-        .filter(c => c && typeof c === 'object' && c.url)
-        .map(c => ({
-          url: c.url.trim(),
-          title: c.title || 'No title',
-          snippet: c.snippet || 'No snippet'
-        }))
-        .filter(c => c.url !== '');
+      // Extract URLs from the new citation schema
+      const extractedUrls: string[] = [];
+      
+             citations.forEach((citation: CitationData) => {
+        if (citation && typeof citation === 'object') {
+          // Extract from direct url field
+          if (citation.url && typeof citation.url === 'string') {
+            const trimmedUrl = citation.url.trim();
+            if (trimmedUrl !== '' && !extractedUrls.includes(trimmedUrl)) {
+              extractedUrls.push(trimmedUrl);
+            }
+          }
+          
+          // Extract from url_citation.url field
+          if (citation.url_citation?.url && typeof citation.url_citation.url === 'string') {
+            const trimmedUrl = citation.url_citation.url.trim();
+            if (trimmedUrl !== '' && !extractedUrls.includes(trimmedUrl)) {
+              extractedUrls.push(trimmedUrl);
+            }
+          }
+        }
+      });
 
-      if (validCitations.length === 0) {
-        setError("No valid citations found");
+      if (extractedUrls.length === 0) {
+        setError("No valid URLs found in citations");
         return;
       }
 
       const payload = {
         prompt: prompt.trim(),
         country: country || 'United States',
-        citations: validCitations,
+        citations: extractedUrls,
         monitoringId: monitoringId.trim(),
         userId: user.id,
       };
@@ -460,12 +486,12 @@ export function StepsTabContent({
         </Card>
 
       {/* Regenerate Button */}
-      {/* <div className="flex justify-center">
+      <div className="flex justify-center">
         <Button onClick={generateSteps} variant="outline" disabled={isGenerating}>
           <TbRefresh className="w-4 h-4 mr-2" />
           Regenerate Steps
         </Button>
-      </div> */}
+      </div>
     </motion.div>
   );
 }

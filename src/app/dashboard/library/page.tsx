@@ -291,7 +291,7 @@ export default function LibraryPage() {
   return (
     <div className="h-full min-h-screen text-white">
       <div className="relative flex flex-col w-full max-w-5xl mx-auto">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center px-4 sm:px-5 py-4 gap-4 sm:gap-0">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center py-4 gap-4 sm:gap-0">
           <div className="flex items-center gap-3">
             <h1 className="text-xl sm:text-2xl font-medium">Library</h1>
           </div>
@@ -319,10 +319,10 @@ export default function LibraryPage() {
           </div>
         </div>
 
-        <Tabs defaultValue="threads" className="w-full">
+        <Tabs defaultValue="scheduled" className="w-full">
         <TabsList className="mb-6 gap-4 bg-background">
-          <TabsTrigger value="threads">Threads</TabsTrigger>
           <TabsTrigger value="scheduled" >Scheduled Monitoring</TabsTrigger>
+          <TabsTrigger value="threads">Threads</TabsTrigger>
         </TabsList>
 
         <TabsContent value="threads">

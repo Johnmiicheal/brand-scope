@@ -393,7 +393,7 @@ async function callSearchGoogleEndpoint(
  * @param prompt - The query prompt to analyze
  * @returns Object with text content and citations
  */
-async function callGoogleAiMode(prompt: string): Promise<{
+async function callGoogleAiMode(prompt: string, location: string, brandName: string, brandIndustry: string, brandLogoUrl: string, brandWebsite: string, brandLanguage: string, brandLocation: string): Promise<{
   text: string;
   citations: any[];
   success: boolean;
@@ -408,7 +408,14 @@ async function callGoogleAiMode(prompt: string): Promise<{
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        chatInput: prompt
+        chatInput: prompt,
+        country: location,
+        brandName: brandName,
+        brandIndustry: brandIndustry,
+        brandLogoUrl: brandLogoUrl,
+        brandWebsite: brandWebsite,
+        brandLanguage: brandLanguage,
+        brandLocation: brandLocation
       })
     });
 
@@ -501,7 +508,7 @@ async function callGoogleAiMode(prompt: string): Promise<{
  * @param country - Country code for location-based search
  * @returns Object with text content and citations
  */
-async function callClaudeSearch(prompt: string, country: string = 'US'): Promise<{
+async function callClaudeSearch(prompt: string, country: string = 'US', brandName: string, brandIndustry: string, brandLogoUrl: string, brandWebsite: string, brandLanguage: string, brandLocation: string): Promise<{
   text: string;
   citations: any[];
   success: boolean;
@@ -517,7 +524,13 @@ async function callClaudeSearch(prompt: string, country: string = 'US'): Promise
       },
       body: JSON.stringify({
         chatInput: prompt,
-        country: country
+        country: country,
+        brandName: brandName,
+        brandIndustry: brandIndustry,
+        brandLogoUrl: brandLogoUrl,
+        brandWebsite: brandWebsite,
+        brandLanguage: brandLanguage,
+        brandLocation: brandLocation
       })
     });
 
@@ -573,7 +586,7 @@ async function callClaudeSearch(prompt: string, country: string = 'US'): Promise
  * @param prompt - The query prompt to analyze
  * @returns Object with text content and citations
  */
-async function callGeminiSearch(prompt: string): Promise<{
+async function callGeminiSearch(prompt: string, country: string, brandName: string, brandIndustry: string, brandLogoUrl: string, brandWebsite: string, brandLanguage: string, brandLocation: string): Promise<{
   text: string;
   citations: any[];
   success: boolean;
@@ -588,7 +601,14 @@ async function callGeminiSearch(prompt: string): Promise<{
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        chatInput: prompt
+        chatInput: prompt,
+        country: country,
+        brandName: brandName,
+        brandIndustry: brandIndustry,
+        brandLogoUrl: brandLogoUrl,
+        brandWebsite: brandWebsite,
+        brandLanguage: brandLanguage,
+        brandLocation: brandLocation
       })
     });
 
@@ -653,7 +673,7 @@ async function callGeminiSearch(prompt: string): Promise<{
  * @param now - The current timestamp (ISO string) for this analysis run.
  */
 async function processQuery(
-  query: { id: string; query: string; frequency: string; mode?: string | null, mode_id: string, user_id: string, location?: string },
+  query: { id: string; query: string; frequency: string; mode?: string | null, mode_id: string, user_id: string, location?: string, attached_brand_name?: string, attached_brand_industry?: string, attached_brand_logo_url?: string, attached_brand_website?: string, attached_brand_language?: string, attached_brand_location?: string },
   now: string,
 ): Promise<{ id: string; newAnalysisRun: z.infer<typeof AnalysisRunSchema> }> {
   console.log(
@@ -732,7 +752,13 @@ async function processQuery(
     try {
       // Handle Google AI Mode specially
       if (modelId === "google-ai-mode") {
-        const googleResult = await callGoogleAiMode(query.query);
+        let countryCode = 'US'; // Default
+        if (query.location) {
+          // Create mapping from country label to uppercase country code
+          const country = countries.find(c => c.label === query.location);
+          countryCode = country ? country.value.toUpperCase() : 'US';
+        }
+        const googleResult = await callGoogleAiMode(query.query, countryCode, query.attached_brand_name!, query.attached_brand_industry!, query.attached_brand_logo_url!, query.attached_brand_website!, query.attached_brand_language!, query.attached_brand_location!);
         return {
           name,
           text: googleResult.text,
@@ -752,7 +778,7 @@ async function processQuery(
           countryCode = country ? country.value.toUpperCase() : 'US';
         }
         
-        const claudeResult = await callClaudeSearch(query.query, countryCode);
+        const claudeResult = await callClaudeSearch(query.query, countryCode, query.attached_brand_name!, query.attached_brand_industry!, query.attached_brand_logo_url!, query.attached_brand_website!, query.attached_brand_language!, query.attached_brand_location!);
         return {
           name,
           text: claudeResult.text,
@@ -764,7 +790,13 @@ async function processQuery(
 
       // Handle Gemini Search specially
       if (modelId === "gemini-search") {
-        const geminiResult = await callGeminiSearch(query.query);
+        let countryCode = 'US'; // Default
+        if (query.location) {
+          // Create mapping from country label to uppercase country code
+          const country = countries.find(c => c.label === query.location);
+          countryCode = country ? country.value.toUpperCase() : 'US';
+        }
+        const geminiResult = await callGeminiSearch(query.query, countryCode, query.attached_brand_name!, query.attached_brand_industry!, query.attached_brand_logo_url!, query.attached_brand_website!, query.attached_brand_language!, query.attached_brand_location!);
         return {
           name,
           text: geminiResult.text,
@@ -1174,6 +1206,12 @@ export async function POST(req: Request) {
       user_id: z.string().uuid("Invalid user ID format."),
       location: z.string().optional(),
       attached_brand_id: z.array(z.string()).optional(),
+      attached_brand_name: z.string().optional(),
+      attached_brand_industry: z.string().optional(),
+      attached_brand_logo_url: z.string().optional(),
+      attached_brand_website: z.string().optional(),
+      attached_brand_language: z.string().optional(),
+      attached_brand_location: z.string().optional(),
     });
 
     const validation = inputSchema.safeParse(body);
@@ -1186,7 +1224,7 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
-    const { query, frequency, mode, user_id, location, attached_brand_id } = validation.data;
+    const { query, frequency, mode, user_id, location, attached_brand_id, attached_brand_name, attached_brand_industry, attached_brand_logo_url, attached_brand_website, attached_brand_language, attached_brand_location } = validation.data;
 
     // --- Check for Duplicate Query ---
     const { data: existingQuery, error: checkError } = await supabase
@@ -1265,7 +1303,7 @@ export async function POST(req: Request) {
         mode: queryMode,
       } = newQueryData;
       const initialAnalysis = await processQuery(
-        { id, query: queryText, frequency: queryFreq, mode: queryMode, mode_id: mode_id, user_id: user_id, location: location },
+        { id, query: queryText, frequency: queryFreq, mode: queryMode, mode_id: mode_id, user_id: user_id, location: location, attached_brand_name: attached_brand_name, attached_brand_industry: attached_brand_industry, attached_brand_logo_url: attached_brand_logo_url, attached_brand_website: attached_brand_website, attached_brand_language: attached_brand_language, attached_brand_location: attached_brand_location },
         now,
       );
       console.log(`Initial analysis complete for query ${newQueryData.id}`);

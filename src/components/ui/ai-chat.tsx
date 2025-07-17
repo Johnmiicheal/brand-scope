@@ -284,6 +284,12 @@ export function AIChatInterface({ user, session, product, subscription, isLoadin
             mode,
             location: location,
             attached_brand_id: attachedBrand ? [attachedBrand?.id] : null,
+            attached_brand_name: attachedBrand ? attachedBrand?.name : null,
+            attached_brand_industry: attachedBrand ? attachedBrand?.industry : null,
+            attached_brand_logo_url: attachedBrand ? attachedBrand?.logo_url : null,
+            attached_brand_website: attachedBrand ? attachedBrand?.website : null,
+            attached_brand_language: attachedBrand ? attachedBrand?.language : null,
+            attached_brand_location: attachedBrand ? attachedBrand?.location : null,
           }),
         });
 

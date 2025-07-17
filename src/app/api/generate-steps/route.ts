@@ -15,11 +15,7 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 const requestSchema = z.object({
   prompt: z.string().min(1, "Prompt is required"),
   country: z.string().min(1, "Country is required"),
-  citations: z.array(z.object({
-    url: z.string().url("Valid citation URL is required"),
-    title: z.string(),
-    snippet: z.string(),
-  })).min(1, "At least one citation is required"),
+  citations: z.array(z.string()).min(1, "At least one citation is required"),
   monitoringId: z.string().uuid("Valid monitoring ID is required"),
   userId: z.string().uuid("Valid user ID is required"),
 });
@@ -137,14 +133,12 @@ export async function POST(req: Request) {
       });
     }
 
-    // Process the first citation URL for the webhook (we'll use the most relevant one)
-    const primaryCitation = citations[0];
 
     // Prepare webhook parameters
     const webhookParams = {
       chatInput: prompt,
       country: country,
-      url: primaryCitation.url,
+      url: citations,
     };
 
     const webhookUrl = "https://primary-production-20a3.up.railway.app/webhook/e4f4a7fc-56c9-4667-ac08-bcc8f044a746";
@@ -157,7 +151,7 @@ export async function POST(req: Request) {
     const fullWebhookUrl = `${webhookUrl}?${queryString}`;
 
     console.log(`Making webhook request for monitoring ID: ${monitoringId}`);
-    console.log(`Using primary citation: ${primaryCitation.url}`);
+    console.log(`Using citations: ${citations}`);
     console.log(`Total citations provided: ${citations.length}`);
 
     // Make webhook request with timeout
@@ -223,7 +217,7 @@ export async function POST(req: Request) {
         monitoring_id: monitoringId,
         user_id: userId,
         citations_processed: citations,
-        primary_citation_url: primaryCitation.url,
+        primary_citation_url: citations[0],
         prompt: prompt,
         country: country,
         steps_data: transformedResponse,

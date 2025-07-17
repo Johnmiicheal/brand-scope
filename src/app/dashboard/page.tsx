@@ -4201,20 +4201,34 @@ function DashboardContent() {
                           citations={(() => {
                             if (!results || results.length === 0) return null;
 
-                            // Extract citations from model_summary
-                            const allCitations = results
-                              .flatMap(
-                                (result: any) => result.model_summary || []
-                              )
-                              .flatMap(
-                                (summary: any) => summary.reasoning || []
-                              )
-                              .filter((item: any) => item?.url_citation)
-                              .map((item: any) => ({
-                                url: item.url_citation.url,
-                                title: item.url_citation.title,
-                                snippet: item.url_citation.snippet,
-                              }));
+                            // Extract citations from model_summary using new schema
+                            const allCitations: any[] = [];
+                            
+                            results
+                              .flatMap((result: any) => result.model_summary || [])
+                              .flatMap((summary: any) => summary.reasoning || [])
+                              .forEach((item: any) => {
+                                if (item && typeof item === 'object') {
+                                  // Handle url_citation.url (nested structure)
+                                  if (item.url_citation?.url) {
+                                    allCitations.push({
+                                      url: item.url_citation.url,
+                                      title: item.url_citation.title || 'No title',
+                                      snippet: item.url_citation.snippet || 'No snippet',
+                                      source: item.source || item.domain || 'Unknown source'
+                                    });
+                                  }
+                                  // Handle direct url field
+                                  else if (item.url) {
+                                    allCitations.push({
+                                      url: item.url,
+                                      title: item.title || 'No title', 
+                                      snippet: item.text || 'No snippet',
+                                      source: item.source || item.domain || 'Unknown source'
+                                    });
+                                  }
+                                }
+                              });
 
                             return allCitations.length > 0
                               ? allCitations

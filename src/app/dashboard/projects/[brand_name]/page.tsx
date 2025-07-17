@@ -18,6 +18,7 @@ import {
 import Link from "next/link";
 import { Tabs, TabsContent, TabsList, TabsTrigger, } from "@/components/ui/tabs";
 import { ScheduledQueriesList, ScheduledQuery } from "@/components/library/scheduled-queries-list";
+import { MonitoredSummary } from "@/components/dashboard/monitored-summary";
 
 interface Brand {
   id: string;
@@ -260,10 +261,10 @@ export default function BrandProjectPage() {
             </Button>
           </div>
         ) : (
-          <Tabs defaultValue="analysis">
+          <Tabs defaultValue="monitored">
             <TabsList className="bg-zinc-800/50 border-zinc-700 gap-4">
-              <TabsTrigger value="analysis" className="data-[state=active]:!bg-blue-600 data-[state=active]:!text-white">Analysis ({sessions.length})</TabsTrigger>
-              <TabsTrigger value="monitored" className="data-[state=active]:!bg-blue-600 data-[state=active]:!text-white">Monitored ({monitoredSessions.length})</TabsTrigger>
+              <TabsTrigger value="monitored" className="data-[state=active]:!bg-blue-600 data-[state=active]:!text-white">Monitored Queries ({monitoredSessions.length})</TabsTrigger>
+              <TabsTrigger value="analysis" className="data-[state=active]:!bg-blue-600 data-[state=active]:!text-white">Search Analysis ({sessions.length})</TabsTrigger>
             </TabsList>
             <TabsContent value="analysis">
             <div className="grid gap-4">
@@ -338,6 +339,7 @@ export default function BrandProjectPage() {
           </div>
             </TabsContent>
             <TabsContent value="monitored">
+              <MonitoredSummary queries={monitoredSessions as unknown as ScheduledQuery[]} />
               <ScheduledQueriesList queries={monitoredSessions as unknown as ScheduledQuery[]} />
             </TabsContent>
           </Tabs>
