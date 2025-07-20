@@ -16,7 +16,25 @@ import {
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
-import { Search } from "lucide-react";
+import { Search, Calendar, Loader2, Info } from "lucide-react";
+import { Brand } from "@/contexts/brand-data-context";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { countries } from "@/lib/countries";
+import { toast } from "@/components/ui/use-toast";
 
 interface CitationData {
   url_citation?: {
@@ -66,23 +84,48 @@ interface Citation {
   snippet: string;
 }
 
+interface KeywordData {
+  conversational_keyword: string;
+  intent: string;
+  search_intent: string;
+  google_seed_keyword: string;
+  category: string;
+  search_volume: number;
+  competition_index: number;
+  low_cpc: string;
+  trend_6m: string;
+  relevance_score: number;
+}
+
 interface StepsTabContentProps {
   citations: Citation[] | null;
   monitoringId: string;
   prompt: string;
   country: string;
+  brand: Brand;
+  orientation?: "horizontal" | "vertical";
 }
 
 export function StepsTabContent({ 
   citations, 
   monitoringId, 
   prompt, 
-  country 
+  country,
+  brand,
+  orientation = "vertical"
 }: StepsTabContentProps) {
   const [stepsData, setStepsData] = useState<StepsData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  
+  // Monitoring modal state
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [selectedKeyword, setSelectedKeyword] = useState<KeywordData | null>(null);
+  const [scheduleFrequency, setScheduleFrequency] = useState<"daily" | "weekly">("daily");
+  const [scheduleCountry, setScheduleCountry] = useState<string>("United States");
+  const [editedKeyword, setEditedKeyword] = useState<string>("");
+  const [isScheduling, setIsScheduling] = useState(false);
   
   // Safely get user with error handling
   let user = null;
@@ -116,6 +159,65 @@ export function StepsTabContent({
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleScheduleKeyword = async () => {
+    if (!selectedKeyword || !user?.id) return;
+
+    setIsScheduling(true);
+    toast({
+      title: "Monitoring Started",
+      description: `Monitoring "${selectedKeyword.conversational_keyword}" has started. You can now close this modal and continue with your work.`,
+    });
+
+    try {
+      const response = await fetch("/api/schedule-query", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          query: editedKeyword || selectedKeyword?.conversational_keyword || "",
+          frequency: scheduleFrequency,
+          location: scheduleCountry,
+          user_id: user.id,
+          attached_brand_id: brand ? [brand.id] : [],
+          attached_brand_name: brand ? brand.name : "",
+          attached_brand_industry: brand ? brand.industry : "",
+          attached_brand_logo_url: brand ? brand.logo_url || "" : "",
+          attached_brand_website: brand ? brand.website : "",
+          attached_brand_language: brand ? brand.language : "",
+          attached_brand_location: brand ? brand.location : "",
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to schedule keyword");
+      }
+
+      toast({
+        title: "Keyword Monitoring Completed",
+        description: `"${selectedKeyword.conversational_keyword}" has been scheduled for ${scheduleFrequency} monitoring.`,
+      });
+
+      setShowScheduleModal(false);
+      setSelectedKeyword(null);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to schedule keyword monitoring. Please try again.",
+        variant: "destructive",
+      });
+      console.error(error);
+    } finally {
+      setIsScheduling(false);
+    }
+  };
+
+  const openScheduleModal = (keyword: KeywordData) => {
+    setSelectedKeyword(keyword);
+    setEditedKeyword(keyword.conversational_keyword);
+    setShowScheduleModal(true);
   };
 
   const generateSteps = async () => {
@@ -179,6 +281,12 @@ export function StepsTabContent({
         citations: extractedUrls,
         monitoringId: monitoringId.trim(),
         userId: user.id,
+        brandName: brand.name,
+        brandIndustry: brand.industry,
+        brandLogoUrl: brand.logo_url || "",
+        brandWebsite: brand.website,
+        brandLanguage: brand.language,
+        brandLocation: brand.location,
       };
 
       console.log('Sending payload to generate-steps:', payload);
@@ -271,8 +379,9 @@ export function StepsTabContent({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className="space-y-6 border-t border-accent"
+      className="space-y-6 border border-accent rounded-lg"
     >
+      <div className={cn("flex flex-col gap-6", orientation === "horizontal" && "flex-row")}>
               {/* Search Categories with Stepper */}
         <Card className="border-none"> 
           <CardHeader>
@@ -391,7 +500,7 @@ export function StepsTabContent({
             </CardTitle>
           </CardHeader>
           <CardContent className="">
-            <ScrollArea className="h-[480px] rounded-lg bg-muted/20">
+            <ScrollArea className={`rounded-lg bg-muted/20 ${orientation === "horizontal" ? "h-[700px]" : "h-[480px]"}`}>
               <Table>
                 <TableHeader>
                   <TableRow className="border-b border-muted">
@@ -412,11 +521,12 @@ export function StepsTabContent({
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.03 }}
-                      className="border-b border-muted/30 hover:bg-muted/30 transition-colors"
+                      className="border-b border-muted/30 hover:bg-muted/30 transition-colors cursor-pointer"
+                      onClick={() => openScheduleModal(keyword)}
                     >
                       <TableCell className="py-4">
                         <div>
-                          <p className="font-medium text-sm text-foreground mb-1">
+                          <p className="font-medium text-sm text-foreground mb-1 hover:text-blue-500 transition-colors">
                             {keyword.conversational_keyword}
                           </p>
                           <p className="text-xs text-muted-foreground">
@@ -484,14 +594,123 @@ export function StepsTabContent({
             </ScrollArea>
           </CardContent>
         </Card>
+        </div>
 
       {/* Regenerate Button */}
-      <div className="flex justify-center">
+      {/* <div className="flex justify-center">
         <Button onClick={generateSteps} variant="outline" disabled={isGenerating}>
           <TbRefresh className="w-4 h-4 mr-2" />
           Regenerate Steps
         </Button>
-      </div>
+      </div> */}
+
+      {/* Schedule Keyword Modal */}
+      <Dialog open={showScheduleModal} onOpenChange={setShowScheduleModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Schedule Keyword Monitoring</DialogTitle>
+            <DialogDescription>
+              Configure monitoring settings for &quot;
+              {editedKeyword || selectedKeyword?.conversational_keyword || ""}&quot;
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {selectedKeyword && (
+              <div className="p-4 bg-muted/50 rounded-lg">
+                <h4 className="font-semibold mb-2">Keyword Details</h4>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div>
+                    Search Volume:{" "}
+                    {selectedKeyword.search_volume?.toLocaleString() || "N/A"}
+                  </div>
+                  <div>Intent: {selectedKeyword.intent}</div>
+                  <div>Relevance: {selectedKeyword.relevance_score}/10</div>
+                  <div>Competition: {selectedKeyword.competition_index}/10</div>
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-3 w-full">
+              <label className="text-sm font-medium">
+                Keyword
+              </label>
+              <Input
+                value={editedKeyword || selectedKeyword?.conversational_keyword || ""}
+                onChange={(e) => setEditedKeyword(e.target.value)}
+                className="w-full"
+              />
+            </div>
+            
+            <div className="flex gap-5 w-full items-center justify-between">
+              <div className="space-y-2 w-full">
+                <label className="text-sm font-medium">
+                  Monitoring Frequency
+                </label>
+                <Select
+                  value={scheduleFrequency}
+                  onValueChange={(value: "daily" | "weekly") => setScheduleFrequency(value)}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="daily">Daily</SelectItem>
+                    <SelectItem value="weekly">Weekly</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2 w-full">
+                <label className="text-sm font-medium">Location</label>
+                <Select
+                  value={scheduleCountry}
+                  onValueChange={setScheduleCountry}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="global" disabled>
+                      Select Location
+                    </SelectItem>
+                    {countries.map((country) => (
+                      <SelectItem key={country.value} value={country.value}>
+                        {country.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-4">
+              <Button
+                onClick={handleScheduleKeyword}
+                disabled={isScheduling}
+                className="flex-1 bg-blue-600 hover:bg-blue-500"
+              >
+                {isScheduling ? <Loader2 className="w-4 h-4 animate-spin" /> : <Calendar className="w-4 h-4" />}
+                {isScheduling ? "Scheduling..." : "Schedule Monitoring"}
+              </Button>
+              <Button
+                variant="outline"
+                className="rounded-full"
+                onClick={() => setShowScheduleModal(false)}
+                disabled={isScheduling}
+              >
+                Cancel
+              </Button>
+            </div>
+            {isScheduling && (
+              <div className="flex items-center gap-2 p-4 mt-5 bg-muted/50 rounded-lg text-sm text-muted-foreground">
+                <Info className="w-4 h-4" />
+                You can now close this modal and continue with your work.
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </motion.div>
   );
 }

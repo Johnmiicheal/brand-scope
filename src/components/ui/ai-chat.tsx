@@ -50,6 +50,7 @@ import { User } from "@supabase/supabase-js";
 import Stripe from "stripe";
 import { getConstraints } from "@/lib/constraints";
 import { AttachBrandModal } from "../dashboard/attach-brand-modal";
+import { supabase } from "@/lib/supabase";
 
 interface UseAutoResizeTextareaProps {
   minHeight: number;
@@ -135,6 +136,18 @@ export function AIChatInterface({ user, session, product, subscription, isLoadin
   const [currentTime, setCurrentTime] = useState(new Date());
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
+  useEffect(() => {
+    if(!attachedBrandId) return;
+    const fetchBrand = async () => {
+     const {data, error} = await supabase.from("brand_project").select("*").eq("id", attachedBrandId).single();
+      if(error){
+        console.error("Error fetching brand:", error);
+      } else {
+        setAttachedBrand(data as unknown as Brand);
+      }
+    }
+    fetchBrand();
+  }, [attachedBrandId]);
 
  
   // Update time every second
@@ -283,13 +296,13 @@ export function AIChatInterface({ user, session, product, subscription, isLoadin
             frequency: monitorFrequency,
             mode,
             location: location,
-            attached_brand_id: attachedBrand ? [attachedBrand?.id] : null,
-            attached_brand_name: attachedBrand ? attachedBrand?.name : null,
-            attached_brand_industry: attachedBrand ? attachedBrand?.industry : null,
-            attached_brand_logo_url: attachedBrand ? attachedBrand?.logo_url : null,
-            attached_brand_website: attachedBrand ? attachedBrand?.website : null,
-            attached_brand_language: attachedBrand ? attachedBrand?.language : null,
-            attached_brand_location: attachedBrand ? attachedBrand?.location : null,
+            attached_brand_id: attachedBrand ? [attachedBrand?.id] : [],
+            attached_brand_name: attachedBrand ? attachedBrand?.name : "",
+            attached_brand_industry: attachedBrand ? attachedBrand?.industry : "",
+            attached_brand_logo_url: attachedBrand ? attachedBrand?.logo_url|| "" : "",
+            attached_brand_website: attachedBrand ? attachedBrand?.website : "",
+            attached_brand_language: attachedBrand ? attachedBrand?.language : "",
+            attached_brand_location: attachedBrand ? attachedBrand?.location : "",
           }),
         });
 

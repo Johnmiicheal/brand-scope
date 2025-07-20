@@ -27,7 +27,13 @@ import { z } from "zod";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 import { formatDistanceToNow, parseISO, format } from "date-fns";
-import { TbGitMerge, TbScanPosition, TbSearch, TbSparkles, TbTableSpark } from "react-icons/tb";
+import {
+  TbGitMerge,
+  TbScanPosition,
+  TbSearch,
+  TbSparkles,
+  TbTableSpark,
+} from "react-icons/tb";
 import ReactMarkdown from "react-markdown";
 import { Claude, Gemini, OpenAI, Perplexity } from "@lobehub/icons";
 import { GoogleSearchResult, Search } from "@/types/search";
@@ -37,6 +43,7 @@ import { Globe } from "lucide-react";
 import { StepsTabContent } from "@/components/monitoring/steps-tab-content";
 import type { ReactElement } from "react";
 import remarkGfm from "remark-gfm";
+import { supabase } from "@/lib/supabase";
 
 // --- Zod Schemas ---
 const BrandResultSchema = z.object({
@@ -58,18 +65,20 @@ const AnalysisModelSummarySchema = z.object({
   model: z.string(),
   summary: z.string(),
   query: z.string(),
-  reasoning: z.array(z.object({
-    url_citation: z.object({
+  reasoning: z.array(
+    z.object({
+      url_citation: z.object({
+        url: z.string(),
+        title: z.string(),
+        snippet: z.string(),
+      }),
+      domain: z.string(),
+      source: z.string(),
+      text: z.string(),
       url: z.string(),
       title: z.string(),
-      snippet: z.string(),
-    }),
-    domain: z.string(),
-    source: z.string(),
-    text: z.string(),
-    url: z.string(),
-    title: z.string(),
-  })),
+    })
+  ),
 });
 
 const AnalysisRunSchema = z.object({
@@ -518,7 +527,7 @@ function AnalysisRunDetailsContent({
     if (modelSummary?.model !== selectedModel || !modelSummary?.reasoning) {
       return null;
     }
-    
+
     // Remove duplicates based on url or url_citation.url
     const seen = new Set();
     return modelSummary.reasoning.filter((citation) => {
@@ -530,6 +539,28 @@ function AnalysisRunDetailsContent({
       return true;
     });
   }, [modelSummary, selectedModel]);
+
+  const [brand, setBrand] = useState<Brand | null>(null);
+  const brandId = scheduledQuery?.monitoring[0]?.attached_brand_id[0];
+  console.log("Brand ID: ", brandId);
+
+  const fetchBrand = async () => {
+    const { data, error } = await supabase
+      .from("brand_project")
+      .select("*")
+      .eq("id", brandId)
+      .single();
+    console.log("Brand: ", data);
+    if (error) {
+      console.error("Error fetching brand:", error);
+    } else {
+      setBrand(data as unknown as Brand);
+    }
+  };
+
+  useEffect(() => {
+    fetchBrand();
+  }, [brandId]);
 
   if (!filteredResults || filteredResults.length === 0) {
     return (
@@ -604,25 +635,32 @@ function AnalysisRunDetailsContent({
       <TabsContent value="steps" className="space-y-4">
         {(() => {
           const stepsProps = {
-            citations: citations ? citations.map(c => c.url_citation) : null,
-            monitoringId: scheduledQuery?.monitoring[0]?.mode_id || scheduledQuery?.mode_id || "",
+            citations: citations ? citations.map((c) => c.url_citation) : null,
+            monitoringId:
+              scheduledQuery?.monitoring[0]?.mode_id ||
+              scheduledQuery?.mode_id ||
+              "",
             prompt: scheduledQuery?.monitoring[0]?.query || "",
-            country: scheduledQuery?.monitoring[0]?.location || "United States"
+            country: scheduledQuery?.monitoring[0]?.location || "United States",
+            brand: brand,
           };
-          console.log('StepsTabContent props:', stepsProps);
+          console.log("StepsTabContent props:", stepsProps);
           return (
-            <StepsTabContent 
+            <StepsTabContent
               citations={stepsProps.citations}
               monitoringId={stepsProps.monitoringId}
               prompt={stepsProps.prompt}
               country={stepsProps.country}
+              brand={brand}
             />
           );
         })()}
       </TabsContent>
 
       <TabsContent value="google" className="space-y-4">
-        {searchResults && <GoogleResults googleResults={searchResults} rankings={rankings} />}
+        {searchResults && (
+          <GoogleResults googleResults={searchResults} rankings={rankings} />
+        )}
       </TabsContent>
     </Tabs>
   );
@@ -680,7 +718,6 @@ function CitationsTabContent({
       </div>
     );
   }
-  
 
   return (
     <motion.div
@@ -706,14 +743,19 @@ function CitationsTabContent({
               <Card className="h-full bg-zinc-800/50 border-accent hover:bg-zinc-800/70 transition-colors">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base font-medium line-clamp-2">
-                    {citation.url_citation?.title || citation.title || "No title available"}
+                    {citation.url_citation?.title ||
+                      citation.title ||
+                      "No title available"}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
                     <div className="flex items-center justify-between pt-2">
                       <Badge variant="outline" className="text-xs">
-                        {new URL(citation.url_citation?.url || citation.url).hostname}
+                        {
+                          new URL(citation.url_citation?.url || citation.url)
+                            .hostname
+                        }
                       </Badge>
                       <a
                         href={citation.url_citation?.url || citation.url}
@@ -873,7 +915,8 @@ function SummaryTabContent({
               </div>
             </div>
 
-            <div className="prose whitespace-pre-wrap dark:prose-invert max-w-none 
+            <div
+              className="prose whitespace-pre-wrap dark:prose-invert max-w-none 
               prose-headings:font-bold prose-h1:text-2xl prose-h2:text-xl prose-h3:text-lg
               prose-a:text-blue-500 prose-a:no-underline hover:prose-a:text-blue-400
               prose-p:text-base prose-p:leading-7 prose-p:my-4
@@ -886,37 +929,56 @@ function SummaryTabContent({
               prose-th:border prose-th:border-neutral-800 prose-th:p-2 prose-table:border-collapse"
             >
               <div className="markdown-content [&_p:has(img)]:grid [&_p:has(img)]:grid-cols-1 [&_p:has(img)]:md:grid-cols-2 [&_p:has(img)]:lg:grid-cols-3 [&_p:has(img)]:gap-4 [&_p:has(img)]:my-4">
-                <ReactMarkdown 
+                <ReactMarkdown
                   remarkPlugins={[remarkGfm]}
                   components={{
-                  table: ({ node, ...props }) => (
-                    <table className="border border-neutral-800 w-full" {...props} />
-                  ),
-                  th: ({ node, ...props }) => (
-                    <th className="border border-neutral-800 bg-neutral-900/50 p-2 text-left" {...props} />
-                  ),
-                  td: ({ node, ...props }) => (
-                    <td className="border border-neutral-800 p-2" {...props} />
-                  ),
-                  a: ({ node, ...props }) => (
-                    <a className="text-blue-500 hover:text-blue-400 transition-colors" {...props} />
-                  ),
-                  code: ({ node, inline, ...props }) => (
-                    inline ? 
-                    <code className="bg-neutral-800 px-1 py-0.5 rounded text-sm" {...props} /> :
-                    <code className="block bg-neutral-800 p-4 rounded-lg text-sm my-4 overflow-auto" {...props} />
-                  ),
-                  img: ({ node, ...props }) => (
-                    <img 
-                      alt="Image"
-                      className="w-full h-auto rounded-lg border border-neutral-700 shadow-lg hover:shadow-xl transition-shadow duration-300 object-cover" 
-                      {...props} 
-                    />
-                  )
-                }}
-              >
-                {item.summary}
-              </ReactMarkdown>
+                    table: ({ node, ...props }) => (
+                      <table
+                        className="border border-neutral-800 w-full"
+                        {...props}
+                      />
+                    ),
+                    th: ({ node, ...props }) => (
+                      <th
+                        className="border border-neutral-800 bg-neutral-900/50 p-2 text-left"
+                        {...props}
+                      />
+                    ),
+                    td: ({ node, ...props }) => (
+                      <td
+                        className="border border-neutral-800 p-2"
+                        {...props}
+                      />
+                    ),
+                    a: ({ node, ...props }) => (
+                      <a
+                        className="text-blue-500 hover:text-blue-400 transition-colors"
+                        {...props}
+                      />
+                    ),
+                    code: ({ node, inline, ...props }) =>
+                      inline ? (
+                        <code
+                          className="bg-neutral-800 px-1 py-0.5 rounded text-sm"
+                          {...props}
+                        />
+                      ) : (
+                        <code
+                          className="block bg-neutral-800 p-4 rounded-lg text-sm my-4 overflow-auto"
+                          {...props}
+                        />
+                      ),
+                    img: ({ node, ...props }) => (
+                      <img
+                        alt="Image"
+                        className="w-full h-auto rounded-lg border border-neutral-700 shadow-lg hover:shadow-xl transition-shadow duration-300 object-cover"
+                        {...props}
+                      />
+                    ),
+                  }}
+                >
+                  {item.summary}
+                </ReactMarkdown>
               </div>
             </div>
           </div>

@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
@@ -19,6 +19,18 @@ import Link from "next/link";
 import { Tabs, TabsContent, TabsList, TabsTrigger, } from "@/components/ui/tabs";
 import { ScheduledQueriesList, ScheduledQuery } from "@/components/library/scheduled-queries-list";
 import { MonitoredSummary } from "@/components/dashboard/monitored-summary";
+import { motion } from "framer-motion";
+import { Info, TrendingUp, ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { 
+  Tooltip,
+  TooltipTrigger,
+  TooltipProvider,
+  TooltipContent,
+} from "@/components/ui/tooltip";
+import {
+  ChartContainer,
+} from "@/components/ui/chart";
+import { Area, AreaChart, CartesianGrid, XAxis, YAxis, Tooltip as ChartTooltip, Bar, BarChart } from "recharts";
 
 interface Brand {
   id: string;
@@ -46,6 +58,23 @@ interface AnalysisSession {
   attached_brand_id: string[];
 }
 
+interface BrandMetrics {
+  avgBrandVisibility: number;
+  coverageRatio: number;
+  totalMentions: number;
+  uniqueModelMentions: Record<string, number>;
+  visibilityTrend: number | undefined;
+  coverageTrend: number | undefined;
+  mentionsTrend: number | undefined;
+}
+
+interface TemporalBrandData {
+  date: string;
+  visibility: number;
+  mentions: number;
+  coverage: number;
+}
+
 export default function BrandProjectPage() {
   const { user } = useAuth();
   const params = useParams();
@@ -57,6 +86,8 @@ export default function BrandProjectPage() {
   const [monitoredSessions, setMonitoredSessions] = useState<[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [brandMetrics, setBrandMetrics] = useState<BrandMetrics | null>(null);
+  const [temporalData, setTemporalData] = useState<TemporalBrandData[]>([]);
 
   useEffect(() => {
     if (user?.id && brandName) {
@@ -117,12 +148,145 @@ export default function BrandProjectPage() {
 
       setMonitoredSessions((monitoredSessionsData as unknown as []) || []);
 
+      // Calculate brand-specific metrics from monitored sessions
+      if (monitoredSessionsData && monitoredSessionsData.length > 0) {
+        calculateBrandMetrics(monitoredSessionsData, brandData.name as string);
+      }
+
     } catch (error) {
       console.error("Error:", error);
       setError("Failed to load brand data");
     } finally {
       setLoading(false);
     }
+  };
+
+    const calculateBrandMetrics = (queries: any[], brandName: string) => {
+    let totalMentions = 0;
+    let totalScore = 0;
+    let scoreCount = 0;
+    let totalCoverage = 0;
+    let coverageCount = 0;
+    const modelCounts: Record<string, number> = {};
+    const temporalDataMap: Record<string, TemporalBrandData> = {};
+    const modelsSet = new Set<string>();
+
+    // Process each scheduled query's results (same logic as MonitoredSummary)
+    queries.forEach((query: any) => {
+      if (query.results && Array.isArray(query.results)) {
+        query.results.forEach((analysisRun: any) => {
+          if (analysisRun.model_results && Array.isArray(analysisRun.model_results)) {
+            let sessionMentions = 0;
+            let sessionScore = 0;
+            let sessionScoreCount = 0;
+            let modelsWithBrand = 0;
+            const totalModels = analysisRun.model_results.length;
+
+            analysisRun.model_results.forEach((modelResult: any) => {
+              if (modelResult.llm_name) {
+                modelsSet.add(modelResult.llm_name);
+              }
+
+              // Process brand rankings if the model result was successful
+              if (modelResult.status === 'fulfilled' && modelResult.data?.brands) {
+                const brandData = modelResult.data.brands.find((brand: any) => brand.name === brandName);
+                
+                if (brandData) {
+                  // Count mentions
+                  sessionMentions += brandData.total_mentions || 0;
+                  
+                  // Count scores (brand visibility)
+                  if (typeof brandData.score === 'number') {
+                    sessionScore += brandData.score;
+                    sessionScoreCount += 1;
+                  }
+                  
+                  // Count models that mentioned this brand (for coverage ratio)
+                  modelsWithBrand++;
+                  
+                  // Count unique model mentions (one per model per prompt)
+                  modelCounts[modelResult.llm_name] = (modelCounts[modelResult.llm_name] || 0) + 1;
+                }
+              }
+            });
+
+            // Calculate session-level metrics
+            if (sessionScoreCount > 0) {
+              totalScore += sessionScore;
+              scoreCount += sessionScoreCount;
+            }
+            
+            totalMentions += sessionMentions;
+            
+            if (totalModels > 0) {
+              totalCoverage += (modelsWithBrand / totalModels) * 100;
+              coverageCount++;
+            }
+
+            // Store temporal data
+            if (analysisRun.analyzed_at) {
+              const date = analysisRun.analyzed_at.split('T')[0];
+              if (!temporalDataMap[date]) {
+                temporalDataMap[date] = {
+                  date,
+                  visibility: 0,
+                  mentions: 0,
+                  coverage: 0,
+                };
+              }
+              
+              temporalDataMap[date].mentions += sessionMentions;
+              if (sessionScoreCount > 0) {
+                temporalDataMap[date].visibility += sessionScore / sessionScoreCount;
+              }
+              if (totalModels > 0) {
+                temporalDataMap[date].coverage += (modelsWithBrand / totalModels) * 100;
+              }
+            }
+          }
+        });
+      }
+    });
+
+    // Calculate averages
+    const avgBrandVisibility = scoreCount > 0 ? (totalScore / scoreCount) : 0;
+    const avgCoverage = coverageCount > 0 ? (totalCoverage / coverageCount) : 0;
+
+    // Calculate trends (compare latest vs previous)
+    const temporalArray = Object.values(temporalDataMap).sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
+    
+    let visibilityTrend: number | undefined;
+    let coverageTrend: number | undefined;
+    let mentionsTrend: number | undefined;
+
+    if (temporalArray.length >= 2) {
+      const latest = temporalArray[temporalArray.length - 1];
+      const previous = temporalArray[temporalArray.length - 2];
+      
+      if (previous.visibility > 0) {
+        visibilityTrend = (latest.visibility - previous.visibility) / previous.visibility;
+      }
+      if (previous.coverage > 0) {
+        coverageTrend = (latest.coverage - previous.coverage) / previous.coverage;
+      }
+      if (previous.mentions > 0) {
+        mentionsTrend = (latest.mentions - previous.mentions) / previous.mentions;
+      }
+    }
+
+    setBrandMetrics({
+      avgBrandVisibility,
+      coverageRatio: avgCoverage,
+      totalMentions,
+      uniqueModelMentions: modelCounts,
+      visibilityTrend,
+      coverageTrend,
+      mentionsTrend,
+    });
+
+    setTemporalData(temporalArray);
   };
 
   const formatDate = (dateString: string) => {
@@ -234,6 +398,282 @@ export default function BrandProjectPage() {
           </p>
         )}
       </div>
+
+      {/* Brand Metrics Dashboard */}
+      {brandMetrics && monitoredSessions.length > 0 && (
+        <div className="mb-8 space-y-6">
+          <h2 className="text-2xl font-semibold">Brand Performance Analytics</h2>
+          
+          {/* KPI Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Average Brand Visibility */}
+            <motion.div
+              className="p-6 bg-card/5 border border-[#e2e2e2]/70 dark:border-accent rounded-lg"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
+            >
+              <div className="text-sm text-muted-foreground mb-1 flex items-center gap-2">
+                Average Brand Visibility
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <Info className="w-4 h-4" />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-sm w-full">
+                      <p>Average visibility score across all prompts for this brand</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+              <div className="text-2xl font-bold mb-1">{brandMetrics.avgBrandVisibility.toFixed(1)}%</div>
+              {brandMetrics.visibilityTrend !== undefined && (
+                <div className={`text-sm flex items-center gap-1 ${
+                  brandMetrics.visibilityTrend > 0 ? 'text-green-600' : 'text-red-600'
+                }`}>
+                  {brandMetrics.visibilityTrend > 0 ? (
+                    <ArrowUpRight className="w-3 h-3" />
+                  ) : (
+                    <ArrowDownRight className="w-3 h-3" />
+                  )}
+                  {Math.abs(brandMetrics.visibilityTrend * 100).toFixed(1)}% vs previous
+                </div>
+              )}
+            </motion.div>
+
+            {/* Coverage Ratio */}
+            <motion.div
+              className="p-6 bg-card/5 border border-[#e2e2e2]/70 dark:border-accent rounded-lg"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.1 }}
+            >
+              <div className="text-sm text-muted-foreground mb-1 flex items-center gap-2">
+                Coverage Ratio
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <Info className="w-4 h-4" />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-sm w-full">
+                      <p>Average ratio of models that mentioned this brand across all prompts</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+              <div className="text-2xl font-bold mb-1">{brandMetrics.coverageRatio.toFixed(1)}%</div>
+              {brandMetrics.coverageTrend !== undefined && (
+                <div className={`text-sm flex items-center gap-1 ${
+                  brandMetrics.coverageTrend > 0 ? 'text-green-600' : 'text-red-600'
+                }`}>
+                  {brandMetrics.coverageTrend > 0 ? (
+                    <ArrowUpRight className="w-3 h-3" />
+                  ) : (
+                    <ArrowDownRight className="w-3 h-3" />
+                  )}
+                  {Math.abs(brandMetrics.coverageTrend * 100).toFixed(1)}% vs previous
+                </div>
+              )}
+            </motion.div>
+
+            {/* Total Mentions */}
+            <motion.div
+              className="p-6 bg-card/5 border border-[#e2e2e2]/70 dark:border-accent rounded-lg"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.2 }}
+            >
+              <div className="text-sm text-muted-foreground mb-1 flex items-center gap-2">
+                Total Mentions
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <Info className="w-4 h-4" />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-sm w-full">
+                      <p>Total number of mentions across all prompts for this brand</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+              <div className="text-2xl font-bold mb-1">{brandMetrics.totalMentions}</div>
+              {brandMetrics.mentionsTrend !== undefined && (
+                <div className={`text-sm flex items-center gap-1 ${
+                  brandMetrics.mentionsTrend > 0 ? 'text-green-600' : 'text-red-600'
+                }`}>
+                  {brandMetrics.mentionsTrend > 0 ? (
+                    <ArrowUpRight className="w-3 h-3" />
+                  ) : (
+                    <ArrowDownRight className="w-3 h-3" />
+                  )}
+                  {Math.abs(brandMetrics.mentionsTrend * 100).toFixed(1)}% vs previous
+                </div>
+              )}
+            </motion.div>
+
+            {/* Listed in Models */}
+            <motion.div
+              className="p-6 bg-card/5 border border-[#e2e2e2]/70 dark:border-accent rounded-lg"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.3 }}
+            >
+              <div className="text-sm text-muted-foreground mb-1">Listed in Models</div>
+              <div className="text-2xl font-bold mb-2">{Object.keys(brandMetrics.uniqueModelMentions).length}</div>
+              <div className="space-y-1">
+                {Object.entries(brandMetrics.uniqueModelMentions).slice(0, 3).map(([model, count]) => (
+                  <div key={model} className="flex justify-between text-xs">
+                    <span className="truncate">{model.replace(/\s*(4\.0|2\.5|4o)\s*/g, '')}</span>
+                    <span className="text-blue-500 font-semibold">{count}</span>
+                  </div>
+                ))}
+                {Object.keys(brandMetrics.uniqueModelMentions).length > 3 && (
+                  <div className="text-xs text-muted-foreground">
+                    +{Object.keys(brandMetrics.uniqueModelMentions).length - 3} more
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </div>
+
+          {/* Charts */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Visibility Over Time Chart */}
+            <Card className="bg-background border-[#e2e2e2]/70 dark:border-accent">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5" />
+                  Brand Visibility Over Time
+                </CardTitle>
+                <CardDescription>
+                  {temporalData.length > 0 ? 'Average visibility trend across all prompts' : 'No temporal data available yet'}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {temporalData.length > 0 ? (
+                  <ChartContainer config={{}} className="h-[300px] w-full">
+                    <AreaChart
+                      data={temporalData.map(d => ({
+                        date: new Date(d.date).toLocaleDateString('en-US', { day: '2-digit', month: 'short' }),
+                        visibility: Number(d.visibility.toFixed(1))
+                      }))}
+                      margin={{ left: 12, right: 12, top: 20, bottom: 20 }}
+                    >
+                      <CartesianGrid vertical={false} strokeDasharray="3 3" opacity={0.1} />
+                      <XAxis
+                        dataKey="date"
+                        tickLine={false}
+                        axisLine={false}
+                        tickMargin={8}
+                        style={{ fontSize: '12px', fill: 'var(--muted-foreground)' }}
+                      />
+                      <YAxis
+                        tickLine={false}
+                        axisLine={false}
+                        tickMargin={8}
+                        domain={[0, 100]}
+                        tickFormatter={(value) => `${value}%`}
+                        style={{ fontSize: '12px', fill: 'var(--muted-foreground)' }}
+                      />
+                      <ChartTooltip
+                        contentStyle={{
+                          backgroundColor: 'var(--background)',
+                          border: '1px solid var(--border)',
+                          borderRadius: '6px',
+                          fontSize: '12px',
+                        }}
+                        formatter={(value) => [`${value}%`, 'Visibility']}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="visibility"
+                        stroke="#3B82F6"
+                        fill="#3B82F6"
+                        fillOpacity={0.2}
+                        strokeWidth={2}
+                      />
+                    </AreaChart>
+                  </ChartContainer>
+                ) : (
+                  <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                    <div className="text-center">
+                      <TrendingUp className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                      <p>Run more analyses to see trend data</p>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Model Mentions Chart */}
+            <Card className="bg-background border-[#e2e2e2]/70 dark:border-accent">
+              <CardHeader>
+                <CardTitle>Model Mentions Distribution</CardTitle>
+                <CardDescription>
+                  {Object.keys(brandMetrics.uniqueModelMentions).length > 0 
+                    ? 'Number of prompts where brand was mentioned by each model'
+                    : 'No model mentions data available yet'
+                  }
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {Object.keys(brandMetrics.uniqueModelMentions).length > 0 ? (
+                  <ChartContainer config={{}} className="h-[300px] w-full">
+                    <BarChart
+                      data={Object.entries(brandMetrics.uniqueModelMentions).map(([model, count]) => ({
+                        model: model.replace(/\s*(4\.0|2\.5|4o)\s*/g, ''),
+                        count
+                      }))}
+                      margin={{ left: 12, right: 12, top: 20, bottom: 20 }}
+                    >
+                      <CartesianGrid vertical={false} strokeDasharray="3 3" opacity={0.1} />
+                      <XAxis
+                        dataKey="model"
+                        tickLine={false}
+                        axisLine={false}
+                        tickMargin={8}
+                        angle={-45}
+                        textAnchor="end"
+                        height={80}
+                        style={{ fontSize: '10px', fill: 'var(--muted-foreground)' }}
+                      />
+                      <YAxis
+                        tickLine={false}
+                        axisLine={false}
+                        tickMargin={8}
+                        style={{ fontSize: '12px', fill: 'var(--muted-foreground)' }}
+                      />
+                      <ChartTooltip
+                        contentStyle={{
+                          backgroundColor: 'var(--background)',
+                          border: '1px solid var(--border)',
+                          borderRadius: '6px',
+                          fontSize: '12px',
+                        }}
+                        formatter={(value) => [`${value}`, 'Mentions']}
+                      />
+                      <Bar
+                        dataKey="count"
+                        fill="#3B82F6"
+                        radius={[4, 4, 0, 0]}
+                      />
+                    </BarChart>
+                  </ChartContainer>
+                ) : (
+                  <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                    <div className="text-center">
+                      <div className="w-12 h-12 mx-auto mb-4 opacity-50 bg-muted rounded flex items-center justify-center">
+                        📊
+                      </div>
+                      <p>No model mentions available yet</p>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      )}
 
       {/* Analysis Sessions */}
       <div className="space-y-6">

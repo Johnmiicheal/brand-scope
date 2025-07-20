@@ -4178,26 +4178,7 @@ function DashboardContent() {
                         selectedModel={selectedModel}
                       />
                     </div>
-                    <Tabs defaultValue="keywords" className="w-full">
-                      <TabsList className="grid w-full grid-cols-2 bg-muted/20">
-                        <TabsTrigger
-                          value="keywords"
-                          className="data-[state=active]:bg-blue-500/10"
-                        >
-                          Keywords
-                        </TabsTrigger>
-                        <TabsTrigger
-                          value="steps"
-                          className="data-[state=active]:bg-blue-500/10"
-                        >
-                          Steps
-                        </TabsTrigger>
-                      </TabsList>
-                      <TabsContent value="keywords">
-                        <KeywordAnalysisCard />
-                      </TabsContent>
-                      <TabsContent value="steps">
-                        <StepsTabContent
+                    <StepsTabContent
                           citations={(() => {
                             if (!results || results.length === 0) return null;
 
@@ -4237,9 +4218,31 @@ function DashboardContent() {
                           monitoringId={selectedQuery?.mode_id || ""}
                           prompt={selectedQuery?.query || ""}
                           country={selectedQuery?.location || ""}
+                          brand={selectedBrands}
+                          orientation={"horizontal"}
                         />
+                    {/* <Tabs defaultValue="keywords" className="w-full">
+                      <TabsList className="grid w-full grid-cols-2 bg-muted/20">
+                        <TabsTrigger
+                          value="keywords"
+                          className="data-[state=active]:bg-blue-500/10"
+                        >
+                          Keywords
+                        </TabsTrigger>
+                        <TabsTrigger
+                          value="steps"
+                          className="data-[state=active]:bg-blue-500/10"
+                        >
+                          Steps
+                        </TabsTrigger>
+                      </TabsList>
+                      <TabsContent value="keywords">
+                        <KeywordAnalysisCard />
                       </TabsContent>
-                    </Tabs>
+                      <TabsContent value="steps">
+                       
+                      </TabsContent>
+                    </Tabs> */}
                   </TabsContent>
                   <TabsContent value="citations">
                     <CitationsCard

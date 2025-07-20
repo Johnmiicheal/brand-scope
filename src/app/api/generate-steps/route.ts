@@ -18,6 +18,12 @@ const requestSchema = z.object({
   citations: z.array(z.string()).min(1, "At least one citation is required"),
   monitoringId: z.string().uuid("Valid monitoring ID is required"),
   userId: z.string().uuid("Valid user ID is required"),
+  brandName: z.string().optional(),
+  brandIndustry: z.string().optional(),
+  brandLogoUrl: z.string().optional(),
+  brandWebsite: z.string().optional(),
+  brandLanguage: z.string().optional(),
+  brandLocation: z.string().optional(),
 });
 
 // Zod schema for webhook response (expecting array format)
@@ -107,7 +113,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const { prompt, country, citations, monitoringId, userId } = validation.data;
+    const { prompt, country, citations, monitoringId, userId, brandName, brandIndustry, brandLogoUrl, brandWebsite, brandLanguage, brandLocation } = validation.data;
 
     // Check if steps already exist for this monitoring ID
     const { data: existingSteps, error: checkError } = await supabase
@@ -139,6 +145,12 @@ export async function POST(req: Request) {
       chatInput: prompt,
       country: country,
       url: citations,
+      brandName: brandName,
+      brandIndustry: brandIndustry,
+      brandLogoUrl: brandLogoUrl,
+      brandWebsite: brandWebsite,
+      brandLanguage: brandLanguage,
+      brandLocation: brandLocation,
     };
 
     const webhookUrl = "https://primary-production-20a3.up.railway.app/webhook/e4f4a7fc-56c9-4667-ac08-bcc8f044a746";

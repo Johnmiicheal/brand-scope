@@ -239,32 +239,58 @@ export const AttachBrandModal = ({
     }
   };
   const INDUSTRIES = [
-    "Technology",
-    "Finance",
-    "Healthcare",
-    "Retail",
-    "Food & Beverage",
-    "Travel",
-    "Entertainment",
-    "Education",
-    "Real Estate",
-    "Manufacturing",
+    "Aerospace",
+    "Agriculture",
     "Automotive",
+    "Banking",
+    "Beauty",
+    "Biotechnology",
+    "Construction",
+    "Consulting",
+    "E-commerce",
+    "Education",
     "Energy",
+    "Entertainment",
+    "Fashion",
+    "Finance",
+    "Food & Beverage",
+    "Gaming",
+    "Government",
+    "Healthcare",
+    "Insurance",
+    "Legal",
+    "Logistics",
+    "Manufacturing",
+    "Marketing",
+    "Media",
+    "Mining",
+    "Music",
+    "Non-Profit",
+    "Pharmaceuticals",
+    "Publishing",
+    "Real Estate",
+    "Retail",
+    "Security",
+    "Sports",
+    "Technology",
     "Telecommunications",
+    "Transportation",
+    "Travel",
+    "Utilities",
+    "Other",
   ];
 
   return (
     <Dialog open={showBrandModal} onOpenChange={setShowBrandModal}>
       <DialogOverlay />
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-[550px] max-h-[90vh] flex flex-col">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle>Attach Brand to Analysis</DialogTitle>
           <DialogDescription>
             Tell us about your brand to personalize your search analysis
           </DialogDescription>
         </DialogHeader>
-        <div className="grid gap-6 py-4">
+        <div className="grid gap-6 py-4 overflow-y-auto flex-1 min-h-0">
           {/* Brand Select */}
           {brands.length > 0 && (
           <div className="grid gap-2 w-full bg-blue-500/10 border border-blue-500/20 border-dashed p-4 rounded-md">
@@ -438,7 +464,7 @@ export const AttachBrandModal = ({
             </div>
           </div>
         </div>
-        <DialogFooter>
+        <DialogFooter className="flex-shrink-0 mt-4">
           <Button
             onClick={handleAttachBrand}
             disabled={submitting}
