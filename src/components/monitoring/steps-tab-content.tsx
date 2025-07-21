@@ -270,16 +270,15 @@ export function StepsTabContent({
 
       citations.forEach((citation: CitationData) => {
         if (citation && typeof citation === "object") {
-          // Extract from direct url field
+          // Extract from direct url field (flattened structure from dashboard)
           if (citation.url && typeof citation.url === "string") {
             const trimmedUrl = citation.url.trim();
             if (trimmedUrl !== "" && !extractedUrls.includes(trimmedUrl)) {
               extractedUrls.push(trimmedUrl);
             }
           }
-
-          // Extract from url_citation.url field
-          if (
+          // Legacy support: Extract from url_citation.url field (if it still exists)
+          else if (
             citation.url_citation?.url &&
             typeof citation.url_citation.url === "string"
           ) {
