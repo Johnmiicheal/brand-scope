@@ -224,6 +224,7 @@ export function KeywordAnalysisCard() {
           frequency: scheduleFrequency,
           location: scheduleCountry,
           user_id: user.id,
+          attached_brand_id: [""],
         }),
       });
       if (!response.ok) {

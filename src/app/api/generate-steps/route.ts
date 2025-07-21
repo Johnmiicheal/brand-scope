@@ -154,31 +154,26 @@ export async function POST(req: Request) {
     };
 
     const webhookUrl = "https://primary-production-20a3.up.railway.app/webhook/e4f4a7fc-56c9-4667-ac08-bcc8f044a746";
-    
-    // Build query string
-    const queryString = new URLSearchParams({
-      parameters: JSON.stringify(webhookParams)
-    }).toString();
-
-    const fullWebhookUrl = `${webhookUrl}?${queryString}`;
 
     console.log(`Making webhook request for monitoring ID: ${monitoringId}`);
     console.log(`Using citations: ${citations}`);
     console.log(`Total citations provided: ${citations.length}`);
 
     // Make webhook request with timeout
-    const controller = new AbortController();
+    // const controller = new AbortController();
     // const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
     let webhookResponse;
     try {
-      const response = await fetch(fullWebhookUrl, {
-        method: 'GET',
+      const response = await fetch(webhookUrl, {
+        method: 'POST',
         headers: {
           'Accept': 'application/json',
-          'User-Agent': 'BrandScope-Monitor/1.0',
+          'Content-Type': 'application/json',
+          'User-Agent': 'AIRankia-Monitor/1.0',
         },
-        signal: controller.signal,
+        body: JSON.stringify(webhookParams),
+
       });
 
 
@@ -192,14 +187,6 @@ export async function POST(req: Request) {
       console.log("Webhook response received successfully");
 
     } catch (fetchError: unknown) {
-
-      if (fetchError instanceof Error && fetchError.name === 'AbortError') {
-        console.error('Webhook request timed out after 30 seconds');
-        return NextResponse.json(
-          { error: "Webhook request timed out" },
-          { status: 504 }
-        );
-      }
       console.error('Webhook request failed:', fetchError);
       return NextResponse.json(
         { error: "Failed to call webhook", details: fetchError instanceof Error ? fetchError.message : "Unknown error" },

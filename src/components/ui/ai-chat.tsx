@@ -296,7 +296,7 @@ export function AIChatInterface({ user, session, product, subscription, isLoadin
             frequency: monitorFrequency,
             mode,
             location: location,
-            attached_brand_id: attachedBrand ? [attachedBrand?.id] : [],
+            attached_brand_id: attachedBrand ? [attachedBrand?.id] : [""],
             attached_brand_name: attachedBrand ? attachedBrand?.name : "",
             attached_brand_industry: attachedBrand ? attachedBrand?.industry : "",
             attached_brand_logo_url: attachedBrand ? attachedBrand?.logo_url|| "" : "",

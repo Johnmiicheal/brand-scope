@@ -541,7 +541,7 @@ function AnalysisRunDetailsContent({
   }, [modelSummary, selectedModel]);
 
   const [brand, setBrand] = useState<Brand | null>(null);
-  const brandId = scheduledQuery?.monitoring[0]?.attached_brand_id[0];
+  const brandId = scheduledQuery?.monitoring[0]?.attached_brand_id?.[0] || null;
   console.log("Brand ID: ", brandId);
 
   const fetchBrand = async () => {
@@ -559,7 +559,9 @@ function AnalysisRunDetailsContent({
   };
 
   useEffect(() => {
-    fetchBrand();
+    if (brandId) {
+      fetchBrand();
+    }
   }, [brandId]);
 
   if (!filteredResults || filteredResults.length === 0) {

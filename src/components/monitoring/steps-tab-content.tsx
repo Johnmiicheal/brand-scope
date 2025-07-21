@@ -102,7 +102,7 @@ interface StepsTabContentProps {
   monitoringId: string;
   prompt: string;
   country: string;
-  brand: Brand;
+  brand: Brand | null;
   orientation?: "horizontal" | "vertical";
 }
 
@@ -181,7 +181,7 @@ export function StepsTabContent({
           frequency: scheduleFrequency,
           location: scheduleCountry,
           user_id: user.id,
-          attached_brand_id: brand ? [brand.id] : [],
+          attached_brand_id: brand ? [brand.id] : [""],
           attached_brand_name: brand ? brand.name : "",
           attached_brand_industry: brand ? brand.industry : "",
           attached_brand_logo_url: brand ? brand.logo_url || "" : "",
@@ -281,12 +281,12 @@ export function StepsTabContent({
         citations: extractedUrls,
         monitoringId: monitoringId.trim(),
         userId: user.id,
-        brandName: brand.name,
-        brandIndustry: brand.industry,
-        brandLogoUrl: brand.logo_url || "",
-        brandWebsite: brand.website,
-        brandLanguage: brand.language,
-        brandLocation: brand.location,
+        brandName: brand?.name || "",
+        brandIndustry: brand?.industry || "",
+        brandLogoUrl: brand?.logo_url || "",
+        brandWebsite: brand?.website || "",
+        brandLanguage: brand?.language || "",
+        brandLocation: brand?.location || "",
       };
 
       console.log('Sending payload to generate-steps:', payload);
@@ -675,7 +675,7 @@ export function StepsTabContent({
                       Select Location
                     </SelectItem>
                     {countries.map((country) => (
-                      <SelectItem key={country.value} value={country.value}>
+                      <SelectItem key={country.value} value={country.label}>
                         {country.label}
                       </SelectItem>
                     ))}

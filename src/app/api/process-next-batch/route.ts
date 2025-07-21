@@ -284,10 +284,6 @@ const StoredResultsSchema = z
       console.log(`Calling search-google endpoint for query: "${query}" with monitoring ID: ${mode_id}`);
       console.log("Search payload:", JSON.stringify(payload, null, 2));
       
-      // Make the request with a timeout to avoid hanging
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 20000); // 20 second timeout
-      
       try {
         const response = await fetch(apiUrl, {
           method: 'POST',
@@ -296,10 +292,7 @@ const StoredResultsSchema = z
             'Authorization': `Bearer ${internalApiKey}`
           },
           body: JSON.stringify(payload),
-          signal: controller.signal
         });
-        
-        clearTimeout(timeoutId);
         
         if (!response.ok) {
           const errorText = await response.text();
@@ -319,12 +312,7 @@ const StoredResultsSchema = z
         const data = await response.json();
         console.log(`Search-google endpoint called successfully. Search ID: ${data.searchId}`);
       } catch (fetchError: unknown) {
-        clearTimeout(timeoutId);
-        if (fetchError instanceof Error && fetchError.name === 'AbortError') {
-          console.error('Search-google request timed out after 20 seconds');
-        } else {
-          console.error('Fetch error calling search-google:', fetchError);
-        }
+        console.error('Fetch error calling search-google:', fetchError);
       }
     } catch (error) {
       console.error('Failed to call search-google endpoint:', error);

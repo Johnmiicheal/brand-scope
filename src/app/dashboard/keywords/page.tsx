@@ -143,6 +143,7 @@ export default function KeywordAnalysisPage() {
           mode: 'explorer',
           location: country === 'global' ? 'Global' : country,
           user_id: user?.id,
+          attached_brand_id: [""],
         }),
       });
 

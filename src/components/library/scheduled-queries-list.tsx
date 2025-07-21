@@ -188,13 +188,28 @@ export function ScheduledQueriesList({
     }
   };
 
+  // Force cleanup of all dialog-related states
+  const forceCleanupDialogStates = () => {
+    setDeleteDialogOpen(false);
+    setQueryToDelete(null);
+    // Force a small delay to ensure DOM cleanup
+    setTimeout(() => {
+      document.body.style.pointerEvents = 'auto';
+      document.body.style.overflow = 'auto';
+    }, 100);
+  };
+
   const handleDelete = async (query: ScheduledQuery) => {
     try {
       setLoadingStates(prev => ({ ...prev, [query.id]: true }));
+      
       const { error } = await supabase
         .from('scheduled_queries')
         .delete()
         .eq('id', query.id);
+
+      if (error) throw error;
+
       // Also delete related search results
       if (query.mode_id) {
         const { error: searchResultsError } = await supabase
@@ -208,21 +223,29 @@ export function ScheduledQueriesList({
         }
       }
 
-      if (error) throw error;
-
-      // Update local state immediately
+      // Force cleanup dialog states immediately
+      forceCleanupDialogStates();
+      
+      // Update local state after cleanup
       setQueries(currentQueries => 
         currentQueries.filter(q => q.id !== query.id)
       );
       
-      toast.info("Prompt deleted successfully");
+      // Clean up loading state for the deleted query
+      setLoadingStates(prev => {
+        const newState = { ...prev };
+        delete newState[query.id];
+        return newState;
+      });
+      
+      toast.success("Prompt deleted successfully");
     } catch (error) {
       console.error('Error deleting prompt:', error);
-      toast.error("Failed to delete the prompt. Please try again.")
-    } finally {
+      toast.error("Failed to delete the prompt. Please try again.");
+      
+      // Force cleanup on error too
+      forceCleanupDialogStates();
       setLoadingStates(prev => ({ ...prev, [query.id]: false }));
-      setDeleteDialogOpen(false);
-      setQueryToDelete(null);
     }
   };
 
@@ -304,16 +327,16 @@ export function ScheduledQueriesList({
               </TableRow>
             </TableHeader>
             <TableBody>
-              <AnimatePresence>
-                {filteredQueries?.map((query, index) => (
+              <AnimatePresence mode="wait">
+                {filteredQueries?.map((query) => (
                   <motion.tr
-                    key={query.id}
+                    key={`query-${query.id}`}
                     variants={itemVariants}
                     initial="hidden"
                     animate="visible"
-                    exit="hidden"
-                    custom={index}
-                    className="hover:bg-muted/40 items-center"
+                    exit={{ opacity: 0, y: -10, transition: { duration: 0.2 } }}
+                    layout
+                    className="hover:bg-muted/40 items-center cursor-pointer"
                     onClick={() => window.location.pathname === "/dashboard/library" ?  handleRowClick(query?.mode_id!) : handleViewOnDashboard(query)}
                   >
                     <TableCell className="font-medium truncate max-w-xs flex items-center gap-2">
@@ -351,12 +374,15 @@ export function ScheduledQueriesList({
                             variant="ghost"
                             size="icon"
                             aria-label="Query Actions"
-                            onClick={(e) => e.stopPropagation()}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                            }}
                           >
                             <EllipsisVertical className="w-4 h-4 text-muted-foreground" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
+                        <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
                           <DropdownMenuItem onClick={(e) => {e.preventDefault(); e.stopPropagation(); handleViewOnDashboard(query)}}>
                             View on Dashboard
                           </DropdownMenuItem>
@@ -430,7 +456,16 @@ export function ScheduledQueriesList({
       </div>
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+      {deleteDialogOpen && queryToDelete && (
+        <AlertDialog 
+          open={deleteDialogOpen} 
+          onOpenChange={(open) => {
+            if (!open) {
+              setDeleteDialogOpen(false);
+              setQueryToDelete(null);
+            }
+          }}
+        >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
@@ -439,21 +474,28 @@ export function ScheduledQueriesList({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => {
-              setDeleteDialogOpen(false);
-              setQueryToDelete(null);
-            }}>
+            <AlertDialogCancel 
+              onClick={(e) => {
+                e.preventDefault();
+                setDeleteDialogOpen(false);
+                setQueryToDelete(null);
+              }}
+            >
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleDeleteConfirm}
+              onClick={(e) => {
+                e.preventDefault();
+                handleDeleteConfirm();
+              }}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+                  </AlertDialogContent>
+        </AlertDialog>
+      )}
     </div>
   );
 }

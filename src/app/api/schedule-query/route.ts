@@ -340,10 +340,6 @@ async function callSearchGoogleEndpoint(
     console.log(`Calling search-google endpoint for query: "${query}" with monitoring ID: ${mode_id}`);
     console.log("Search payload:", JSON.stringify(payload, null, 2));
     
-    // Make the request with a timeout to avoid hanging
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 20000); // 20 second timeout
-    
     try {
       const response = await fetch(apiUrl, {
         method: 'POST',
@@ -352,10 +348,7 @@ async function callSearchGoogleEndpoint(
           'Authorization': `Bearer ${internalApiKey}`
         },
         body: JSON.stringify(payload),
-        signal: controller.signal
       });
-      
-      clearTimeout(timeoutId);
       
       if (!response.ok) {
         const errorText = await response.text();
@@ -375,12 +368,7 @@ async function callSearchGoogleEndpoint(
       const data = await response.json();
       console.log(`Search-google endpoint called successfully. Search ID: ${data.searchId}`);
     } catch (fetchError: unknown) {
-      clearTimeout(timeoutId);
-      if (fetchError instanceof Error && fetchError.name === 'AbortError') {
-        console.error('Search-google request timed out after 20 seconds');
-      } else {
-        console.error('Fetch error calling search-google:', fetchError);
-      }
+      console.error('Fetch error calling search-google:', fetchError);
     }
   } catch (error) {
     console.error('Failed to call search-google endpoint:', error);
@@ -1205,7 +1193,7 @@ export async function POST(req: Request) {
       mode: z.string().optional(), // Mode is optional
       user_id: z.string().uuid("Invalid user ID format."),
       location: z.string().optional(),
-      attached_brand_id: z.array(z.string()).optional(),
+      attached_brand_id: z.array(z.string().nullable()).nullable().optional().default(null),
       attached_brand_name: z.string().optional(),
       attached_brand_industry: z.string().optional(),
       attached_brand_logo_url: z.string().optional(),

@@ -297,7 +297,6 @@ const StoredResultsSchema = z
             'Authorization': `Bearer ${internalApiKey}`
           },
           body: JSON.stringify(payload),
-          signal: controller.signal
         });
         
         clearTimeout(timeoutId);
