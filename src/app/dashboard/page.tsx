@@ -4200,7 +4200,7 @@ function DashboardContent() {
                                     });
                                   }
                                   // Handle direct url field
-                                  else if (item.url) {
+                                  if (item.url && item.url !== item.url_citation?.url) {
                                     allCitations.push({
                                       url: item.url,
                                       title: item.title || 'No title', 
