@@ -540,6 +540,10 @@ function AnalysisRunDetailsContent({
     });
   }, [modelSummary, selectedModel]);
 
+  const allCitations = useMemo(() => {
+    return modelSummary?.reasoning || [];
+  }, [modelSummary]);
+
   const [brand, setBrand] = useState<Brand | null>(null);
   const brandId = scheduledQuery?.monitoring[0]?.attached_brand_id?.[0] || null;
   console.log("Brand ID: ", brandId);
@@ -637,7 +641,7 @@ function AnalysisRunDetailsContent({
       <TabsContent value="steps" className="space-y-4">
         {(() => {
           // Flatten citations to match the expected Citation interface
-          const flattenedCitations = citations ? citations.map((c) => ({
+          const flattenedCitations = allCitations ? allCitations.map((c) => ({
             url: c.url_citation?.url || c.url || "",
             title: c.url_citation?.title || c.title || "No title",
             snippet: c.url_citation?.snippet || c.text || "No snippet",
