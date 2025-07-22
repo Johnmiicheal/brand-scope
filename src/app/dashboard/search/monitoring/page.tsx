@@ -401,7 +401,7 @@ function MonitoringContent() {
                 <SelectContent className="p-1">
                   {analysisDates.map((date) => (
                     <SelectItem key={date} value={date}>
-                      {format(new Date(date), "PPpp")}
+                      {format(new Date(date || "000"), "PPpp")}
                     </SelectItem>
                   ))}
                 </SelectContent>
