@@ -142,6 +142,12 @@ export function ScheduledQueriesList({
         onSelectQuery?.(query);
         toast.info('Redirecting to dashboard page...')
       }, 1000)
+    }else if(window.location.pathname.includes( "/dashboard/projects")) {
+      setTimeout(() => {
+        router.push('/dashboard')
+        onSelectQuery?.(query);
+        toast.info('Redirecting to dashboard page to view the query...')
+      }, 1000)
     }
   };
 
