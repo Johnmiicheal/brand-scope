@@ -3109,7 +3109,7 @@ function DashboardContent() {
     }
   };
 
-  if (!subsLoading && !subscription && !loading && !queries) {
+  if (!subsLoading && !subscription && !loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="w-full max-w-7xl p-8 bg-transparent rounded-lg shadow-lg">
@@ -3188,9 +3188,6 @@ function DashboardContent() {
               </div>
 
               <div className="flex justify-between mt-8">
-                <Button variant="ghost" onClick={handleSkip}>
-                  Skip for now (Free Trial)
-                </Button>
                 <Button
                   className="bg-blue-600 hover:bg-blue-700"
                   onClick={handleNextStep}
@@ -3402,9 +3399,6 @@ function DashboardContent() {
                   userId={user?.id || ""}
                   buttonText="Continue to payments"
                 />
-                <Button variant="outline" onClick={handleStartSearching}>
-                  Try BrandScope for free
-                </Button>
               </div>
             </div>
           )}
