@@ -189,7 +189,7 @@ export default function BrandProjectPage() {
 
               // Process brand rankings if the model result was successful
               if (modelResult.status === 'fulfilled' && modelResult.data?.brands) {
-                const brandData = modelResult.data.brands.find((brand: any) => brand.name === brandName);
+                const brandData = modelResult.data.brands.find((brand: any) => brand.name.toLowerCase().includes(brandName.toLowerCase()));
                 
                 if (brandData) {
                   // Count mentions
