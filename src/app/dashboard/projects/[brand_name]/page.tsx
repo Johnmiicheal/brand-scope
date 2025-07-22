@@ -171,10 +171,23 @@ export default function BrandProjectPage() {
     const temporalDataMap: Record<string, TemporalBrandData> = {};
     const modelsSet = new Set<string>();
 
-    // Process each scheduled query's results (same logic as MonitoredSummary)
+    console.log(`Calculating metrics for brand: ${brandName}`);
+    console.log(`Processing ${queries.length} queries`);
+
+    // Process each scheduled query's results
     queries.forEach((query: any) => {
+      console.log(`Processing query: ${query.query || query.id}`);
+      console.log(`Query results:`, query.results);
+      
       if (query.results && Array.isArray(query.results)) {
-        query.results.forEach((analysisRun: any) => {
+        console.log(`Found ${query.results.length} analysis runs`);
+        
+        query.results.forEach((analysisRun: any, runIndex: number) => {
+          console.log(`Processing analysis run ${runIndex + 1}:`, {
+            analysis_date: analysisRun.analysis_date,
+            model_results_count: analysisRun.model_results?.length || 0
+          });
+          
           if (analysisRun.model_results && Array.isArray(analysisRun.model_results)) {
             let sessionMentions = 0;
             let sessionScore = 0;
@@ -182,18 +195,30 @@ export default function BrandProjectPage() {
             let modelsWithBrand = 0;
             const totalModels = analysisRun.model_results.length;
 
-            analysisRun.model_results.forEach((modelResult: any) => {
+            analysisRun.model_results.forEach((modelResult: any, modelIndex: number) => {
               if (modelResult.llm_name) {
                 modelsSet.add(modelResult.llm_name);
               }
 
+              console.log(`  Model ${modelIndex + 1} (${modelResult.llm_name}):`, {
+                status: modelResult.status,
+                has_data: !!modelResult.data,
+                brands_count: modelResult.data?.brands?.length || 0
+              });
+
               // Process brand rankings if the model result was successful
               if (modelResult.status === 'fulfilled' && modelResult.data?.brands) {
-                const brandData = modelResult.data.brands.find((brand: any) => brand.name.toLowerCase().includes(brandName.toLowerCase()));
+                const brandData = modelResult.data.brands.find((brand: any) => 
+                  brand.name.toLowerCase().includes(brandName.toLowerCase())
+                );
+                
+                console.log(`    Brand data found:`, brandData);
                 
                 if (brandData) {
-                  // Count mentions
-                  sessionMentions += brandData.total_mentions || 0;
+                  // For monitoring data, we typically don't have total_mentions field
+                  // Instead, let's count based on the score or rank existing
+                  const mentions = 1; // Each successful mention counts as 1
+                  sessionMentions += mentions;
                   
                   // Count scores (brand visibility)
                   if (typeof brandData.score === 'number') {
@@ -210,6 +235,14 @@ export default function BrandProjectPage() {
               }
             });
 
+            console.log(`  Session totals:`, {
+              sessionMentions,
+              sessionScore,
+              sessionScoreCount,
+              modelsWithBrand,
+              totalModels
+            });
+
             // Calculate session-level metrics
             if (sessionScoreCount > 0) {
               totalScore += sessionScore;
@@ -223,9 +256,11 @@ export default function BrandProjectPage() {
               coverageCount++;
             }
 
-            // Store temporal data
-            if (analysisRun.analyzed_at) {
-              const date = analysisRun.analyzed_at.split('T')[0];
+            // Store temporal data - use analysis_date instead of analyzed_at
+            if (analysisRun.analysis_date) {
+              const date = analysisRun.analysis_date.split('T')[0];
+              console.log(`  Adding temporal data for date: ${date}`);
+              
               if (!temporalDataMap[date]) {
                 temporalDataMap[date] = {
                   date,
@@ -275,6 +310,18 @@ export default function BrandProjectPage() {
         mentionsTrend = (latest.mentions - previous.mentions) / previous.mentions;
       }
     }
+
+    console.log('Final calculated metrics:', {
+      avgBrandVisibility,
+      avgCoverage,
+      totalMentions,
+      modelCounts,
+      temporalArrayLength: temporalArray.length,
+      temporalArray,
+      visibilityTrend,
+      coverageTrend,
+      mentionsTrend
+    });
 
     setBrandMetrics({
       avgBrandVisibility,
