@@ -636,8 +636,15 @@ function AnalysisRunDetailsContent({
 
       <TabsContent value="steps" className="space-y-4">
         {(() => {
+          // Flatten citations to match the expected Citation interface
+          const flattenedCitations = citations ? citations.map((c) => ({
+            url: c.url_citation?.url || c.url || "",
+            title: c.url_citation?.title || c.title || "No title",
+            snippet: c.url_citation?.snippet || c.text || "No snippet",
+          })).filter(citation => citation.url) : null;
+
           const stepsProps = {
-            citations: citations ? citations.map((c) => c.url_citation) : null,
+            citations: flattenedCitations,
             monitoringId:
               scheduledQuery?.monitoring[0]?.mode_id ||
               scheduledQuery?.mode_id ||
