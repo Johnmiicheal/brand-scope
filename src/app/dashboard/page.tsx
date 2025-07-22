@@ -4278,7 +4278,7 @@ function DashboardContent() {
                       monitoringId={selectedQuery?.mode_id || ""}
                       prompt={selectedQuery?.query || ""}
                       country={selectedQuery?.location || ""}
-                      brand={selectedBrands}
+                      brand={currentBrand}
                       orientation={"horizontal"}
                     />
                     {/* <Tabs defaultValue="keywords" className="w-full">
