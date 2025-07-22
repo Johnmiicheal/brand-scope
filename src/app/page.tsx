@@ -66,7 +66,7 @@ export default function Home() {
       monitoring: "10 Monitoring",
       frequency: "(Weekly only)",
       recommended: false,
-      product_id: "price_1RRP3EFQrMIDoBVCh5GyR8s6",
+      product_id: "price_1RniuTR16g0cZkq31HV8wnRh",
     },
     {
       id: "plus",
@@ -83,7 +83,7 @@ export default function Home() {
       monitoring: "100 Monitoring",
       frequency: "(Daily + Weekly)",
       recommended: true,
-      product_id: "price_1RRfOsFQrMIDoBVCpnaAjkZX",
+      product_id: "price_1Rniv8R16g0cZkq37mTSXDfo",
     },
     {
       id: "premium",
@@ -100,7 +100,7 @@ export default function Home() {
       monitoring: "300 Monitoring",
       frequency: "(Daily + Weekly)",
       recommended: false,
-      product_id: "price_1RRtvLFQrMIDoBVCxNAAW9sM",
+      product_id: "price_1RnivgR16g0cZkq3Re1ttVTu",
     },
   ];
 

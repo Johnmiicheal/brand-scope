@@ -520,22 +520,6 @@ function DashboardContent() {
 
   // Plans configuration
   const plans = [
-    // {
-    //   id: "free",
-    //   name: "Free Trial",
-    //   price: "$0",
-    //   features: [
-    //     "Country Monitoring",
-    //     "Company Research",
-    //     "SEO Keyword Analysis",
-    //     "Brand Analysis",
-    //   ],
-    //   searches: "5 Searches",
-    //   monitoring: "0 Monitoring",
-    //   frequency: "N/A",
-    //   recommended: false,
-    //   product_id: "",
-    // },
     {
       id: "pro",
       name: "Pro Plan",
@@ -550,7 +534,7 @@ function DashboardContent() {
       monitoring: "10 Monitoring",
       frequency: "(Weekly only)",
       recommended: false,
-      product_id: "price_1RRP3EFQrMIDoBVCh5GyR8s6",
+      product_id: "price_1RniuTR16g0cZkq31HV8wnRh",
     },
     {
       id: "plus",
@@ -566,7 +550,7 @@ function DashboardContent() {
       monitoring: "100 Monitoring",
       frequency: "(Daily + Weekly)",
       recommended: true,
-      product_id: "price_1RRfOsFQrMIDoBVCpnaAjkZX",
+      product_id: "price_1Rniv8R16g0cZkq37mTSXDfo",
     },
     {
       id: "premium",
@@ -582,7 +566,7 @@ function DashboardContent() {
       monitoring: "300 Monitoring",
       frequency: "(Daily + Weekly)",
       recommended: false,
-      product_id: "price_1RRtvLFQrMIDoBVCxNAAW9sM",
+      product_id: "price_1RnivgR16g0cZkq3Re1ttVTu",
     },
   ];
 
