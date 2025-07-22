@@ -89,7 +89,6 @@ import { User } from "@supabase/supabase-js";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CheckoutButton } from "@/components/stripe/checkout-button";
 import { CheckoutSuccess } from "@/components/stripe/checkout-success";
-import { stripe } from "@/lib/stripe";
 import { QueryCounter } from "@/components/dashboard/query-counter";
 import Stripe from "stripe";
 import {
@@ -634,13 +633,17 @@ function DashboardContent() {
           setSubscription(
             fetchedSubscriptionData as unknown as UserSubscription
           );
-          const stripePrice = await stripe.prices.retrieve(
-            fetchedSubscriptionData.price_id as string
-          );
-          const stripeProduct = await stripe.products.retrieve(
-            stripePrice.product as string
-          );
-          setProduct(stripeProduct);
+          
+          // Safely fetch price and product data from server API
+          try {
+            const response = await fetch(`/api/stripe/subscription-info?priceId=${fetchedSubscriptionData.price_id}`);
+            if (response.ok) {
+              const { product } = await response.json();
+              setProduct(product);
+            }
+          } catch (error) {
+            console.error('Error fetching subscription info:', error);
+          }
           setSubsLoading(false);
         }
       } catch (e) {

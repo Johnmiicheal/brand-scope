@@ -5,7 +5,6 @@ import { useState, useEffect } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import Stripe from 'stripe';
-import { stripe } from '@/lib/stripe';
 
 export interface UserSubscription {
   id: string;
@@ -47,10 +46,18 @@ export function useAuth() {
           }
         } else {
           setSubscription(fetchedSubscriptionData as unknown as UserSubscription);
-          const stripePrice = await stripe.prices.retrieve(fetchedSubscriptionData.price_id as string);
-          const stripeProduct = await stripe.products.retrieve(stripePrice.product as string)
-          setProduct(stripeProduct);
-          console.log("Product: ", stripeProduct);
+          
+          // Safely fetch price and product data from server API
+          try {
+            const response = await fetch(`/api/stripe/subscription-info?priceId=${fetchedSubscriptionData.price_id}`);
+            if (response.ok) {
+              const { product } = await response.json();
+              setProduct(product);
+              console.log("Product: ", product);
+            }
+          } catch (error) {
+            console.error('Error fetching subscription info:', error);
+          }
         }
       } catch (e) {
         setSubscription(null);

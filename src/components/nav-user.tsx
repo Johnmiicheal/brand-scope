@@ -31,7 +31,6 @@ import {
 } from "@/components/ui/sidebar"
 import { useAuth } from "@/contexts/AuthContext"
 import { SignOutButton } from "@/components/auth/SignOutButton"
-import { stripe } from "@/lib/stripe"
 
 export function NavUser() {
   const { isMobile } = useSidebar()
@@ -88,12 +87,24 @@ export function NavUser() {
   const initial = name.charAt(0).toUpperCase()
 
   const handleOpenBillingPortal = async () => {
-    const session = await stripe.billingPortal.sessions.create({
-      customer: user_subscriptions?.stripe_customer_id,
-      return_url: 'https://airankia.com/dashboard',
-    });
-    if (session) {
-      window.location.href = session.url
+    try {
+      const response = await fetch('/api/stripe/billing-portal', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          customerId: user_subscriptions?.stripe_customer_id,
+          returnUrl: 'https://airankia.com/dashboard',
+        }),
+      });
+
+      if (response.ok) {
+        const { url } = await response.json();
+        window.location.href = url;
+      }
+    } catch (error) {
+      console.error('Error opening billing portal:', error);
     }
   }
 

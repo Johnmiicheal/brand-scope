@@ -10,7 +10,6 @@ import { supabase } from '@/lib/supabase'
 import { toast } from '@/components/ui/use-toast'
 import { UserSubscription } from '@/hooks/useAuth'
 import Stripe from 'stripe'
-import { stripe } from '@/lib/stripe'
 
 // Simple type for auth context
 type AuthContextType = {
@@ -303,9 +302,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (subscriptionData?.price_id) {
           setUserSubscriptions(subscriptionData)
           try {
-            const stripePrice = await stripe.prices.retrieve(subscriptionData.price_id);
-            const stripeProduct = await stripe.products.retrieve(stripePrice.product as string);
-            setProduct(stripeProduct)
+            // Safely fetch price and product data from server API
+            const response = await fetch(`/api/stripe/subscription-info?priceId=${subscriptionData.price_id}`);
+            if (response.ok) {
+              const { product } = await response.json();
+              setProduct(product);
+            }
           } catch (stripeError) {
             console.error('Error fetching Stripe details:', stripeError);
             // Return subscription data even if Stripe fetch fails
