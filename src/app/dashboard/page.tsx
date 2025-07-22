@@ -43,6 +43,7 @@ import {
   Search,
   Download,
   TextSearch,
+  Filter,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -452,6 +453,8 @@ function DashboardContent() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showBrandModal, setShowBrandModal] = useState(false);
   const [brands, setBrands] = useState<Brand[]>([]);
+  const [userBrands, setUserBrands] = useState<Brand[]>([]);
+  const [currentBrand, setCurrentBrand] = useState<Brand | null>(null);
   const [selectedBrand, setSelectedBrand] = useState<Brand | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -471,55 +474,49 @@ function DashboardContent() {
   const [loadingGoogleResults, setLoadingGoogleResults] = useState(false);
   const [showGoogleResults, setShowGoogleResults] = useState(true);
 
-  // const fetchBrands = async () => {
-  //   try {
-  //     setIsLoading(true);
+  const fetchBrands = async () => {
+    try {
+      setIsLoading(true);
 
-  //     // Get current user
-  //     const {
-  //       data: { user },
-  //     } = await supabase.auth.getUser();
+      // Get current user
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
-  //     if (!user) {
-  //       console.error("No authenticated user found");
-  //       setIsLoading(false);
-  //       return;
-  //     }
+      if (!user) {
+        console.error("No authenticated user found");
+        setIsLoading(false);
+        return;
+      }
 
-  //     // Fetch brands where user_id matches and website and logo are not empty
-  //     const { data, error } = await supabase
-  //       .from("brands")
-  //       .select("*")
-  //       .eq("user_id", user.id)
-  //       .not("website", "is", null)
-  //       .not("logo_url", "is", null);
+      const { data, error } = await supabase
+        .from("brand_project")
+        .select("*")
+        .eq("user_id", user.id);
 
-  //     if (error) {
-  //       console.error("Error fetching brands:", error);
-  //       setIsLoading(false);
-  //       return;
-  //     }
+      if (error) {
+        console.error("Error fetching brands:", error);
+        setIsLoading(false);
+        return;
+      }
 
-  //     setBrands(data || []);
+      setUserBrands(data || []);
 
-  //     // Set the first brand as selected if available
-  //     if (data && data.length > 0) {
-  //       setSelectedBrand(data[0]);
-  //     } else {
-  //       // Show brand creation modal if no valid brands exist
-  //       setShowBrandModal(true);
-  //     }
+      // Set the first brand as selected if available
+      if (data && data.length > 0) {
+        setCurrentBrand(data[0]);
+      }
 
-  //     setIsLoading(false);
-  //   } catch (error) {
-  //     console.error("Error:", error);
-  //     setIsLoading(false);
-  //   }
-  // };
+      setIsLoading(false);
+    } catch (error) {
+      console.error("Error:", error);
+      setIsLoading(false);
+    }
+  };
 
-  // useEffect(() => {
-  //   fetchBrands();
-  // }, []);
+  useEffect(() => {
+    fetchBrands();
+  }, []);
 
   // Plans configuration
   const plans = [
@@ -695,10 +692,19 @@ function DashboardContent() {
         }
 
         const data = await response.json();
+        const filteredDataByMyBrand = data.monitoring.filter((item: any) =>
+          item?.attached_brand_id?.includes(currentBrand?.id)
+        );
+        console.log("filteredDataByMyBrand: ", filteredDataByMyBrand);
 
         if (data && data.monitoring) {
-          setQueries(data.monitoring);
-          setSelectedQuery(data.monitoring[0]);
+          if (currentBrand) {
+            setQueries(filteredDataByMyBrand);
+            setSelectedQuery(filteredDataByMyBrand[0]);
+          } else {
+            setQueries(data.monitoring);
+            setSelectedQuery(data.monitoring[0]);
+          }
           setIsLoading(false);
         } else {
           setQueries([]);
@@ -723,7 +729,7 @@ function DashboardContent() {
     }
 
     fetchScheduledQueries();
-  }, [toast, user]);
+  }, [toast, user, currentBrand]);
 
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -1190,7 +1196,7 @@ function DashboardContent() {
           )
             selectedModelTotalMentions++;
           if (
-              selectedModel.has("Gemini 2.5 Flash") &&
+            selectedModel.has("Gemini 2.5 Flash") &&
             (brand.gemini_mentions || 0) > 0
           )
             selectedModelTotalMentions++;
@@ -3466,6 +3472,44 @@ function DashboardContent() {
 
       <div className="w-full mx-auto px-4 py-4">
         <div className="w-full flex md:flex-row flex-col md:justify-between justify-start md:items-center gap-4">
+          <div className="flex items-center gap-3">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="w-full !border !border-accent md:w-fit rounded-full"
+                >
+                  <Filter className="w-4 h-4" />
+                  {currentBrand ? currentBrand.name : "Select a Brand"}
+                  <ChevronDown className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="start"
+                className="pb-2 px-2 space-y-3 rounded-xl w-50"
+              >
+                <DropdownMenuLabel className="text-xs text-white/20 ">
+                  Brand Options
+                </DropdownMenuLabel>
+                <DropdownMenuItem onClick={() => setCurrentBrand(null)} className="rounded-md">
+                  <div className="flex items-center gap-2">
+                    <span>View All Prompts</span>
+                  </div>
+                </DropdownMenuItem>
+                {userBrands.map((brand) => (
+                  <DropdownMenuItem
+                  key={brand?.id}
+                    onClick={() => setCurrentBrand(brand)}
+                    className="rounded-md"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span>{brand.name}</span>
+                    </div>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
           <QueryCounter product={product} subscription={subscription} />
           <div className="flex items-center gap-2">
             <Button
@@ -3529,9 +3573,17 @@ function DashboardContent() {
                           })}
                         </p>
                         {"•"}
-                        <p className="text-muted-foreground">{queries.length} total prompts</p>
+                        <p className="text-muted-foreground">
+                          {queries.length} total prompts
+                        </p>
                         {"•"}
-                        <p className="text-muted-foreground">{queries.filter((query) => query.status === "active").length} active</p>
+                        <p className="text-muted-foreground">
+                          {
+                            queries.filter((query) => query.status === "active")
+                              .length
+                          }{" "}
+                          active
+                        </p>
                       </div>
                       <motion.div
                         animate={{ rotate: isExpanded ? 180 : 0 }}
@@ -4137,11 +4189,11 @@ function DashboardContent() {
                     </motion.div>
                     <p className="text-muted-foreground items-center flex">
                       <Eye className="w-4 h-4 mr-2" />
-                        Currently viewing:{" "}
-                        <em className="text-white">
-                          &quot;{selectedQuery?.query}&quot;
-                        </em>
-                      </p>
+                      Currently viewing:{" "}
+                      <em className="text-white">
+                        &quot;{selectedQuery?.query}&quot;
+                      </em>
+                    </p>
                     <AnimatePresence>
                       {isExpanded && (
                         <motion.div
@@ -4179,48 +4231,56 @@ function DashboardContent() {
                       />
                     </div>
                     <StepsTabContent
-                          citations={(() => {
-                            if (!results || results.length === 0) return null;
+                      citations={(() => {
+                        if (!results || results.length === 0) return null;
 
-                            // Extract citations from model_summary using new schema
-                            const allCitations: any[] = [];
-                            
-                            results
-                              .flatMap((result: any) => result.model_summary || [])
-                              .flatMap((summary: any) => summary.reasoning || [])
-                              .forEach((item: any) => {
-                                if (item && typeof item === 'object') {
-                                  // Handle url_citation.url (nested structure)
-                                  if (item.url_citation?.url) {
-                                    allCitations.push({
-                                      url: item.url_citation.url,
-                                      title: item.url_citation.title || 'No title',
-                                      snippet: item.url_citation.snippet || 'No snippet',
-                                      source: item.source || item.domain || 'Unknown source'
-                                    });
-                                  }
-                                  // Handle direct url field
-                                  if (item.url && item.url !== item.url_citation?.url) {
-                                    allCitations.push({
-                                      url: item.url,
-                                      title: item.title || 'No title', 
-                                      snippet: item.text || 'No snippet',
-                                      source: item.source || item.domain || 'Unknown source'
-                                    });
-                                  }
-                                }
-                              });
+                        // Extract citations from model_summary using new schema
+                        const allCitations: any[] = [];
 
-                            return allCitations.length > 0
-                              ? allCitations
-                              : null;
-                          })()}
-                          monitoringId={selectedQuery?.mode_id || ""}
-                          prompt={selectedQuery?.query || ""}
-                          country={selectedQuery?.location || ""}
-                          brand={selectedBrands}
-                          orientation={"horizontal"}
-                        />
+                        results
+                          .flatMap((result: any) => result.model_summary || [])
+                          .flatMap((summary: any) => summary.reasoning || [])
+                          .forEach((item: any) => {
+                            if (item && typeof item === "object") {
+                              // Handle url_citation.url (nested structure)
+                              if (item.url_citation?.url) {
+                                allCitations.push({
+                                  url: item.url_citation.url,
+                                  title: item.url_citation.title || "No title",
+                                  snippet:
+                                    item.url_citation.snippet || "No snippet",
+                                  source:
+                                    item.source ||
+                                    item.domain ||
+                                    "Unknown source",
+                                });
+                              }
+                              // Handle direct url field
+                              if (
+                                item.url &&
+                                item.url !== item.url_citation?.url
+                              ) {
+                                allCitations.push({
+                                  url: item.url,
+                                  title: item.title || "No title",
+                                  snippet: item.text || "No snippet",
+                                  source:
+                                    item.source ||
+                                    item.domain ||
+                                    "Unknown source",
+                                });
+                              }
+                            }
+                          });
+
+                        return allCitations.length > 0 ? allCitations : null;
+                      })()}
+                      monitoringId={selectedQuery?.mode_id || ""}
+                      prompt={selectedQuery?.query || ""}
+                      country={selectedQuery?.location || ""}
+                      brand={selectedBrands}
+                      orientation={"horizontal"}
+                    />
                     {/* <Tabs defaultValue="keywords" className="w-full">
                       <TabsList className="grid w-full grid-cols-2 bg-muted/20">
                         <TabsTrigger
