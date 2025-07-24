@@ -6,6 +6,8 @@ import { z } from "zod";
 import { v4 as uuidv4 } from "uuid";
 import { NextResponse } from "next/server";
 import { countries } from "@/lib/countries";
+import { updateCreditUsage } from "@/lib/creditUsage";
+import { calculateCreditsRequired, getAvailableModels } from "@/lib/constraints";
 
 // --- Supabase and AI Clients ---
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -661,7 +663,7 @@ async function callGeminiSearch(prompt: string, country: string, brandName: stri
  * @param now - The current timestamp (ISO string) for this analysis run.
  */
 async function processQuery(
-  query: { id: string; query: string; frequency: string; mode?: string | null, mode_id: string, user_id: string, location?: string, attached_brand_name?: string, attached_brand_industry?: string, attached_brand_logo_url?: string, attached_brand_website?: string, attached_brand_language?: string, attached_brand_location?: string },
+  query: { id: string; query: string; frequency: string; mode?: string | null, mode_id: string, user_id: string, location?: string, attached_brand_name?: string, attached_brand_industry?: string, attached_brand_logo_url?: string, attached_brand_website?: string, attached_brand_language?: string, attached_brand_location?: string, selected_models?: string[], credits_per_run?: number, include_google_search?: boolean },
   now: string,
 ): Promise<{ id: string; newAnalysisRun: z.infer<typeof AnalysisRunSchema> }> {
   console.log(
@@ -672,35 +674,67 @@ async function processQuery(
 
 
   
-  // Call the search-google endpoint to get Google search results
-  // This helps enrich our analysis with current web data
-  await callSearchGoogleEndpoint(query.query, query.mode_id, query.user_id, query.location);
+  // Call the search-google endpoint to get Google search results (only if enabled)
+  if (query.include_google_search !== false) {
+    console.log("🔍 Calling search-google endpoint...");
+    await callSearchGoogleEndpoint(query.query, query.mode_id, query.user_id, query.location);
+  } else {
+    console.log("⏭️ Skipping search-google endpoint (disabled by user)");
+  }
 
-  // --- Define Models ---
-  const textModels = [
-    { modelId: "openai/gpt-4o-search-preview", name: "GPT 4o Web Search" },
-    {
-      modelId: "gemini-search",
-      name: "Gemini 2.5 Flash",
-    },
-    { modelId: "claude-search", name: "Claude 4.0 Sonnet" }, // Custom Claude Search
-    { modelId: "perplexity/sonar", name: "Perplexity Sonar" }, // Keep Perplexity here
-    { modelId: "google-ai-mode", name: "Google AI Mode" }, // Custom Google AI Mode
+  // --- Define All Available Models ---
+  const analysisMode = (query.mode || 'voyager').toLowerCase() as 'explorer' | 'voyager';
+  
+  // Get available models for the analysis mode
+  const availableModels = getAvailableModels(analysisMode);
+  
+  // If models are selected, use only those; otherwise use all available models
+  const selectedModels = query.selected_models && query.selected_models.length > 0 
+    ? query.selected_models.filter(model => availableModels.includes(model))
+    : availableModels;
+  
+  console.log(`📋 Using ${selectedModels.length} selected models for ${analysisMode} mode: ${selectedModels.join(', ')}`);
+
+  // Map model keys to actual model configurations
+  const allTextModels = [
+    { modelId: "openai/gpt-4o-search-preview", name: "GPT 4o Web Search", key: "gpt-4o-search" },
+    { modelId: "gemini-search", name: "Gemini 2.5 Flash", key: "gemini-search" },
+    { modelId: "claude-search", name: "Claude 4.0 Sonnet", key: "claude-search" },
+    { modelId: "perplexity/sonar", name: "Perplexity Sonar", key: "perplexity-sonar" },
+    { modelId: "google-ai-mode", name: "Google AI Mode", key: "google-ai-mode" },
+    { modelId: "deepseek/deepseek-chat-v3-0324:free", name: "DeepSeek v3", key: "deepseek-v3" },
+    { modelId: "openai/gpt-4.1-nano", name: "GPT 4.1 Nano", key: "gpt-4.1-nano" },
+    { modelId: "x-ai/grok-3-mini", name: "Grok 3 Mini", key: "grok-3-mini" },
+    { modelId: "meta-llama/llama-4-maverick:free", name: "Llama 4 Maverick", key: "llama-4-maverick" },
   ];
 
-  const objectModels = [
-    { model: openrouter("openai/gpt-4o"), name: "GPT 4o Web Search" },
-    {
-      model: "claude-search", // Use string to indicate special handling
-      name: "Claude 4.0 Sonnet",
-    },
-    {
-      model: "gemini-search", // Use string to indicate special handling
-      name: "Gemini 2.5 Flash",
-    },
-    { model: openrouter("perplexity/sonar"), name: "Perplexity Sonar" }, // Keep Perplexity here
-    { model: "google-ai-mode", name: "Google AI Mode" }, // Custom Google AI Mode
+  const allObjectModels = [
+    { model: openrouter("openai/gpt-4o"), name: "GPT 4o Web Search", key: "gpt-4o-search" },
+    { model: "claude-search", name: "Claude 4.0 Sonnet", key: "claude-search" },
+    { model: "gemini-search", name: "Gemini 2.5 Flash", key: "gemini-search" },
+    { model: openrouter("perplexity/sonar"), name: "Perplexity Sonar", key: "perplexity-sonar" },
+    { model: "google-ai-mode", name: "Google AI Mode", key: "google-ai-mode" },
+    { model: openrouter("deepseek/deepseek-chat-v3-0324:free"), name: "DeepSeek v3", key: "deepseek-v3" },
+    { model: openrouter("openai/gpt-4.1-nano"), name: "GPT 4.1 Nano", key: "gpt-4.1-nano" },
+    { model: openrouter("x-ai/grok-3-mini"), name: "Grok 3 Mini", key: "grok-3-mini" },
+    { model: openrouter("meta-llama/llama-4-maverick:free"), name: "Llama 4 Maverick", key: "llama-4-maverick" },
   ];
+
+  // Filter models based on user selection
+  const textModels = allTextModels.filter(model => selectedModels.includes(model.key));
+  const objectModels = allObjectModels.filter(model => selectedModels.includes(model.key));
+  
+  // Log which webhook models are selected/skipped
+  const webhookModels = ['google-ai-mode', 'claude-search', 'gemini-search'];
+  const selectedWebhookModels = webhookModels.filter(model => selectedModels.includes(model));
+  const skippedWebhookModels = webhookModels.filter(model => !selectedModels.includes(model));
+  
+  if (selectedWebhookModels.length > 0) {
+    console.log(`🔗 Will call webhook models: ${selectedWebhookModels.join(', ')}`);
+  }
+  if (skippedWebhookModels.length > 0) {
+    console.log(`⏭️ Skipping webhook models: ${skippedWebhookModels.join(', ')}`);
+  }
 
   // --- Fetch Existing Results --- (Moved to the top)
   let existingResultsArray: z.infer<typeof AnalysisRunSchema>[] = [];
@@ -1170,6 +1204,26 @@ async function processQuery(
     console.log(
       `  Successfully updated query ${query.id}. Success: ${successfulExtraction}/${objectModels.length}. Failures: ${failedExtraction}.`
     );
+    
+    // Track credit usage for monitoring (using the actual selected models)
+    try {
+      const creditsUsed = query.credits_per_run || calculateCreditsRequired(
+        analysisMode, 
+        selectedModels, 
+        query.include_google_search !== false
+      );
+      const creditResult = await updateCreditUsage(query.user_id, creditsUsed, 'monitoring');
+      if (!creditResult.success) {
+        console.error(`  Error tracking monitoring credit usage for query ${query.id}:`, creditResult.error);
+        // Don't fail the request, just log the error
+      } else {
+        console.log(`  ✅ Tracked ${creditsUsed} monitoring credits for user ${query.user_id} (${selectedModels.length} models${query.include_google_search !== false ? ' + Google AI Overview' : ''})`);
+      }
+    } catch (creditError) {
+      console.error(`  Error tracking monitoring credit usage for query ${query.id}:`, creditError);
+      // Don't fail the request, just log the error
+    }
+    
     return {
       id: query.id,
       newAnalysisRun, // This object now matches AnalysisRunSchema
@@ -1200,6 +1254,8 @@ export async function POST(req: Request) {
       attached_brand_website: z.string().optional(),
       attached_brand_language: z.string().optional(),
       attached_brand_location: z.string().optional(),
+      selected_models: z.array(z.string()).optional().default([]),
+      include_google_search: z.boolean().optional().default(true),
     });
 
     const validation = inputSchema.safeParse(body);
@@ -1212,7 +1268,20 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
-    const { query, frequency, mode, user_id, location, attached_brand_id, attached_brand_name, attached_brand_industry, attached_brand_logo_url, attached_brand_website, attached_brand_language, attached_brand_location } = validation.data;
+    const { query, frequency, mode, user_id, location, attached_brand_id, attached_brand_name, attached_brand_industry, attached_brand_logo_url, attached_brand_website, attached_brand_language, attached_brand_location, selected_models, include_google_search } = validation.data;
+
+    // Clean up attached_brand_id - remove empty strings and null values
+    const cleanedBrandId = attached_brand_id 
+      ? attached_brand_id.filter(id => id && id.trim() !== "" && id !== "null")
+      : null;
+    const finalBrandId = cleanedBrandId && cleanedBrandId.length > 0 ? cleanedBrandId : null;
+
+    // Calculate credits required for the scheduled analysis
+    const analysisMode = (mode || 'voyager').toLowerCase() as 'explorer' | 'voyager';
+    const availableModels = getAvailableModels(analysisMode);
+    const modelsToUse = selected_models.length > 0 ? selected_models.filter(model => availableModels.includes(model)) : availableModels;
+    const creditsRequired = calculateCreditsRequired(analysisMode, modelsToUse, include_google_search);
+    console.log(`💳 Scheduled query will require ${creditsRequired} credits per run for ${modelsToUse.length} selected models${include_google_search ? ' + Google AI Overview' : ''}`);
 
     // --- Check for Duplicate Query ---
     const { data: existingQuery, error: checkError } = await supabase
@@ -1259,9 +1328,12 @@ export async function POST(req: Request) {
         status: "active",
         location: location,
         results: [], // Initialize with an empty array in the jsonb column
-        attached_brand_id: attached_brand_id,
+        attached_brand_id: finalBrandId,
+        selected_models: modelsToUse,
+        credits_per_run: creditsRequired,
+        include_google_search: include_google_search,
       })
-      .select("id, query, frequency, mode") // Select necessary fields
+      .select("id, query, frequency, mode, selected_models, credits_per_run, include_google_search") // Select necessary fields
       .single();
 
     if (insertError) {
@@ -1289,9 +1361,29 @@ export async function POST(req: Request) {
         query: queryText,
         frequency: queryFreq,
         mode: queryMode,
+        selected_models: querySelectedModels,
+        credits_per_run: queryCreditsPerRun,
+        include_google_search: queryIncludeGoogleSearch,
       } = newQueryData;
       const initialAnalysis = await processQuery(
-        { id, query: queryText, frequency: queryFreq, mode: queryMode, mode_id: mode_id, user_id: user_id, location: location, attached_brand_name: attached_brand_name, attached_brand_industry: attached_brand_industry, attached_brand_logo_url: attached_brand_logo_url, attached_brand_website: attached_brand_website, attached_brand_language: attached_brand_language, attached_brand_location: attached_brand_location },
+        { 
+          id, 
+          query: queryText, 
+          frequency: queryFreq, 
+          mode: queryMode, 
+          mode_id: mode_id, 
+          user_id: user_id, 
+          location: location, 
+          attached_brand_name: attached_brand_name, 
+          attached_brand_industry: attached_brand_industry, 
+          attached_brand_logo_url: attached_brand_logo_url, 
+          attached_brand_website: attached_brand_website, 
+          attached_brand_language: attached_brand_language, 
+          attached_brand_location: attached_brand_location,
+          selected_models: querySelectedModels,
+          credits_per_run: queryCreditsPerRun,
+          include_google_search: queryIncludeGoogleSearch,
+        },
         now,
       );
       console.log(`Initial analysis complete for query ${newQueryData.id}`);
@@ -1336,92 +1428,3 @@ export async function POST(req: Request) {
   }
 }
 
-// Handler for GET requests (Intended for Cron Job trigger)
-export async function GET(req: Request) {
-  // --- Security Check (Highly Recommended for Cron) ---
-  // Implement a check for a secret header or specific IP ranges
-  // to ensure only your cron service can trigger this endpoint.
-  const cronSecret = process.env.CRON_SECRET;
-  const authHeader = req.headers.get("Authorization");
-  if (!cronSecret || !authHeader || authHeader !== `Bearer ${cronSecret}`) {
-    console.warn("Unauthorized GET request attempt.");
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  // --- End Security Check ---
-
-  const now = new Date().toISOString();
-  console.log(`GET /api/schedule-query (Cron Job) triggered at ${now}`);
-
-  try {
-    const { data: existingQueries, error: existingError } = await supabase
-      .from("scheduled_queries")
-      .select("id, query, frequency, mode, user_id, mode_id")
-      .lte("next_analysis_at", now)
-      .not("next_analysis_at", "is", null); // Ensure it has a scheduled time
-
-    if (existingError) {
-      console.error("Error fetching due queries:", existingError);
-      return NextResponse.json(
-        { error: "Failed to fetch due queries" },
-        { status: 500 }
-      );
-    }
-
-    if (!existingQueries || existingQueries.length === 0) {
-      console.log("No queries due for processing.");
-      return NextResponse.json({ message: "No queries due" }, { status: 200 });
-    }
-
-    console.log(`Processing ${existingQueries.length} due queries...`);
-
-    let processedCount = 0;
-    let failedCount = 0;
-
-    // Process queries sequentially to avoid overwhelming APIs/DB
-    // Consider Promise.allSettled with concurrency limits for larger scale
-    for (const query of existingQueries) {
-      try {
-        await processQuery(query, now);
-        processedCount++;
-      } catch (error: any) {
-        console.error(
-          `Failed to process query ${query.id} during cron run:`,
-          error
-        );
-        failedCount++;
-        // Optional: Update the specific query record with an error status
-        // or schedule a retry later? For now, just log and continue.
-      }
-    }
-
-    console.log(
-      `Search monitoring completed. Processed: ${processedCount}, Failed: ${failedCount}`
-    );
-    return NextResponse.json(
-      {
-        message: `Search monitoring completed`,
-        processed: processedCount,
-        failed: failedCount,
-      },
-      { status: 200 }
-    );
-  } catch (error: any) {
-    console.error("Error processing GET request (cron):", error);
-    return NextResponse.json(
-      { error: "Failed to process cron request", details: error.message },
-      { status: 500 }
-    );
-  }
-}
-
-// Optional: Add OPTIONS handler for CORS if needed
-// export async function OPTIONS() {
-//   return new NextResponse(null, {
-//     status: 204,
-//     headers: {
-//       'Access-Control-Allow-Origin': '*', // Or specific origins
-//       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-//       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-//     },
-//   });
-// }

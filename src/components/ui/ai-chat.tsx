@@ -14,8 +14,8 @@ import {
   Search,
   Repeat,
   MapPin,
-  Loader2,
   Paperclip,
+  Zap,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "@/components/ui/use-toast";
@@ -45,12 +45,16 @@ import { UserSubscription } from "@/hooks/useAuth";
 import { LoadingState } from "../loading-state";
 import { Brand } from "@/contexts/brand-data-context";
 import { domains } from "@/types/domains";
-import { QueryCounter } from "../dashboard/query-counter";
 import { User } from "@supabase/supabase-js";
 import Stripe from "stripe";
 import { getConstraints } from "@/lib/constraints";
 import { AttachBrandModal } from "../dashboard/attach-brand-modal";
 import { supabase } from "@/lib/supabase";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { AiStudio, Claude, DeepSeek, Gemini, Google, Grok, Meta, OpenAI, Perplexity } from "@lobehub/icons";
+
 
 interface UseAutoResizeTextareaProps {
   minHeight: number;
@@ -110,25 +114,93 @@ interface AIChatInterfaceProps {
   session: string;
   product: Stripe.Product | null;
   subscription: UserSubscription | null;
-  isLoading: boolean;
   monitoring?: string | null;
   attachedBrandId?: string | null;
 }
 
-export function AIChatInterface({ user, session, product, subscription, isLoading, monitoring, attachedBrandId }: AIChatInterfaceProps) {
+interface ModelInfo {
+  key: string;
+  name: string;
+  credit_cost: number;
+}
+
+interface ModelsData {
+  explorer: {
+    models: ModelInfo[];
+    max_credits_per_analysis: number;
+    credit_cost_per_model: number;
+    google_ai_overview_cost: number;
+  };
+  voyager: {
+    models: ModelInfo[];
+    max_credits_per_analysis: number;
+    credit_cost_per_model: number;
+    google_ai_overview_cost: number;
+  };
+}
+
+export function AIChatInterface({
+  user,
+  session,
+  product,
+  subscription,
+  monitoring,
+  attachedBrandId,
+}: AIChatInterfaceProps) {
   const router = useRouter();
   const [value, setValue] = useState("");
   const [mode, setMode] = useState<AnalysisMode>("Explorer");
   const [loading, setLoading] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [isMonitoringMode, setIsMonitoringMode] = useState(monitoring === "true" ? true : false);
-  const [attachedBrand, setAttachedBrand] = useState<Brand | null>(attachedBrandId ? { id: attachedBrandId, name: "Your Brand", industry: "", logo_url: "", website: "", language: "", location: "", created_at: "" } as Brand : null);
+  const [isMonitoringMode, setIsMonitoringMode] = useState(
+    monitoring === "true" ? true : false
+  );
+  const [attachedBrand, setAttachedBrand] = useState<Brand | null>(
+    attachedBrandId
+      ? ({
+          id: attachedBrandId,
+          name: "Your Brand",
+          industry: "",
+          logo_url: "",
+          website: "",
+          language: "",
+          location: "",
+          created_at: "",
+        } as Brand)
+      : null
+  );
   const [monitorFrequency, setMonitorFrequency] = useState<"daily" | "weekly">(
     "daily"
   );
   const [open, setOpen] = useState(false);
   const [openModal, setOpenModal] = useState(false);
   const [location, setLocation] = useState("");
+
+
+    // Model to icon mapping
+    const modelIcons: Record<
+    string,
+    React.ComponentType<{ className?: string }>
+  > = {
+    "gpt-4o-search": OpenAI,
+    "claude-search": Claude.Color,
+    "perplexity-sonar": Perplexity,
+    "gemini-search": Gemini.Color,
+    "google-ai-mode": AiStudio.Color,
+    "google-ai-overview": Gemini.Color,
+    "deepseek-v3": DeepSeek.Color,
+    "gpt-4.1-nano": OpenAI,
+    "grok-3-mini": Grok,
+    "llama-4-maverick": Meta.Color,
+  };
+
+
+  // New state for credit-based model selection
+  const [selectedModels, setSelectedModels] = useState<string[]>([]);
+  const [includeGoogleSearch, setIncludeGoogleSearch] = useState(true);
+  const [modelsData, setModelsData] = useState<ModelsData | null>(null);
+  const [creditsRequired, setCreditsRequired] = useState(0);
+
   const { textareaRef, adjustHeight } = useAutoResizeTextarea({
     minHeight: 60,
     maxHeight: 200,
@@ -136,20 +208,80 @@ export function AIChatInterface({ user, session, product, subscription, isLoadin
   const [currentTime, setCurrentTime] = useState(new Date());
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
+  // Fetch available models on component mount
   useEffect(() => {
-    if(!attachedBrandId) return;
+    const fetchModels = async () => {
+      try {
+        const response = await fetch("/api/search/models");
+        if (response.ok) {
+          const data = await response.json();
+          setModelsData(data);
+
+          // Set default selected models (all models for current mode)
+          const currentModeModels =
+            data[mode.toLowerCase() as "explorer" | "voyager"]?.models || [];
+          setSelectedModels(
+            currentModeModels.map((model: ModelInfo) => model.key)
+          );
+        }
+      } catch (error) {
+        console.error("Error fetching models:", error);
+      }
+    };
+
+    fetchModels();
+  }, []);
+
+  // Update selected models when mode changes
+  useEffect(() => {
+    if (modelsData) {
+      const currentModeModels =
+        modelsData[mode.toLowerCase() as "explorer" | "voyager"]?.models || [];
+      setSelectedModels(currentModeModels.map((model: ModelInfo) => model.key));
+    }
+  }, [mode, modelsData]);
+
+  // Calculate credits required when selected models change
+  useEffect(() => {
+    if (modelsData && selectedModels.length > 0) {
+      const currentModeData =
+        modelsData[mode.toLowerCase() as "explorer" | "voyager"];
+      let totalCredits = 0;
+      
+      // Calculate credits for selected models based on their individual costs
+      selectedModels.forEach(modelKey => {
+        const model = currentModeData.models.find((m: ModelInfo) => m.key === modelKey);
+        if (model) {
+          totalCredits += model.credit_cost;
+        }
+      });
+      
+      // Add Google AI Overview cost if included
+      if (includeGoogleSearch) {
+        totalCredits += currentModeData.google_ai_overview_cost || 1;
+      }
+      
+      setCreditsRequired(totalCredits);
+    }
+  }, [selectedModels, mode, modelsData, includeGoogleSearch]);
+
+  useEffect(() => {
+    if (!attachedBrandId) return;
     const fetchBrand = async () => {
-     const {data, error} = await supabase.from("brand_project").select("*").eq("id", attachedBrandId).single();
-      if(error){
+      const { data, error } = await supabase
+        .from("brand_project")
+        .select("*")
+        .eq("id", attachedBrandId)
+        .single();
+      if (error) {
         console.error("Error fetching brand:", error);
       } else {
         setAttachedBrand(data as unknown as Brand);
       }
-    }
+    };
     fetchBrand();
   }, [attachedBrandId]);
 
- 
   // Update time every second
   useEffect(() => {
     const timer = setInterval(() => {
@@ -188,7 +320,7 @@ export function AIChatInterface({ user, session, product, subscription, isLoadin
   };
 
   const updateQueryCount = async () => {
-    if(!subscription) return;
+    if (!subscription) return;
 
     const updatedSubscription = await fetch("/api/update-query-count", {
       method: "POST",
@@ -197,16 +329,35 @@ export function AIChatInterface({ user, session, product, subscription, isLoadin
         subscription: subscription,
         isMonitoringMode: isMonitoringMode,
       }),
-    })
+    });
 
-    if(!updatedSubscription.ok){
+    if (!updatedSubscription.ok) {
       toast({
         title: "Error",
         description: "Failed to update query count. Please try again later.",
         variant: "destructive",
       });
     }
-  }
+  };
+
+  const handleModelToggle = (modelKey: string, checked: boolean) => {
+    if (checked) {
+      setSelectedModels((prev) => [...prev, modelKey]);
+    } else {
+      setSelectedModels((prev) => prev.filter((key) => key !== modelKey));
+    }
+  };
+
+  const handleSelectAllModels = () => {
+    if (!modelsData) return;
+    const currentModeModels =
+      modelsData[mode.toLowerCase() as "explorer" | "voyager"]?.models || [];
+    setSelectedModels(currentModeModels.map((model: ModelInfo) => model.key));
+  };
+
+  const handleDeselectAllModels = () => {
+    setSelectedModels([]);
+  };
 
   const handleSubmit = async () => {
     if (!value.trim()) {
@@ -232,7 +383,8 @@ export function AIChatInterface({ user, session, product, subscription, isLoadin
     if (!subscription) {
       toast({
         title: "Error",
-        description: "Subscription plan could not be found. Please contact support or try again later.",
+        description:
+          "Subscription plan could not be found. Please contact support or try again later.",
         variant: "destructive",
       });
       return;
@@ -241,36 +393,52 @@ export function AIChatInterface({ user, session, product, subscription, isLoadin
     if (subscription.status !== "active") {
       toast({
         title: "Error",
-        description: "Your subscription is not active or has expired. Please upgrade to continue.",
+        description:
+          "Your subscription is not active or has expired. Please upgrade to continue.",
         variant: "destructive",
       });
       return;
     }
 
-    if(!product){
+    if (!product) {
       toast({
         title: "Error",
-        description: "Subscription plan could not be found. Please contact support or try again later.",
+        description:
+          "Subscription plan could not be found. Please contact support or try again later.",
         variant: "destructive",
       });
       return;
     }
 
-    const userConstraint = getConstraints(product.name)
-
-    if(subscription.query_count >= userConstraint.max_queries){
+    if (selectedModels.length === 0) {
       toast({
         title: "Error",
-        description: "You have reached the maximum number of queries for your plan. Please upgrade to continue.",
+        description: "Please select at least one AI model for analysis.",
         variant: "destructive",
       });
       return;
     }
 
-    if(isMonitoringMode && subscription.monitoring_count >= userConstraint.max_scheduled_queries){
+    const userConstraint = getConstraints(product.name);
+
+    if (subscription.query_count >= userConstraint.max_credits) {
       toast({
         title: "Error",
-        description: "You have reached the maximum number of scheduled queries for your plan. Please upgrade to continue.",
+        description:
+          "You have reached the maximum number of credits for your plan. Please upgrade to continue.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (
+      isMonitoringMode &&
+      subscription.monitoring_count >= userConstraint.max_scheduled_queries
+    ) {
+      toast({
+        title: "Error",
+        description:
+          "You have reached the maximum number of scheduled queries for your plan. Please upgrade to continue.",
         variant: "destructive",
       });
       return;
@@ -296,13 +464,23 @@ export function AIChatInterface({ user, session, product, subscription, isLoadin
             frequency: monitorFrequency,
             mode,
             location: location,
-            attached_brand_id: attachedBrand ? [attachedBrand?.id] : [""],
+            attached_brand_id: attachedBrand?.id ? [attachedBrand.id] : null,
             attached_brand_name: attachedBrand ? attachedBrand?.name : "",
-            attached_brand_industry: attachedBrand ? attachedBrand?.industry : "",
-            attached_brand_logo_url: attachedBrand ? attachedBrand?.logo_url|| "" : "",
+            attached_brand_industry: attachedBrand
+              ? attachedBrand?.industry
+              : "",
+            attached_brand_logo_url: attachedBrand
+              ? attachedBrand?.logo_url || ""
+              : "",
             attached_brand_website: attachedBrand ? attachedBrand?.website : "",
-            attached_brand_language: attachedBrand ? attachedBrand?.language : "",
-            attached_brand_location: attachedBrand ? attachedBrand?.location : "",
+            attached_brand_language: attachedBrand
+              ? attachedBrand?.language
+              : "",
+            attached_brand_location: attachedBrand
+              ? attachedBrand?.location
+              : "",
+            selected_models: selectedModels,
+            include_google_search: includeGoogleSearch,
           }),
         });
 
@@ -314,7 +492,7 @@ export function AIChatInterface({ user, session, product, subscription, isLoadin
 
         toast({
           title: "Query Scheduled",
-          description: `Your query has been scheduled for ${monitorFrequency} monitoring. Check the Monitoring tab for details.`,
+          description: `Your query has been scheduled for ${monitorFrequency} monitoring with ${selectedModels.length} AI models (${creditsRequired} credits per run). Check the Monitoring tab for details.`,
         });
         updateQueryCount();
         setTimeout(() => {
@@ -325,7 +503,7 @@ export function AIChatInterface({ user, session, product, subscription, isLoadin
         setIsAnalyzing(false); // Reset analyzing state
       } else {
         // --- Search Mode Logic (Existing) ---
-        const response = await fetch('/api/search/prompt', {
+        const response = await fetch("/api/search/prompt", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -339,7 +517,9 @@ export function AIChatInterface({ user, session, product, subscription, isLoadin
             brand_industry: attachedBrand?.industry || "No Brand Industry", // Use optional chaining
             brand_id: attachedBrand?.id || "No Brand ID", // Use optional chaining
             location: location,
-            attached_brand_id: attachedBrand ? [attachedBrand?.id] : null,
+            attached_brand_id: attachedBrand?.id ? [attachedBrand.id] : null,
+            selected_models: selectedModels,
+            include_google_search: includeGoogleSearch,
           }),
         });
 
@@ -369,11 +549,11 @@ export function AIChatInterface({ user, session, product, subscription, isLoadin
           result += new TextDecoder().decode(value);
         }
 
-        const { mode_id } = JSON.parse(result);
+        const { mode_id, credits_used } = JSON.parse(result);
 
         toast({
           title: "Analysis started",
-          description: `Your ${mode} analysis is processing. You'll be redirected to results when complete.`,
+          description: `Your ${mode} analysis is processing using ${selectedModels.length} AI models (${credits_used} credits used). You'll be redirected to results when complete.`,
         });
 
         setIsAnalyzing(false);
@@ -460,6 +640,12 @@ export function AIChatInterface({ user, session, product, subscription, isLoadin
                   Monitor
                 </span>
               )}
+              <span className="px-2 py-1 text-xs rounded-full bg-purple-500/20 text-purple-400">
+                {selectedModels.length} Models
+              </span>
+              <span className="px-2 py-1 text-xs rounded-full bg-yellow-500/20 text-yellow-400">
+                {creditsRequired} Credits
+              </span>
               <span className="text-xs text-muted-foreground">
                 thought for {formatTime(elapsedSeconds)}
               </span>
@@ -470,7 +656,8 @@ export function AIChatInterface({ user, session, product, subscription, isLoadin
           </div>
           <p className="text-muted-foreground mb-10 text-center">
             We&apos;re gathering data and insights about {value || "your query"}
-            . This may take a few moments.
+            using {selectedModels.length} AI models. This may take a few
+            moments.
           </p>
           <LoadingState />
         </div>
@@ -478,12 +665,16 @@ export function AIChatInterface({ user, session, product, subscription, isLoadin
     );
   }
 
+  const currentModeData =
+    modelsData?.[mode.toLowerCase() as "explorer" | "voyager"];
+
   return (
     <div className="flex flex-col items-center w-full max-w-4xl mx-auto p-4 space-y-8">
       <h1 className="text-4xl font- text-center text-neutral-700 dark:text-white">
         {isMonitoringMode
           ? "Search and Monitor Prompts"
-          : attachedBrand ? "Search and Monitor Prompts for " + attachedBrand?.name 
+          : attachedBrand
+          ? "Search and Monitor Prompts for " + attachedBrand?.name
           : "Let's help you understand your prompts"}
       </h1>
 
@@ -493,7 +684,8 @@ export function AIChatInterface({ user, session, product, subscription, isLoadin
             "relative bg-[#e2e2e2]/20 dark:bg-neutral-900/10 rounded-xl border border-[#e2e2e2]/20 hover:border-[#e2e2e2]/40 dark:border-neutral-800",
             isMonitoringMode &&
               "ring-3 ring-blue-500 ring-offset-2 ring-offset-background dark:ring-offset-neutral-950",
-            attachedBrand && "ring-3 ring-purple-500 ring-offset-2 ring-offset-background dark:ring-offset-neutral-950"
+            attachedBrand &&
+              "ring-3 ring-purple-500 ring-offset-2 ring-offset-background dark:ring-offset-neutral-950"
           )}
         >
           <div className="overflow-y-auto">
@@ -532,18 +724,19 @@ export function AIChatInterface({ user, session, product, subscription, isLoadin
             <div className="flex items-center gap-2 flex-wrap">
               {/* Attach Brand Button */}
               <button
-                    type="button"
-                    onClick={() => setOpenModal(true)}
-                    className={cn(
-                      "group p-[10px] bg-muted/50 dark:bg-black/20 dark:hover:bg-neutral-800 cursor-pointer rounded-full border border-[#e2e2e2]/20 dark:border-accent transition-all duration-400 ease flex items-center ",
-                      attachedBrand && "bg-purple-500/40 dark:bg-purple-900/40 hover:bg-purple-500/50 dark:hover:bg-purple-900/50"
-                    )}
-                  >
-                    <Paperclip className="w-4 h-4 text-neutral-400 dark:text-white/60" />
-                    <span className="text-xs text-neutral-400 dark:text-white opacity-0 max-w-0 group-hover:max-w-[200px] group-hover:ml-2 group-hover:opacity-100 transition-all duration-300 ease-in-out overflow-hidden whitespace-nowrap">
-                      {attachedBrand ? "Change Brand" : "Attach Brand"}
-                    </span>
-                  </button>
+                type="button"
+                onClick={() => setOpenModal(true)}
+                className={cn(
+                  "group p-[10px] bg-muted/50 dark:bg-black/20 dark:hover:bg-neutral-800 cursor-pointer rounded-full border border-[#e2e2e2]/20 dark:border-accent transition-all duration-400 ease flex items-center ",
+                  attachedBrand &&
+                    "bg-purple-500/40 dark:bg-purple-900/40 hover:bg-purple-500/50 dark:hover:bg-purple-900/50"
+                )}
+              >
+                <Paperclip className="w-4 h-4 text-neutral-400 dark:text-white/60" />
+                <span className="text-xs text-neutral-400 dark:text-white opacity-0 max-w-0 group-hover:max-w-[200px] group-hover:ml-2 group-hover:opacity-100 transition-all duration-300 ease-in-out overflow-hidden whitespace-nowrap">
+                  {attachedBrand ? "Change Brand" : "Attach Brand"}
+                </span>
+              </button>
 
               {/* Attach Location Button */}
               <Popover open={open} onOpenChange={setOpen}>
@@ -636,24 +829,141 @@ export function AIChatInterface({ user, session, product, subscription, isLoadin
                     </Button>
                   </DropdownMenuTrigger>
                 </div>
-                <DropdownMenuContent className="p-2 pb-[9.5px] md:ml-52 rounded-xl">
-                  {modes.map((item) => (
-                    <DropdownMenuItem
-                      key={item.key}
-                      className="cursor-pointer rounded-[8px] hover:!bg-blue-500/10"
-                      onClick={() => setMode(item.key as AnalysisMode)}
-                    >
-                      <div className="flex gap-2 items-center">
-                        {item.key === mode && <Check className="w-4 h-4" />}
-                        <div>
-                          <h4 className="text-[14px] text-neutral-600 dark:text-white">{item.key}</h4>
-                          <p className="text-neutral-400 dark:text-white/70 text-[10px]">
-                            {item.caption}
-                          </p>
+                <DropdownMenuContent className="p-4 md:ml-52 rounded-xl w-[450px]">
+                  {/* Mode Selection */}
+                  <div className="space-y-2 mb-4">
+                    <h4 className="font-medium text-sm text-neutral-600 dark:text-white">
+                      Analysis Mode
+                    </h4>
+                    {modes.map((item) => (
+                      <div
+                        key={item.key}
+                        className="cursor-pointer rounded-[8px] hover:bg-blue-500/10 p-2"
+                        onClick={() => setMode(item.key as AnalysisMode)}
+                      >
+                        <div className="flex gap-2 items-center">
+                          {item.key === mode && <Check className="w-4 h-4" />}
+                          <div>
+                            <h4 className="text-[14px] text-neutral-600 dark:text-white">
+                              {item.key}
+                            </h4>
+                            <p className="text-neutral-400 dark:text-white/70 text-[10px]">
+                              {item.caption}
+                            </p>
+                          </div>
                         </div>
                       </div>
-                    </DropdownMenuItem>
-                  ))}
+                    ))}
+                  </div>
+
+                  <Separator />
+
+                  {/* Model Selection */}
+                  <div className="space-y-4 mt-4">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-medium text-sm text-neutral-600 dark:text-white">
+                        AI Models for {mode}
+                      </h4>
+                      <Badge
+                        variant="secondary"
+                        className="bg-purple-500/20 text-purple-600 dark:text-purple-400"
+                      >
+                        <Zap className="w-3 h-3 mr-1" />
+                        {creditsRequired} Credits
+                      </Badge>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSelectAllModels();
+                        }}
+                        className="text-xs rounded-full"
+                      >
+                        Select All
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeselectAllModels();
+                        }}
+                        className="text-xs rounded-full"
+                      >
+                        Deselect All
+                      </Button>
+                    </div>
+
+                    <div className="space-y-3 max-h-[200px] overflow-y-auto">
+                      {currentModeData?.models.map((model) => {
+                        const IconComponent = modelIcons[model.key];
+                        return (
+                        <div
+                          key={model.key}
+                          className="flex items-center space-x-3"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <Checkbox
+                            id={`${model.key}-dropdown`}
+                            checked={selectedModels.includes(model.key)}
+                            onCheckedChange={(checked) =>
+                              handleModelToggle(model.key, checked as boolean)
+                            }
+                          />
+                          <div className="flex-1 min-w-0">
+                            <label
+                              htmlFor={`${model.key}-dropdown`}
+                              className="text-sm flex items-center gap-2 font-medium cursor-pointer block text-neutral-600 dark:text-white"
+                            >
+                              <IconComponent className="w-4 h-4" />
+                              {model.name}
+                            </label>
+                          </div>
+                          <Badge variant="outline" className="text-xs">
+                            {model.credit_cost} {model.credit_cost === 1 ? 'credit' : 'credits'}
+                          </Badge>
+                        </div>
+                      );
+                    })}
+                    </div>
+
+                    <div
+                      className="flex items-center space-x-3"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Checkbox
+                        id="google-search-dropdown"
+                        checked={includeGoogleSearch}
+                        onCheckedChange={(checked) =>
+                          setIncludeGoogleSearch(checked as boolean)
+                        }
+                      />
+                      <div className="flex-1">
+                        <label
+                          htmlFor="google-search-dropdown"
+                          className="text-sm font-medium cursor-pointer flex items-center gap-2 text-neutral-600 dark:text-white"
+                        >
+                          <Google.Color className="w-4 h-4" />
+                          Google AI Overview
+                        </label>
+                      </div>
+                        <Badge variant="outline" className="text-xs">
+                            {1} credit
+                          </Badge>
+                    </div>
+                    {mode === "Explorer" && (
+                    <div className="pt-2 bg-muted/50 rounded p-3">
+                      <p className="text-xs text-muted-foreground">
+                        💡 <strong>Credit Calculation:</strong> Each AI model
+                        has web search available and returns URL analysis.
+                      </p>
+                    </div>
+                    )}
+                  </div>
                 </DropdownMenuContent>
               </DropdownMenu>
 
@@ -661,7 +971,10 @@ export function AIChatInterface({ user, session, product, subscription, isLoadin
               {isMonitoringMode && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="rounded-full border-[#e2e2e2]/20 dark:border-accent text-xs text-muted-foreground dark:text-muted-foreground">
+                    <Button
+                      variant="outline"
+                      className="rounded-full border-[#e2e2e2]/20 dark:border-accent text-xs text-muted-foreground dark:text-muted-foreground"
+                    >
                       <Repeat className="w-3 h-3 mr-2" />
                       {monitorFrequency === "daily" ? "Daily" : "Weekly"}
                       <ChevronDown className="w-3 h-3 ml-1" />
@@ -701,15 +1014,16 @@ export function AIChatInterface({ user, session, product, subscription, isLoadin
 
             {/* Right Side Controls */}
             <div className="flex items-center gap-3">
-              {/* Country Selector Dropdown */}
-
               {/* Search/Monitor Toggle */}
               <div className="flex items-center space-x-2 bg-background dark:bg-neutral-800/40 p-1 rounded-full">
                 <Button
                   variant={!isMonitoringMode ? "secondary" : "ghost"}
                   size="sm"
                   onClick={() => setIsMonitoringMode(false)}
-                  className={`rounded-full h-7 px-3 text-xs hover:!bg-transparent hover:!text-blue-500/50 text-muted-foreground/50 dark:text-muted-foreground/50 ${!isMonitoringMode && "!bg-neutral-100 dark:!bg-neutral-800/70 !text-[#7a7a7a] dark:!text-muted-foreground hover:dark:!bg-neutral-800 hover:!bg-neutral-100"}`}
+                  className={`rounded-full h-7 px-3 text-xs hover:!bg-transparent hover:!text-blue-500/50 text-muted-foreground/50 dark:text-muted-foreground/50 ${
+                    !isMonitoringMode &&
+                    "!bg-neutral-100 dark:!bg-neutral-800/70 !text-[#7a7a7a] dark:!text-muted-foreground hover:dark:!bg-neutral-800 hover:!bg-neutral-100"
+                  }`}
                 >
                   <Search className="w-3 h-3 mr-1" />
                   Search
@@ -719,7 +1033,8 @@ export function AIChatInterface({ user, session, product, subscription, isLoadin
                   size="sm"
                   onClick={() => setIsMonitoringMode(true)}
                   className={`rounded-full h-7 px-3 text-xs text-muted-foreground/50 dark:text-muted-foreground/50 hover:!bg-transparent hover:!text-blue-500/50 ${
-                    isMonitoringMode && "!bg-primary hover:!bg-primary dark:!bg-blue-600 dark:hover:!bg-blue-600 !text-accent dark:!text-white"
+                    isMonitoringMode &&
+                    "!bg-primary hover:!bg-primary dark:!bg-blue-600 dark:hover:!bg-blue-600 !text-accent dark:!text-white"
                   }`}
                 >
                   <Repeat className="w-3 h-3 mr-1" />
@@ -731,10 +1046,14 @@ export function AIChatInterface({ user, session, product, subscription, isLoadin
               <button
                 type="button"
                 onClick={handleSubmit}
-                disabled={loading || !value.trim()}
+                disabled={
+                  loading || !value.trim() || selectedModels.length === 0
+                }
                 className={cn(
                   "p-2 active:scale-95 rounded-full text-sm -rotate-45 cursor-pointer hover:rotate-0 transition-all ease-in-out duration-300 border hover:bg-muted flex items-center justify-center", // Centered icon
-                  value.trim() ? "bg-foreground text-background dark:bg-white dark:text-black border-foreground dark:border-zinc-700 hover:border-foreground/80 dark:hover:border-zinc-600" : "text-muted-foreground dark:text-zinc-400 border-border dark:border-zinc-700"
+                  value.trim() && selectedModels.length > 0
+                    ? "bg-foreground text-background dark:bg-white dark:text-black border-foreground dark:border-zinc-700 hover:border-foreground/80 dark:hover:border-zinc-600"
+                    : "text-muted-foreground dark:text-zinc-400 border-border dark:border-zinc-700"
                 )}
                 aria-label={
                   isMonitoringMode ? "Schedule Monitor" : "Send Search"
@@ -743,7 +1062,9 @@ export function AIChatInterface({ user, session, product, subscription, isLoadin
                 <ArrowRightIcon
                   className={cn(
                     "w-4 h-4",
-                    value.trim() ? "text-background dark:text-black" : "text-muted-foreground dark:text-zinc-400"
+                    value.trim() && selectedModels.length > 0
+                      ? "text-background dark:text-black"
+                      : "text-muted-foreground dark:text-zinc-400"
                   )}
                 />
               </button>
@@ -771,6 +1092,16 @@ export function AIChatInterface({ user, session, product, subscription, isLoadin
             <span className="text-xs w-full text-neutral-500 dark:text-muted-foreground">
               {modes.find((item) => item.key === mode)?.caption}
             </span>
+            {/* {currentModeData && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Badge variant="outline" className="text-xs">
+                  {selectedModels.length}/{currentModeData.models.length} models
+                </Badge>
+                <Badge variant="outline" className="text-xs">
+                  {creditsRequired} credits
+                </Badge>
+              </div>
+            )} */}
           </div>
         </motion.div>
 
@@ -792,7 +1123,15 @@ export function AIChatInterface({ user, session, product, subscription, isLoadin
               year: "numeric",
             })}
           />
-          {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <QueryCounter product={product} subscription={subscription} isMonitoringMode={isMonitoringMode} />}
+          {/* Credits Display */}
+          {creditsRequired > 0 && (
+            <div className="flex items-center gap-2 px-3 py-1 bg-purple-500/20 dark:bg-purple-900/30 rounded-full">
+              <Zap className="w-3 h-3 text-purple-600 dark:text-purple-400" />
+              <span className="text-xs font-medium text-purple-600 dark:text-purple-400">
+                {creditsRequired} {creditsRequired === 1 ? "credit" : "credits"}
+              </span>
+            </div>
+          )}{" "}
         </div>
       </div>
 
@@ -808,11 +1147,14 @@ export function AIChatInterface({ user, session, product, subscription, isLoadin
             {mode === "Voyager" && (
               <div className="flex items-start gap-3">
                 <div>
-                  <h4 className="font-medium text-sm text-neutral-700 dark:text-foreground">Voyager Mode</h4>
+                  <h4 className="font-medium text-sm text-neutral-700 dark:text-foreground">
+                    Voyager Mode
+                  </h4>
                   <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
-                    Leverages Llama 4 Maverick, DeepSeek R1, Grok 3 Mini, and GPT 4.1 to create
-                    in-depth brand ranking and analysis with social sentiment
-                    insights. Ideal for comprehensive market research.
+                    Leverages Llama 4 Maverick, DeepSeek v3, Grok 3 Mini, and
+                    GPT 4.1 Nano to create in-depth brand ranking and analysis
+                    with social sentiment insights. Each model costs 1 credit
+                    per analysis.
                   </p>
                 </div>
               </div>
@@ -821,27 +1163,48 @@ export function AIChatInterface({ user, session, product, subscription, isLoadin
             {mode === "Explorer" && (
               <div className="flex items-start gap-3">
                 <div>
-                  <h4 className="font-medium text-sm text-neutral-700 dark:text-foreground">Explorer Mode</h4>
+                  <h4 className="font-medium text-sm text-neutral-700 dark:text-foreground">
+                    Explorer Mode
+                  </h4>
                   <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
-                    Our most comprehensive analysis using GPT 4o Web Search, Perplexity
-                    Sonar, Google AI Overiew, Google AI Mode, Gemini 2.5 Flash, and Claude 4.0 Sonnet. Extracts brands and keyword
-                    insights from native AI search prompts
+                    Our most comprehensive analysis using GPT 4o Web Search,
+                    Perplexity Sonar, Google AI Overview, Google AI Mode, Gemini
+                    2.5 Flash, and Claude 4.0 Sonnet. Each model costs 1 credit
+                    per analysis.
                   </p>
                 </div>
               </div>
             )}
 
             <div className="pt-2 border-t border-[#e2e2e2]/50 dark:border-neutral-800">
+              {/* <div className="flex items-start gap-3 mb-3">
+                <Zap className="w-4 h-4 text-purple-500 mt-0.5" />
+                <div>
+                  <h4 className="font-medium text-sm text-neutral-700 dark:text-foreground">
+                    Credit System
+                  </h4>
+                  <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
+                    Select specific AI models to optimize your credit usage. You
+                    can choose individual models or use all available models for
+                    comprehensive analysis. Google Search is always included at
+                    no extra cost.
+                  </p>
+                </div>
+              </div> */}
               <p className="text-xs text-muted-foreground/30 dark:text-neutral-500">
                 {isMonitoringMode
-                  ? "Monitored queries run automatically. View their status and results in the Monitoring tab."
-                  : "For best results, be specific in your queries and include relevant industry terms."}
+                  ? "Monitored queries run automatically with your selected models. View their status and results in the Monitoring tab."
+                  : "For best results, be specific in your queries and select models that best fit your analysis needs."}
               </p>
             </div>
           </div>
         </div>
       </div>
-      <AttachBrandModal showBrandModal={openModal} setShowBrandModal={setOpenModal} setAttachedBrand={setAttachedBrand} />
+      <AttachBrandModal
+        showBrandModal={openModal}
+        setShowBrandModal={setOpenModal}
+        setAttachedBrand={setAttachedBrand}
+      />
     </div>
   );
 }

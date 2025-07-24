@@ -10,6 +10,8 @@ import {
 } from "ai";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { countries } from "@/lib/countries";
+import { calculateCreditsRequired, getAvailableModels } from "@/lib/constraints";
+import { updateCreditUsage } from "@/lib/creditUsage";
 
 // export const runtime = 'edge';
 export const maxDuration = 200;
@@ -104,7 +106,9 @@ const searchRequestSchema = z.object({
   user_id: z.string().uuid(),
   query: z.string(),
   location: z.string().optional(),
-  attached_brand_id: z.array(z.string().uuid()).optional(),
+  attached_brand_id: z.array(z.string().uuid()).optional().nullable(),
+  selected_models: z.array(z.string()).optional().default([]),
+  include_google_search: z.boolean().optional().default(true),
 });
 
 // Helper function to call the search-google endpoint
@@ -453,35 +457,56 @@ async function explorerAnalysis(
   user_id: string, 
   query: string,
   mode_id: string,
-  location?: string  
+  location?: string,
+  selectedModels: string[] = [],
+  includeGoogleSearch: boolean = true
 ): Promise<SearchResults> {
   console.log(`🔍 [EXPLORER] Starting analysis for query: "${query}", user: ${user_id}, mode_id: ${mode_id}, location: ${location || 'Global'}`);
   
   if(!mode_id){
     throw new Error("Mode ID is required - Cannot be undefined");
   }
-  // Call the search-google endpoint after mode_id is defined
-  await callSearchGoogleEndpoint(query, mode_id, user_id, location);
+  
+  // Get available models for Explorer mode
+  const availableModels = getAvailableModels('explorer');
+  
+  // If no models selected, use all available models
+  const modelsToUse = selectedModels.length > 0 ? selectedModels.filter(model => availableModels.includes(model)) : availableModels;
+  
+  // Calculate credits required
+  const creditsRequired = calculateCreditsRequired('explorer', modelsToUse, includeGoogleSearch);
+  console.log(`📊 [EXPLORER] Using ${modelsToUse.length} models, requiring ${creditsRequired} credits${includeGoogleSearch ? ' (including Google AI Overview)' : ''}`);
+  
+  // Call the search-google endpoint only if included
+  if (includeGoogleSearch) {
+    await callSearchGoogleEndpoint(query, mode_id, user_id, location);
+  }
   
   const rankings: AIRanking[] = [];
 
-  // 1. Define Models for Text Generation (Search-Enabled + Webhooks)
-  console.log(`📋 [EXPLORER] Defining ${5} text models and extraction models`);
-  const textModels = [
-    { modelId: "openai/gpt-4o-search-preview", name: "GPT 4o Web Search" },
-    { modelId: "perplexity/sonar", name: "Perplexity Sonar" },
-    { modelId: "gemini-search", name: "Gemini 2.5 Flash" },
-    { modelId: "claude-search", name: "Claude 4.0 Sonnet" },
-    { modelId: "google-ai-mode", name: "Google AI Mode" },
+  // 1. Define all available models and filter based on selection
+  console.log(`📋 [EXPLORER] Defining models based on selection`);
+  const allTextModels = [
+    { modelId: "openai/gpt-4o-search-preview", name: "GPT 4o Web Search", key: "gpt-4o-search" },
+    { modelId: "perplexity/sonar", name: "Perplexity Sonar", key: "perplexity-sonar" },
+    { modelId: "gemini-search", name: "Gemini 2.5 Flash", key: "gemini-search" },
+    { modelId: "claude-search", name: "Claude 4.0 Sonnet", key: "claude-search" },
+    { modelId: "google-ai-mode", name: "Google AI Mode", key: "google-ai-mode" },
   ];
 
-  const objectModels = [
-    { model: openrouter("openai/gpt-4o"), name: "GPT 4o Web Search" },
-    { model: openrouter("perplexity/sonar"), name: "Perplexity Sonar" },
-    { model: "gemini-search", name: "Gemini 2.5 Flash" },
-    { model: "claude-search", name: "Claude 4.0 Sonnet" },
-    { model: "google-ai-mode", name: "Google AI Mode" },
+  const allObjectModels = [
+    { model: openrouter("openai/gpt-4o"), name: "GPT 4o Web Search", key: "gpt-4o-search" },
+    { model: openrouter("perplexity/sonar"), name: "Perplexity Sonar", key: "perplexity-sonar" },
+    { model: "gemini-search", name: "Gemini 2.5 Flash", key: "gemini-search" },
+    { model: "claude-search", name: "Claude 4.0 Sonnet", key: "claude-search" },
+    { model: "google-ai-mode", name: "Google AI Mode", key: "google-ai-mode" },
   ];
+
+  // Filter models based on user selection
+  const textModels = allTextModels.filter(model => modelsToUse.includes(model.key));
+  const objectModels = allObjectModels.filter(model => modelsToUse.includes(model.key));
+  
+  console.log(`📋 [EXPLORER] Using ${textModels.length} selected models`);
 
   // 2. Generate Text Summaries for all models
   console.log(`🤖 [EXPLORER] Starting text generation for ${textModels.length} models...`);
@@ -992,36 +1017,59 @@ async function voyagerAnalysis(
   user_id: string, 
   query: string,
   mode_id: string,
-  location?: string
+  location?: string,
+  selectedModels: string[] = [],
+  includeGoogleSearch: boolean = true
 ): Promise<SearchResults> {
   console.log(`🚀 [VOYAGER] Starting analysis for query: "${query}", user: ${user_id}, mode_id: ${mode_id}, location: ${location || 'Global'}`);
   
   if(!mode_id){
     throw new Error("Mode ID is required - Cannot be undefined");
   }
-  // Call the search-google endpoint after mode_id is defined
-  console.log(`🔍 [VOYAGER] Calling search-google endpoint...`);
-  await callSearchGoogleEndpoint(query, mode_id, user_id, location);
   
-  console.log(`📋 [VOYAGER] Defining ${4} AI models for analysis`);
-  const models = [
+  // Get available models for Voyager mode
+  const availableModels = getAvailableModels('voyager');
+  
+  // If no models selected, use all available models
+  const modelsToUse = selectedModels.length > 0 ? selectedModels.filter(model => availableModels.includes(model)) : availableModels;
+  
+  // Calculate credits required
+  const creditsRequired = calculateCreditsRequired('voyager', modelsToUse, includeGoogleSearch);
+  console.log(`📊 [VOYAGER] Using ${modelsToUse.length} models, requiring ${creditsRequired} credits${includeGoogleSearch ? ' (including Google AI Overview)' : ''}`);
+  
+  // Call the search-google endpoint only if included
+  if (includeGoogleSearch) {
+    console.log(`🔍 [VOYAGER] Calling search-google endpoint...`);
+    await callSearchGoogleEndpoint(query, mode_id, user_id, location);
+  }
+  
+  console.log(`📋 [VOYAGER] Defining available AI models for analysis`);
+  const allModels = [
     {
       model: openrouter("deepseek/deepseek-chat-v3-0324:free"),
       name: "DeepSeek v3",
+      key: "deepseek-v3",
     },
     {
       model: openrouter("openai/gpt-4.1-nano"),
       name: "GPT 4.1 Nano",
+      key: "gpt-4.1-nano",
     },
     {
       model: openrouter("x-ai/grok-3-mini"),
       name: "Grok 3 Mini",
+      key: "grok-3-mini",
     },
     {
       model: openrouter("meta-llama/llama-4-maverick:free"),
       name: "Llama 4 Maverick",
+      key: "llama-4-maverick",
     },
   ];
+
+  // Filter models based on user selection
+  const models = allModels.filter(model => modelsToUse.includes(model.key));
+  console.log(`📋 [VOYAGER] Using ${models.length} selected models for analysis`);
 
   const rankings: AIRanking[] = [];
 
@@ -1509,7 +1557,17 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     
     // Validate request body
-    const { mode, user_id, query, location, attached_brand_id } = searchRequestSchema.parse(body);
+    const { mode, user_id, query, location, attached_brand_id, selected_models, include_google_search } = searchRequestSchema.parse(body);
+
+    // Clean up attached_brand_id - remove empty strings and null values
+    const cleanedBrandId = attached_brand_id 
+      ? attached_brand_id.filter(id => id && id.trim() !== "" && id !== "null")
+      : null;
+    const finalBrandId = cleanedBrandId && cleanedBrandId.length > 0 ? cleanedBrandId : null;
+
+    // Calculate credits required for the analysis
+    const creditsRequired = calculateCreditsRequired(mode.toLowerCase() as 'explorer' | 'voyager', selected_models, include_google_search);
+    console.log(`💳 Analysis will require ${creditsRequired} credits for ${selected_models.length} selected models${include_google_search ? ' + Google AI Overview' : ''}`);
 
     // Generate shared IDs for this search session
     const mode_id = uuidv4();
@@ -1522,9 +1580,9 @@ export async function POST(request: NextRequest) {
       }
       
       if (mode === "Voyager") {
-        results = await voyagerAnalysis(user_id, query, mode_id, location);
+        results = await voyagerAnalysis(user_id, query, mode_id, location, selected_models, include_google_search);
       } else if (mode === "Explorer") {
-        results = await explorerAnalysis(user_id, query, mode_id, location);
+        results = await explorerAnalysis(user_id, query, mode_id, location, selected_models, include_google_search);
       } else {
         return NextResponse.json(
           { error: "Invalid analysis mode" },
@@ -1552,7 +1610,7 @@ export async function POST(request: NextRequest) {
 
     // Save results to Supabase
     try {
-      await saveToSupabase(results, user_id, attached_brand_id || null);
+      await saveToSupabase(results, user_id, finalBrandId);
     } catch (saveError) {
       console.error("Error saving to Supabase:", saveError);
       return NextResponse.json(
@@ -1564,10 +1622,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Track credit usage for query
+    try {
+      const creditResult = await updateCreditUsage(user_id, creditsRequired, 'query');
+      if (!creditResult.success) {
+        console.error("Error tracking credit usage:", creditResult.error);
+        // Don't fail the request, just log the error
+      }
+    } catch (creditError) {
+      console.error("Error tracking credit usage:", creditError);
+      // Don't fail the request, just log the error
+    }
+
     return NextResponse.json({ 
       success: true, 
       message: `Analysis complete for mode ${mode}. Results have been stored with search ID: ${mode_id}`,
       mode_id,
+      credits_used: creditsRequired,
+      models_used: selected_models.length,
     });
   } catch (error) {
     console.error("Error in search endpoint:", error);

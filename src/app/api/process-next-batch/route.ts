@@ -6,6 +6,8 @@ import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { generateObject, generateText } from "ai";
 import { z } from "zod";
 import { countries } from "@/lib/countries";
+import { updateCreditUsage } from "@/lib/creditUsage";
+import { getAvailableModels } from "@/lib/constraints";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -596,7 +598,7 @@ export async function POST(req: NextRequest) {
     // Fetch the next batch of queries
     const { data: queries, error } = await supabase
       .from("scheduled_queries")
-      .select("id, query, frequency, mode, user_id, mode_id, location")
+      .select("id, query, frequency, mode, user_id, mode_id, location, selected_models, credits_per_run, include_google_search, attached_brand_name, attached_brand_industry, attached_brand_logo_url, attached_brand_website, attached_brand_language, attached_brand_location")
       .lte("next_analysis_at", now)
       .eq("status", "active")
       .order("next_analysis_at", { ascending: true })
@@ -693,38 +695,55 @@ async function processQueryDirectly(query: any) {
     );
   
     
-    // Call the search-google endpoint to get Google search results
-    // This helps enrich our analysis with current web data
-    await callSearchGoogleEndpoint(query.query, query.mode_id, query.user_id, query.location);
+    // Call the search-google endpoint to get Google search results (only if enabled)
+    if (query.include_google_search !== false) {
+      console.log("🔍 Calling search-google endpoint...");
+      await callSearchGoogleEndpoint(query.query, query.mode_id, query.user_id, query.location);
+    } else {
+      console.log("⏭️ Skipping search-google endpoint (disabled by user)");
+    }
   
-      // --- Define Models ---
-  const textModels = [
-    { modelId: "openai/gpt-4o-search-preview", name: "GPT 4o Web Search" },
-    {
-      modelId: "claude-search",
-      name: "Claude 4.0 Sonnet",
-    },
-    {
-      modelId: "gemini-search",
-      name: "Gemini 2.5 Flash",
-    },
-    { modelId: "perplexity/sonar", name: "Perplexity Sonar" }, // Keep Perplexity here
-    { modelId: "google-ai-mode", name: "Google AI Mode" }, // Custom Google AI Mode
-  ];
+    // --- Define All Available Models ---
+    const analysisMode = (query.mode || 'voyager').toLowerCase() as 'explorer' | 'voyager';
+    
+    // Get available models for the analysis mode
+    const availableModels = getAvailableModels(analysisMode);
+    
+    // If models are selected, use only those; otherwise use all available models
+    const selectedModels = query.selected_models && query.selected_models.length > 0 
+      ? query.selected_models.filter((model: string) => availableModels.includes(model))
+      : availableModels;
+    
+    console.log(`📋 Using ${selectedModels.length} selected models for ${analysisMode} mode: ${selectedModels.join(', ')}`);
 
-  const objectModels = [
-    { model: openrouter("openai/gpt-4o"), name: "GPT 4o Web Search" },
-    {
-      model: "claude-search", // Use string to indicate special handling
-      name: "Claude 4.0 Sonnet",
-    },
-    {
-      model: "gemini-search", // Use string to indicate special handling
-      name: "Gemini 2.5 Flash",
-    },
-    { model: openrouter("perplexity/sonar"), name: "Perplexity Sonar" }, // Keep Perplexity here
-    { model: "google-ai-mode", name: "Google AI Mode" }, // Custom Google AI Mode
-  ];
+    // Map model keys to actual model configurations
+    const allTextModels = [
+      { modelId: "openai/gpt-4o-search-preview", name: "GPT 4o Web Search", key: "gpt-4o-search" },
+      { modelId: "gemini-search", name: "Gemini 2.5 Flash", key: "gemini-search" },
+      { modelId: "claude-search", name: "Claude 4.0 Sonnet", key: "claude-search" },
+      { modelId: "perplexity/sonar", name: "Perplexity Sonar", key: "perplexity-sonar" },
+      { modelId: "google-ai-mode", name: "Google AI Mode", key: "google-ai-mode" },
+      { modelId: "deepseek/deepseek-chat-v3-0324:free", name: "DeepSeek v3", key: "deepseek-v3" },
+      { modelId: "openai/gpt-4.1-nano", name: "GPT 4.1 Nano", key: "gpt-4.1-nano" },
+      { modelId: "x-ai/grok-3-mini", name: "Grok 3 Mini", key: "grok-3-mini" },
+      { modelId: "meta-llama/llama-4-maverick:free", name: "Llama 4 Maverick", key: "llama-4-maverick" },
+    ];
+
+    const allObjectModels = [
+      { model: openrouter("openai/gpt-4o"), name: "GPT 4o Web Search", key: "gpt-4o-search" },
+      { model: "claude-search", name: "Claude 4.0 Sonnet", key: "claude-search" },
+      { model: "gemini-search", name: "Gemini 2.5 Flash", key: "gemini-search" },
+      { model: openrouter("perplexity/sonar"), name: "Perplexity Sonar", key: "perplexity-sonar" },
+      { model: "google-ai-mode", name: "Google AI Mode", key: "google-ai-mode" },
+      { model: openrouter("deepseek/deepseek-chat-v3-0324:free"), name: "DeepSeek v3", key: "deepseek-v3" },
+      { model: openrouter("openai/gpt-4.1-nano"), name: "GPT 4.1 Nano", key: "gpt-4.1-nano" },
+      { model: openrouter("x-ai/grok-3-mini"), name: "Grok 3 Mini", key: "grok-3-mini" },
+      { model: openrouter("meta-llama/llama-4-maverick:free"), name: "Llama 4 Maverick", key: "llama-4-maverick" },
+    ];
+
+    // Filter models based on user selection
+    const textModels = allTextModels.filter(model => selectedModels.includes(model.key));
+    const objectModels = allObjectModels.filter(model => selectedModels.includes(model.key));
   
     // --- Fetch Existing Results ---
     let existingResultsArray: z.infer<typeof AnalysisRunSchema>[] = [];
@@ -1132,11 +1151,27 @@ async function processQueryDirectly(query: any) {
       throw new Error(`Failed to update query record: ${updateError.message}`);
     }
     
+    // Track credit usage for monitoring (using the actual selected models)
+    try {
+      const creditsUsed = query.credits_per_run || selectedModels.length;
+      const creditResult = await updateCreditUsage(query.user_id, creditsUsed, 'monitoring');
+      if (!creditResult.success) {
+        console.error(`  Error tracking monitoring credit usage for query ${query.id}:`, creditResult.error);
+        // Don't fail the request, just log the error
+      } else {
+        console.log(`  ✅ Tracked ${creditsUsed} monitoring credits for user ${query.user_id} (${selectedModels.length} models)`);
+      }
+    } catch (creditError) {
+      console.error(`  Error tracking monitoring credit usage for query ${query.id}:`, creditError);
+      // Don't fail the request, just log the error
+    }
+    
     return { 
       success: true, 
       queryId: query.id,
       nextScheduled: nextAnalysisDate,
       newAnalysisRun,
+      creditsUsed: query.credits_per_run || selectedModels.length,
     };
   } catch (error: any) {
     console.error(`Error in processQueryDirectly for query ${query.id}:`, error);

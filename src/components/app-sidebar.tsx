@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/sidebar"
 import { TbAt, TbBookmarks, TbLayoutGridAdd, TbListSearch, TbSquareLetterA, TbTrendingUp, TbTriangleSquareCircle } from "react-icons/tb";
 import { RankiaIcon } from "./icon-rankia"
+import { CreditUsageProgress } from "./dashboard/credit-usage-progress"
 
 
 const data = {
@@ -125,6 +126,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         {/* <NavSecondary items={data.navSecondary} className="mt-auto" /> */}
       </SidebarContent>
       <SidebarFooter className="bg-white dark:bg-background">
+        <CreditUsageProgress />
         <NavUser />
       </SidebarFooter>
     </Sidebar>

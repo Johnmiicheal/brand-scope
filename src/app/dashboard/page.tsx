@@ -89,7 +89,6 @@ import { User } from "@supabase/supabase-js";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CheckoutButton } from "@/components/stripe/checkout-button";
 import { CheckoutSuccess } from "@/components/stripe/checkout-success";
-import { QueryCounter } from "@/components/dashboard/query-counter";
 import Stripe from "stripe";
 import {
   Tooltip,
@@ -3491,7 +3490,6 @@ function DashboardContent() {
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
-          <QueryCounter product={product} subscription={subscription} />
           <div className="flex items-center gap-2">
             <Button
               variant="outline"

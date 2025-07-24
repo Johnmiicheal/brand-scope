@@ -20,7 +20,7 @@ interface QueryCounterProps {
     isMonitoringMode?: boolean;
 }
 
-export const QueryCounter = ({ product, subscription, isMonitoringMode=true }: QueryCounterProps) => {
+export const QueryCounter = ({ product, subscription }: QueryCounterProps) => {
     if (!product || !subscription) {
         return null;
     }
@@ -28,14 +28,13 @@ export const QueryCounter = ({ product, subscription, isMonitoringMode=true }: Q
     const productName = product.name;
     const constraints = getConstraints(productName);
     const userCount = subscription.query_count
-    const monitoringCount = subscription.monitoring_count
 
     return(
         <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between w-full">
                 <div className="flex gap-1 items-center">
                     {[...Array(5)].map((_, index) => {
-                        const percentage = ((isMonitoringMode ? monitoringCount : userCount) / (isMonitoringMode ? constraints.max_scheduled_queries : constraints.max_queries)) * 100;
+                        const percentage = ((userCount) / ( constraints.max_credits)) * 100;
                         const barFillPercentage = (percentage / 100) * 5;
                         const isActive = index < barFillPercentage;
                         
@@ -49,7 +48,7 @@ export const QueryCounter = ({ product, subscription, isMonitoringMode=true }: Q
                         );
                     })}
                     <p className="text-sm text-gray-500 dark:text-gray-400 ml-2">
-                        {isMonitoringMode ? monitoringCount : userCount} of {isMonitoringMode ? constraints.max_scheduled_queries : constraints.max_queries} prompts used
+                        {userCount} of { constraints.max_credits} credits used
                     </p>
                 </div>
             </div>

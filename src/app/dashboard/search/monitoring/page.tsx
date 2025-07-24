@@ -766,7 +766,7 @@ function CitationsTabContent({
                     <div className="flex items-center justify-between pt-2">
                       <Badge variant="outline" className="text-xs">
                         {
-                          new URL(citation.url_citation?.url || citation.url)
+                          new URL(citation.url_citation?.url || citation.url || "")
                             .hostname
                         }
                       </Badge>

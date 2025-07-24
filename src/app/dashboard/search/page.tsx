@@ -91,7 +91,6 @@ function SearchContent() {
                 session={session} 
                 product={product} 
                 subscription={subscription} 
-                isLoading={isLoading} 
                 monitoring={monitoring} 
                 attachedBrandId={attachedBrandId}
               />

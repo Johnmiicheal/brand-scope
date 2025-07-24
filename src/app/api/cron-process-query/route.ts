@@ -5,6 +5,8 @@ import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { generateObject, generateText } from "ai";
 import { z } from "zod";
 import { countries } from "@/lib/countries";
+import { updateCreditUsage } from "@/lib/creditUsage";
+import { getAvailableModels, getConstraints } from "@/lib/constraints";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -364,7 +366,7 @@ export async function GET(req: NextRequest) {
     // Step 2: Fetch just the first batch
     const { data: queries, error } = await supabase
       .from("scheduled_queries")
-      .select("id, query, frequency, mode, user_id, mode_id, location")
+      .select("id, query, frequency, mode, user_id, mode_id, location, selected_models, credits_per_run, include_google_search, attached_brand_name, attached_brand_industry, attached_brand_logo_url, attached_brand_website, attached_brand_language, attached_brand_location")
       .lte("next_analysis_at", now)
       .eq("status", "active")
       .order("next_analysis_at", { ascending: true })
@@ -388,15 +390,37 @@ export async function GET(req: NextRequest) {
       const batchResults = await Promise.all(
         queryBatch.map(async (query) => {
           try {
-            console.log(`Processing query ID: ${query.id}`);
+            console.log(`🔄 Processing query ID: ${query.id} for user: ${query.user_id}`);
             
             // Instead of calling the endpoint, directly execute the needed logic
             // Pass the query object directly to your processing function
             const result = await processQueryDirectly(query);
             
+            // Handle different result types
+            if (result.success === false) {
+              if (result.status === 'paused') {
+                console.log(`⏸️ Query ${query.id} was paused: ${result.reason}`);
+                return { 
+                  queryId: query.id, 
+                  status: "paused", 
+                  reason: result.reason,
+                  result 
+                };
+              } else {
+                console.warn(`⚠️ Query ${query.id} failed: ${result.reason || 'Unknown reason'}`);
+                return { 
+                  queryId: query.id, 
+                  status: "failed", 
+                  reason: result.reason,
+                  result 
+                };
+              }
+            }
+            
+            console.log(`✅ Query ${query.id} processed successfully`);
             return { queryId: query.id, status: "success", result };
           } catch (error: any) {
-            console.error(`Error processing query ${query.id}:`, error);
+            console.error(`❌ Error processing query ${query.id}:`, error);
             return { 
               queryId: query.id, 
               status: "error", 
@@ -436,11 +460,29 @@ export async function GET(req: NextRequest) {
       });
     }
 
+    // Calculate summary statistics
+    const successful = results.filter(r => r.status === "success").length;
+    const paused = results.filter(r => r.status === "paused").length;
+    const failed = results.filter(r => r.status === "failed").length;
+    const errors = results.filter(r => r.status === "error").length;
+
+    console.log(`📊 Batch processing summary:`);
+    console.log(`  ✅ Successful: ${successful}`);
+    console.log(`  ⏸️ Paused: ${paused}`);
+    console.log(`  ⚠️ Failed: ${failed}`);
+    console.log(`  ❌ Errors: ${errors}`);
+
     return NextResponse.json({
       message: `Processed ${queries.length} queries`,
       total: count,
       processed: queries.length,
       remaining: count ? count - queries.length : 0,
+      summary: {
+        successful,
+        paused,
+        failed,
+        errors,
+      },
       results,
     });
   } catch (error: any) {
@@ -463,41 +505,163 @@ async function processQueryDirectly(query: any) {
         query.mode || "Default"
       }`
     );
+
+    // Check if user has enough credits before processing
+    console.log(`💳 Checking credits for user ${query.user_id}...`);
+    
+    // Get user's subscription and current usage
+    const { data: subscription, error: subError } = await supabase
+      .from('user_subscriptions')
+      .select('query_count, status, price_id')
+      .eq('user_id', query.user_id)
+      .single();
+
+    if (subError) {
+      console.error(`❌ Error fetching subscription for user ${query.user_id}:`, subError);
+      throw new Error(`Cannot verify user credits: ${subError.message}`);
+    }
+
+    // Get product details via Stripe API using price_id
+    let productName = 'Pro'; // Default fallback
+    
+    if (subscription.price_id) {
+      try {
+        const response = await fetch(`https://airankia.com/api/stripe/subscription-info?priceId=${subscription.price_id}`);
+        if (response.ok) {
+          const { product } = await response.json();
+          productName = product?.name || 'Pro';
+          console.log(`📦 Retrieved product name: ${productName} for user ${query.user_id}`);
+        } else {
+          console.warn(`⚠️ Failed to fetch product info for price_id: ${subscription.price_id}, using default`);
+        }
+      } catch (error) {
+        console.warn(`⚠️ Error fetching product details for user ${query.user_id}:`, error);
+        // Continue with default product name
+      }
+    }
+
+    const userConstraints = getConstraints(productName);
+    const currentUsage = subscription.query_count || 0;
+    const creditsRequired = query.credits_per_run || 1;
+
+    console.log(`📊 Credit check for user ${query.user_id}:`);
+    console.log(`  - Current usage: ${currentUsage}`);
+    console.log(`  - Max credits: ${userConstraints.max_credits}`);
+    console.log(`  - Credits required: ${creditsRequired}`);
+    console.log(`  - Remaining: ${userConstraints.max_credits - currentUsage}`);
+
+    // Check if user has enough credits
+    if (currentUsage + creditsRequired > userConstraints.max_credits) {
+      console.warn(`⚠️ User ${query.user_id} has insufficient credits. Pausing query ${query.id}`);
+      
+      // Pause the query instead of processing it
+      const { error: pauseError } = await supabase
+        .from('scheduled_queries')
+        .update({ 
+          status: 'paused',
+          last_analysis_at: now,
+          // Don't update next_analysis_at so it stays the same when unpaused
+        })
+        .eq('id', query.id);
+
+      if (pauseError) {
+        console.error(`❌ Error pausing query ${query.id}:`, pauseError);
+      } else {
+        console.log(`✅ Query ${query.id} has been paused due to insufficient credits`);
+      }
+
+      return {
+        success: false,
+        queryId: query.id,
+        status: 'paused',
+        reason: 'insufficient_credits',
+        creditsRequired,
+        currentUsage,
+        maxCredits: userConstraints.max_credits,
+      };
+    }
+
+    // Check if subscription is active
+    if (subscription.status !== 'active') {
+      console.warn(`⚠️ User ${query.user_id} subscription is not active (${subscription.status}). Pausing query ${query.id}`);
+      
+      // Pause the query
+      const { error: pauseError } = await supabase
+        .from('scheduled_queries')
+        .update({ 
+          status: 'paused',
+          last_analysis_at: now,
+        })
+        .eq('id', query.id);
+
+      if (pauseError) {
+        console.error(`❌ Error pausing query ${query.id}:`, pauseError);
+      } else {
+        console.log(`✅ Query ${query.id} has been paused due to inactive subscription`);
+      }
+
+      return {
+        success: false,
+        queryId: query.id,
+        status: 'paused',
+        reason: 'inactive_subscription',
+        subscriptionStatus: subscription.status,
+      };
+    }
+
+    console.log(`✅ User ${query.user_id} has sufficient credits. Proceeding with query processing...`);
   
     // Generate a unique ID for this specific run (like mode_id)
     
-    // Call the search-google endpoint to get Google search results
-    // This helps enrich our analysis with current web data
-    await callSearchGoogleEndpoint(query.query, query.mode_id, query.user_id, query.location);
+    // Call the search-google endpoint to get Google search results (only if enabled)
+    if (query.include_google_search !== false) {
+      console.log("🔍 Calling search-google endpoint...");
+      await callSearchGoogleEndpoint(query.query, query.mode_id, query.user_id, query.location);
+    } else {
+      console.log("⏭️ Skipping search-google endpoint (disabled by user)");
+    }
   
-      // --- Define Models ---
-  const textModels = [
-    { modelId: "openai/gpt-4o-search-preview", name: "GPT 4o Web Search" },
-    {
-      modelId: "claude-search",
-      name: "Claude 4.0 Sonnet",
-    },
-    {
-      modelId: "gemini-search",
-      name: "Gemini 2.5 Flash",
-    },
-    { modelId: "perplexity/sonar", name: "Perplexity Sonar" }, // Keep Perplexity here
-    { modelId: "google-ai-mode", name: "Google AI Mode" }, // Custom Google AI Mode
-  ];
+    // --- Define All Available Models ---
+    const analysisMode = (query.mode || 'voyager').toLowerCase() as 'explorer' | 'voyager';
+    
+    // Get available models for the analysis mode
+    const availableModels = getAvailableModels(analysisMode);
+    
+    // If models are selected, use only those; otherwise use all available models
+    const selectedModels = query.selected_models && query.selected_models.length > 0 
+      ? query.selected_models.filter((model: string) => availableModels.includes(model))
+      : availableModels;
+    
+    console.log(`📋 Using ${selectedModels.length} selected models for ${analysisMode} mode: ${selectedModels.join(', ')}`);
 
-  const objectModels = [
-    { model: openrouter("openai/gpt-4o"), name: "GPT 4o Web Search" },
-    {
-      model: "claude-search", // Use string to indicate special handling
-      name: "Claude 4.0 Sonnet",
-    },
-    {
-      model: "gemini-search", // Use string to indicate special handling
-      name: "Gemini 2.5 Flash",
-    },
-    { model: openrouter("perplexity/sonar"), name: "Perplexity Sonar" }, // Keep Perplexity here
-    { model: "google-ai-mode", name: "Google AI Mode" }, // Custom Google AI Mode
-  ];
+    // Map model keys to actual model configurations
+    const allTextModels = [
+      { modelId: "openai/gpt-4o-search-preview", name: "GPT 4o Web Search", key: "gpt-4o-search" },
+      { modelId: "gemini-search", name: "Gemini 2.5 Flash", key: "gemini-search" },
+      { modelId: "claude-search", name: "Claude 4.0 Sonnet", key: "claude-search" },
+      { modelId: "perplexity/sonar", name: "Perplexity Sonar", key: "perplexity-sonar" },
+      { modelId: "google-ai-mode", name: "Google AI Mode", key: "google-ai-mode" },
+      { modelId: "deepseek/deepseek-chat-v3-0324:free", name: "DeepSeek v3", key: "deepseek-v3" },
+      { modelId: "openai/gpt-4.1-nano", name: "GPT 4.1 Nano", key: "gpt-4.1-nano" },
+      { modelId: "x-ai/grok-3-mini", name: "Grok 3 Mini", key: "grok-3-mini" },
+      { modelId: "meta-llama/llama-4-maverick:free", name: "Llama 4 Maverick", key: "llama-4-maverick" },
+    ];
+
+    const allObjectModels = [
+      { model: openrouter("openai/gpt-4o"), name: "GPT 4o Web Search", key: "gpt-4o-search" },
+      { model: "claude-search", name: "Claude 4.0 Sonnet", key: "claude-search" },
+      { model: "gemini-search", name: "Gemini 2.5 Flash", key: "gemini-search" },
+      { model: openrouter("perplexity/sonar"), name: "Perplexity Sonar", key: "perplexity-sonar" },
+      { model: "google-ai-mode", name: "Google AI Mode", key: "google-ai-mode" },
+      { model: openrouter("deepseek/deepseek-chat-v3-0324:free"), name: "DeepSeek v3", key: "deepseek-v3" },
+      { model: openrouter("openai/gpt-4.1-nano"), name: "GPT 4.1 Nano", key: "gpt-4.1-nano" },
+      { model: openrouter("x-ai/grok-3-mini"), name: "Grok 3 Mini", key: "grok-3-mini" },
+      { model: openrouter("meta-llama/llama-4-maverick:free"), name: "Llama 4 Maverick", key: "llama-4-maverick" },
+    ];
+
+    // Filter models based on user selection
+    const textModels = allTextModels.filter(model => selectedModels.includes(model.key));
+    const objectModels = allObjectModels.filter(model => selectedModels.includes(model.key));
   
     // --- Fetch Existing Results ---
     let existingResultsArray: z.infer<typeof AnalysisRunSchema>[] = [];
@@ -906,11 +1070,27 @@ async function processQueryDirectly(query: any) {
       throw new Error(`Failed to update query record: ${updateError.message}`);
     }
     
+    // Track credit usage for monitoring (using the actual selected models)
+    try {
+      const creditsUsed = query.credits_per_run || selectedModels.length;
+      const creditResult = await updateCreditUsage(query.user_id, creditsUsed, 'monitoring');
+      if (!creditResult.success) {
+        console.error(`  Error tracking monitoring credit usage for query ${query.id}:`, creditResult.error);
+        // Don't fail the request, just log the error
+      } else {
+        console.log(`  ✅ Tracked ${creditsUsed} monitoring credits for user ${query.user_id} (${selectedModels.length} models)`);
+      }
+    } catch (creditError) {
+      console.error(`  Error tracking monitoring credit usage for query ${query.id}:`, creditError);
+      // Don't fail the request, just log the error
+    }
+    
     return { 
       success: true, 
       queryId: query.id,
       nextScheduled: nextAnalysisDate,
       newAnalysisRun,
+      creditsUsed: query.credits_per_run || selectedModels.length,
     };
   } catch (error: any) {
     console.error(`Error in processQueryDirectly for query ${query.id}:`, error);
