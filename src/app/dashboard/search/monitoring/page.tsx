@@ -44,6 +44,7 @@ import { StepsTabContent } from "@/components/monitoring/steps-tab-content";
 import type { ReactElement } from "react";
 import remarkGfm from "remark-gfm";
 import { supabase } from "@/lib/supabase";
+import { safeGetHostname } from "@/lib/utils";
 
 // --- Zod Schemas ---
 const BrandResultSchema = z.object({
@@ -765,10 +766,7 @@ function CitationsTabContent({
                   <div className="space-y-2">
                     <div className="flex items-center justify-between pt-2">
                       <Badge variant="outline" className="text-xs">
-                        {
-                          new URL(citation.url_citation?.url || citation.url || "")
-                            .hostname
-                        }
+                        {safeGetHostname(citation.url_citation?.url || citation.url)}
                       </Badge>
                       <a
                         href={citation.url_citation?.url || citation.url}

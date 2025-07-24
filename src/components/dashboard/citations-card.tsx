@@ -15,6 +15,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { AiStudio, Claude, Gemini, OpenAI, Perplexity } from "@lobehub/icons";
+import { safeGetHostname } from "@/lib/utils";
 
 interface Citation {
   url_citation?: {
@@ -377,7 +378,7 @@ export function CitationsCard({
 
                                 <div className="flex items-center justify-between">
                                   <Badge variant="outline" className="text-xs">
-                                    {new URL(citation?.url_citation?.url || citation?.url || "").hostname}
+                                                                         {safeGetHostname(citation?.url_citation?.url || citation?.url)}
                                   </Badge>
                                 </div>
                               </div>

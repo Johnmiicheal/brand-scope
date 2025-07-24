@@ -36,6 +36,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { supabase } from "@/lib/supabase";
+import { safeGetHostname } from "@/lib/utils";
 import {
   TbAt,
   TbDiamond,
@@ -821,7 +822,7 @@ function CitationsTabContent({
                   <div className="space-y-2">
                     <div className="flex items-center justify-between pt-2">
                       <Badge variant="outline" className="text-xs">
-                        {new URL(citation?.url_citation?.url || citation?.url || "").hostname}
+                        {safeGetHostname(citation?.url_citation?.url || citation?.url)}
                       </Badge>
                       <a
                         href={citation?.url_citation?.url || citation?.url}
