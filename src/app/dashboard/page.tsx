@@ -4195,6 +4195,63 @@ function DashboardContent() {
                         </motion.div>
                       )}
                     </AnimatePresence>
+                    
+                    {/* Check for unavailable selected models and show empty states */}
+                    {(() => {
+                      const isAiOverviewSelected = selectedModel.has("Google AI Overview");
+                      const isAiModeSelected = selectedModel.has("Google AI Mode");
+                      const hasAiOverviewData = brandMentionsInSummaries?.some(b => (b.ai_overview_mentions || 0) > 0) || false;
+                      const hasAiModeData = brandMentionsInSummaries?.some(b => (b.google_ai_mode_mentions || 0) > 0) || false;
+
+                      const selectedUnavailableModels = [];
+                      if (isAiOverviewSelected && !hasAiOverviewData) selectedUnavailableModels.push("Google AI Overview");
+                      if (isAiModeSelected && !hasAiModeData) selectedUnavailableModels.push("Google AI Mode");
+
+                      // If we have selected models but they're all unavailable, show empty state
+                      if (selectedModel.size > 0 &&
+                          ((isAiOverviewSelected && !hasAiOverviewData) || (isAiModeSelected && !hasAiModeData)) &&
+                          selectedModel.size === (
+                              (isAiOverviewSelected && !hasAiOverviewData ? 1 : 0) +
+                              (isAiModeSelected && !hasAiModeData ? 1 : 0)
+                          )
+                      ) {
+                        return (
+                          <Card className="bg-background shadow-none border-[#e2e2e2]/70 dark:border-accent">
+                            <CardContent className="flex flex-col items-center justify-center py-16">
+                              <div className="text-center space-y-4">
+                                <div className="w-12 h-12 bg-yellow-500/10 rounded-full flex items-center justify-center mx-auto">
+                                  <Info className="w-6 h-6 text-yellow-500" />
+                                </div>
+                                <div>
+                                  <h3 className="text-lg font-semibold">Selected Model{selectedUnavailableModels.length > 1 ? 's' : ''} Not Available</h3>
+                                  <p className="text-muted-foreground mt-2 max-w-md">
+                                    {selectedUnavailableModels.includes("Google AI Overview") && selectedUnavailableModels.includes("Google AI Mode") ? (
+                                      <>Google AI Overview and Google AI Mode are not available for this query. Google AI Overview requires specific search results, and Google AI Mode only works with English prompts.</>
+                                    ) : selectedUnavailableModels.includes("Google AI Overview") ? (
+                                      <>Google AI Overview is not available for this query. This feature requires specific Google search results to be present.</>
+                                    ) : (
+                                      <>Google AI Mode is not available for this query. This feature only works with English language prompts.</>
+                                    )}
+                                  </p>
+                                  <p className="text-sm text-muted-foreground mt-3">
+                                    Try selecting different models or use &quot;All Models&quot; to see available data.
+                                  </p>
+                                </div>
+                                <Button
+                                  variant="outline"
+                                  onClick={() => setSelectedModel(new Set<string>([]))}
+                                  className="mt-4"
+                                >
+                                  Show All Available Models
+                                </Button>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      }
+                      return null;
+                    })()}
+
                     <div className="flex md:flex-row flex-col gap-4 w-full h-full">
                       <MetricsHeader
                         brands={brandMentionsInSummaries}

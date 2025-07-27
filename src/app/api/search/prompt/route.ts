@@ -469,9 +469,12 @@ async function explorerAnalysis(
   
   // Get available models for Explorer mode
   const availableModels = getAvailableModels('explorer');
+  console.log(`📋 [EXPLORER] Available models: ${availableModels.join(', ')}`);
+  console.log(`📋 [EXPLORER] Selected models: ${selectedModels.join(', ')}`);
   
   // If no models selected, use all available models
   const modelsToUse = selectedModels.length > 0 ? selectedModels.filter(model => availableModels.includes(model)) : availableModels;
+  console.log(`📋 [EXPLORER] Models to use: ${modelsToUse.join(', ')}`);
   
   // Calculate credits required
   const creditsRequired = calculateCreditsRequired('explorer', modelsToUse, includeGoogleSearch);
@@ -590,10 +593,11 @@ async function explorerAnalysis(
           const text = response.choices[0].message.content;
           const citations = response.choices[0].message.annotations || null;
 
-          console.log(`    ✅ [EXPLORER] OpenRouter model ${name} succeeded`);
+          console.log(`    ✅ [EXPLORER] OpenRouter model ${name} succeeded (${text?.length || 0} chars)`);
           return { name, text, citations, success: true };
         } catch (error) {
           console.error(`    ❌ [EXPLORER] Error generating text for ${name}:`, error);
+          console.error(`    ❌ [EXPLORER] Full error details for ${name}:`, error instanceof Error ? error.stack : error);
           return { name, text: null, citations: null, success: false };
         }
       })
@@ -1029,9 +1033,12 @@ async function voyagerAnalysis(
   
   // Get available models for Voyager mode
   const availableModels = getAvailableModels('voyager');
+  console.log(`📋 [VOYAGER] Available models: ${availableModels.join(', ')}`);
+  console.log(`📋 [VOYAGER] Selected models: ${selectedModels.join(', ')}`);
   
   // If no models selected, use all available models
   const modelsToUse = selectedModels.length > 0 ? selectedModels.filter(model => availableModels.includes(model)) : availableModels;
+  console.log(`📋 [VOYAGER] Models to use: ${modelsToUse.join(', ')}`);
   
   // Calculate credits required
   const creditsRequired = calculateCreditsRequired('voyager', modelsToUse, includeGoogleSearch);
@@ -1111,6 +1118,7 @@ async function voyagerAnalysis(
           return { name, text, citations, success: true };
         } catch (error) {
           console.error(`    ❌ [VOYAGER] Error generating text for ${name}:`, error);
+          console.error(`    ❌ [VOYAGER] Full error details for ${name}:`, error instanceof Error ? error.stack : error);
           return { name, text: null, citations: null, success: false };
         }
       })
@@ -1567,7 +1575,32 @@ export async function POST(request: NextRequest) {
 
     // Calculate credits required for the analysis
     const creditsRequired = calculateCreditsRequired(mode.toLowerCase() as 'explorer' | 'voyager', selected_models, include_google_search);
-    console.log(`💳 Analysis will require ${creditsRequired} credits for ${selected_models.length} selected models${include_google_search ? ' + Google AI Overview' : ''}`);
+    console.log(`💳 [${mode.toUpperCase()}] Analysis will require ${creditsRequired} credits for ${selected_models.length} selected models${include_google_search ? ' + Google AI Overview' : ''}`);
+    console.log(`💳 [${mode.toUpperCase()}] Selected models: [${selected_models.join(', ')}]`);
+    console.log(`💳 [${mode.toUpperCase()}] Include Google Search: ${include_google_search}`);
+
+    // Deduct credits BEFORE starting analysis
+    try {
+      const creditResult = await updateCreditUsage(user_id, creditsRequired, 'query');
+      if (!creditResult.success) {
+        return NextResponse.json(
+          { 
+            error: "Insufficient credits", 
+            message: `You need ${creditsRequired} credits to perform this analysis. Please upgrade your plan or wait for your credits to reset.`,
+            required_credits: creditsRequired,
+            models_selected: selected_models.length
+          },
+          { status: 402 }
+        );
+      }
+      console.log(`✅ Successfully deducted ${creditsRequired} credits for user ${user_id}`);
+    } catch (creditError) {
+      console.error("Error updating credit usage:", creditError);
+      return NextResponse.json(
+        { error: "Failed to process credit usage" },
+        { status: 500 }
+      );
+    }
 
     // Generate shared IDs for this search session
     const mode_id = uuidv4();
@@ -1622,17 +1655,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Track credit usage for query
-    try {
-      const creditResult = await updateCreditUsage(user_id, creditsRequired, 'query');
-      if (!creditResult.success) {
-        console.error("Error tracking credit usage:", creditResult.error);
-        // Don't fail the request, just log the error
-      }
-    } catch (creditError) {
-      console.error("Error tracking credit usage:", creditError);
-      // Don't fail the request, just log the error
-    }
+    // Credits were already deducted before analysis started
 
     return NextResponse.json({ 
       success: true, 

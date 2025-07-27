@@ -17,6 +17,7 @@ import {
 import { TbSparkles, TbSearch, TbRefresh, TbLoader2 } from "react-icons/tb";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { Download } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Search, Calendar, Loader2, Info } from "lucide-react";
 import { Brand } from "@/contexts/brand-data-context";
@@ -146,6 +147,54 @@ export function StepsTabContent({
     console.error("Auth error in StepsTabContent:", authError);
     setError("Authentication error. Please refresh the page.");
   }
+
+  // Function to export keywords data to CSV
+  const exportKeywordsToCSV = (keywords: Record<string, KeywordData>) => {
+    if (!keywords || Object.keys(keywords).length === 0) {
+      alert("No keyword data available to export");
+      return;
+    }
+
+    // Convert keywords object to array and prepare CSV data
+    const keywordArray = Object.entries(keywords).map(([, keyword]: [string, KeywordData]) => ({
+      'Conversational Keyword': keyword.conversational_keyword || '',
+      'Seed Keyword': keyword.google_seed_keyword || '',
+      'Intent': keyword.intent || '',
+      'Search Volume': keyword.search_volume || 0,
+      'Competition Index': keyword.competition_index || 0,
+      'CPC': keyword.low_cpc || '',
+      'Trend (6M)': keyword.trend_6m || '',
+      'Relevance Score': keyword.relevance_score || 0,
+      'Category': keyword.category || '',
+    }));
+
+    // Create CSV headers
+    const headers = Object.keys(keywordArray[0]);
+    
+    // Create CSV content
+    const csvContent = [
+      headers.join(','),
+      ...keywordArray.map(row => 
+        headers.map(header => {
+          const value = row[header as keyof typeof row];
+          // Escape commas and quotes in values
+          const escaped = String(value).replace(/"/g, '""');
+          return `"${escaped}"`;
+        }).join(',')
+      )
+    ].join('\n');
+
+    // Create and download the file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `keyword-analysis-${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   // Check for existing steps on component mount
   useEffect(() => {
@@ -544,6 +593,15 @@ export function StepsTabContent({
               <Badge variant="outline" className="ml-auto">
                 {Object.keys(stepsData?.output?.keywords || {}).length} keywords
               </Badge>
+              <Button
+                onClick={() => exportKeywordsToCSV(stepsData?.output?.keywords || {})}
+                size="sm"
+                variant="outline"
+                className="ml-2"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Export CSV
+              </Button>
             </CardTitle>
           </CardHeader>
           <CardContent className="">

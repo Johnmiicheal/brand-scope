@@ -16,6 +16,7 @@ import {
   MapPin,
   Paperclip,
   Zap,
+  AlertTriangle,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "@/components/ui/use-toast";
@@ -353,10 +354,12 @@ export function AIChatInterface({
     const currentModeModels =
       modelsData[mode.toLowerCase() as "explorer" | "voyager"]?.models || [];
     setSelectedModels(currentModeModels.map((model: ModelInfo) => model.key));
+    setIncludeGoogleSearch(true);
   };
 
   const handleDeselectAllModels = () => {
     setSelectedModels([]);
+    setIncludeGoogleSearch(false);
   };
 
   const handleSubmit = async () => {
@@ -829,7 +832,7 @@ export function AIChatInterface({
                     </Button>
                   </DropdownMenuTrigger>
                 </div>
-                <DropdownMenuContent className="p-4 md:ml-52 rounded-xl w-[450px]">
+                <DropdownMenuContent className="p-4 md:ml-52 rounded-xl w-[320px] md:w-[450px] max-h-[50vh] overflow-y-auto">
                   {/* Mode Selection */}
                   <div className="space-y-2 mb-4">
                     <h4 className="font-medium text-sm text-neutral-600 dark:text-white">
@@ -858,6 +861,15 @@ export function AIChatInterface({
 
                   <Separator />
 
+                  {/* AI Mode English Notice */}
+                  {mode === "Explorer" && selectedModels.includes("google-ai-mode") && (
+                    <div className="bg-amber-500/10 border border-dashed border-amber-500 rounded-lg p-3 mb-4">
+                      <p className="text-xs text-amber-500 font-medium flex items-center">
+                        <AlertTriangle className="w-4 h-4 mr-2" /> AI Mode currently works with only English Language
+                      </p>
+                    </div>
+                  )}
+
                   {/* Model Selection */}
                   <div className="space-y-4 mt-4">
                     <div className="flex items-center justify-between">
@@ -873,7 +885,7 @@ export function AIChatInterface({
                       </Badge>
                     </div>
 
-                    <div className="flex gap-2">
+                    <div className="flex flex-col sm:flex-row gap-2">
                       <Button
                         size="sm"
                         variant="outline"
@@ -881,7 +893,7 @@ export function AIChatInterface({
                           e.stopPropagation();
                           handleSelectAllModels();
                         }}
-                        className="text-xs rounded-full"
+                        className="text-xs rounded-full flex-1 sm:flex-none"
                       >
                         Select All
                       </Button>
@@ -892,7 +904,7 @@ export function AIChatInterface({
                           e.stopPropagation();
                           handleDeselectAllModels();
                         }}
-                        className="text-xs rounded-full"
+                        className="text-xs rounded-full flex-1 sm:flex-none"
                       >
                         Deselect All
                       </Button>
@@ -904,7 +916,7 @@ export function AIChatInterface({
                         return (
                         <div
                           key={model.key}
-                          className="flex items-center space-x-3"
+                          className="flex items-center space-x-2 md:space-x-3"
                           onClick={(e) => e.stopPropagation()}
                         >
                           <Checkbox
@@ -917,13 +929,13 @@ export function AIChatInterface({
                           <div className="flex-1 min-w-0">
                             <label
                               htmlFor={`${model.key}-dropdown`}
-                              className="text-sm flex items-center gap-2 font-medium cursor-pointer block text-neutral-600 dark:text-white"
+                              className="text-sm flex items-center gap-1.5 md:gap-2 font-medium cursor-pointer block text-neutral-600 dark:text-white"
                             >
-                              <IconComponent className="w-4 h-4" />
-                              {model.name}
+                              <IconComponent className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                              <span className="truncate">{model.name}</span>
                             </label>
                           </div>
-                          <Badge variant="outline" className="text-xs">
+                          <Badge variant="outline" className="text-xs shrink-0">
                             {model.credit_cost} {model.credit_cost === 1 ? 'credit' : 'credits'}
                           </Badge>
                         </div>
@@ -932,7 +944,7 @@ export function AIChatInterface({
                     </div>
 
                     <div
-                      className="flex items-center space-x-3"
+                      className="flex items-center space-x-2 md:space-x-3"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <Checkbox
@@ -942,16 +954,16 @@ export function AIChatInterface({
                           setIncludeGoogleSearch(checked as boolean)
                         }
                       />
-                      <div className="flex-1">
+                      <div className="flex-1 min-w-0">
                         <label
                           htmlFor="google-search-dropdown"
-                          className="text-sm font-medium cursor-pointer flex items-center gap-2 text-neutral-600 dark:text-white"
+                          className="text-sm font-medium cursor-pointer flex items-center gap-1.5 md:gap-2 text-neutral-600 dark:text-white"
                         >
-                          <Google.Color className="w-4 h-4" />
-                          Google AI Overview
+                          <Google.Color className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                          <span className="truncate">Google AI Overview</span>
                         </label>
                       </div>
-                        <Badge variant="outline" className="text-xs">
+                        <Badge variant="outline" className="text-xs shrink-0">
                             {1} credit
                           </Badge>
                     </div>

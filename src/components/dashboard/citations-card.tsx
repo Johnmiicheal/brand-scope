@@ -52,7 +52,10 @@ interface CitationsCardProps {
   googleSearchResults?: any;
 }
 
-const modelIcons: Record<string, React.ComponentType<{ className?: string }>> = {
+const modelIcons: Record<
+  string,
+  React.ComponentType<{ className?: string }>
+> = {
   "GPT 4.1": OpenAI,
   "GPT 4o Web Search": OpenAI,
   "Claude 3.5 Sonnet": Claude,
@@ -135,7 +138,11 @@ export function CitationsCard({
 
   // Helper function to filter Google search results by date range
   const getDateFilteredGoogleResults = () => {
-    if (!googleSearchResults?.search_results || !Array.isArray(googleSearchResults.search_results)) return [];
+    if (
+      !googleSearchResults?.search_results ||
+      !Array.isArray(googleSearchResults.search_results)
+    )
+      return [];
 
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -169,7 +176,8 @@ export function CitationsCard({
           return resultDate >= thirtyDaysAgo && resultDate <= now;
         });
       case "custom":
-        if (!customDateRange.from || !customDateRange.to) return googleSearchResults.search_results;
+        if (!customDateRange.from || !customDateRange.to)
+          return googleSearchResults.search_results;
         return googleSearchResults.search_results.filter((result: any) => {
           if (!result.created_at) return false;
           const resultDate = new Date(result.created_at);
@@ -203,16 +211,20 @@ export function CitationsCard({
             const regularCitations = summary.reasoning.filter(
               (item: any) => item.url_citation
             );
-            
+
             // Handle Google AI Mode citations (direct url, title, text format)
             const googleAiModeCitations = summary.reasoning.filter(
               (item: any) => item.url && item.title && !item.url_citation
             );
 
-            const allCitations = [...regularCitations, ...googleAiModeCitations];
+            const allCitations = [
+              ...regularCitations,
+              ...googleAiModeCitations,
+            ];
 
             if (allCitations.length > 0) {
-              const existingCitations = modelCitationsMap.get(summary.model) || [];
+              const existingCitations =
+                modelCitationsMap.get(summary.model) || [];
               modelCitationsMap.set(summary.model, [
                 ...existingCitations,
                 ...allCitations,
@@ -222,17 +234,20 @@ export function CitationsCard({
         });
       }
     });
-    
 
     // Process Google AI Overview citations
-    if (googleSearchResults && (!selectedModel.size || selectedModel.has("Google AI Overview"))) {
+    if (
+      googleSearchResults &&
+      (!selectedModel.size || selectedModel.has("Google AI Overview"))
+    ) {
       const filteredGoogleResults = getDateFilteredGoogleResults();
       const googleCitations: Citation[] = [];
 
       filteredGoogleResults.forEach((searchResult: any) => {
         if (searchResult.results?.ai_overview?.references) {
-          const references: GoogleCitation[] = searchResult.results.ai_overview.references;
-          
+          const references: GoogleCitation[] =
+            searchResult.results.ai_overview.references;
+
           references.forEach((ref: GoogleCitation) => {
             // Convert Google citation format to our Citation format
             googleCitations.push({
@@ -240,7 +255,7 @@ export function CitationsCard({
                 url: ref.link,
                 title: ref.title,
                 snippet: ref.snippet || `Source: ${ref.source}`,
-              }
+              },
             });
           });
         }
@@ -258,7 +273,9 @@ export function CitationsCard({
         (citation, index, self) =>
           index ===
           self.findIndex(
-            (c) => c.url_citation?.url === citation.url_citation?.url && c?.title === citation.title
+            (c) =>
+              c.url_citation?.url === citation.url_citation?.url &&
+              c?.title === citation.title
           )
       );
 
@@ -362,23 +379,30 @@ export function CitationsCard({
                               <div className="space-y-2">
                                 <div className="flex items-start justify-between gap-2">
                                   <a
-                                    href={citation.url_citation?.url || citation.url}
+                                    href={
+                                      citation.url_citation?.url || citation.url
+                                    }
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="text-blue-500 hover:text-blue-400 hover:underline font-medium text-sm flex-1 line-clamp-2"
                                   >
-                                    {citation.url_citation?.title || citation.title}
+                                    {citation.url_citation?.title ||
+                                      citation.title}
                                   </a>
                                   <ExternalLink className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
                                 </div>
 
                                 <p className="text-xs text-muted-foreground line-clamp-2">
-                                  {citation.url_citation?.snippet || citation.text}
+                                  {citation.url_citation?.snippet ||
+                                    citation.text}
                                 </p>
 
                                 <div className="flex items-center justify-between">
                                   <Badge variant="outline" className="text-xs">
-                                                                         {safeGetHostname(citation?.url_citation?.url || citation?.url)}
+                                    {safeGetHostname(
+                                      citation?.url_citation?.url ||
+                                        citation?.url
+                                    )}
                                   </Badge>
                                 </div>
                               </div>
@@ -396,4 +420,4 @@ export function CitationsCard({
       </CardContent>
     </Card>
   );
-} 
+}

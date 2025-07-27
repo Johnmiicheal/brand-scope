@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
+import { updateCreditUsage } from "@/lib/creditUsage";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY;
@@ -139,6 +140,25 @@ export async function POST(req: Request) {
       });
     }
 
+    // Deduct 2 credits for generating search steps
+    try {
+      const creditResult = await updateCreditUsage(userId, 2, 'query');
+      if (!creditResult.success) {
+        return NextResponse.json(
+          { 
+            error: "Insufficient credits", 
+            message: "You need 2 credits to generate search steps. Please upgrade your plan or wait for your credits to reset."
+          },
+          { status: 402 }
+        );
+      }
+    } catch (creditError) {
+      console.error("Error updating credit usage:", creditError);
+      return NextResponse.json(
+        { error: "Failed to process credit usage" },
+        { status: 500 }
+      );
+    }
 
     // Prepare webhook parameters
     const webhookParams = {

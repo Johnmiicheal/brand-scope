@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from "@supabase/supabase-js";
+import { updateCreditUsage } from '@/lib/creditUsage';
+import { constraints } from '@/lib/constraints';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -68,8 +70,30 @@ export async function POST(req: NextRequest) {
     // Check if user has exceeded daily limit
     if (usageData && usageData.usage_count >= 5) {
       return NextResponse.json(
-        { error: 'Daily keyword analysis limit reached. You can perform 1 analysis per day.' },
+        { error: 'Daily keyword analysis limit reached. You can perform 5 analyses per day.' },
         { status: 429, headers: corsHeaders }
+      );
+    }
+
+    // Check and deduct credits for keyword analysis
+    const keywordCreditCost = constraints.keyword_analysis.credit_cost;
+    
+    try {
+      const creditResult = await updateCreditUsage(userId, keywordCreditCost, 'query');
+      
+      if (!creditResult.success) {
+        return NextResponse.json(
+          { error: creditResult.error || 'Insufficient credits for keyword analysis' },
+          { status: 400, headers: corsHeaders }
+        );
+      }
+      
+      console.log(`Successfully deducted ${keywordCreditCost} credits for keyword analysis`);
+    } catch (error) {
+      console.error('Error processing credit deduction:', error);
+      return NextResponse.json(
+        { error: 'Failed to process credit usage' },
+        { status: 500, headers: corsHeaders }
       );
     }
 
@@ -237,6 +261,8 @@ export async function POST(req: NextRequest) {
         });
     }
 
+
+
     // Update or insert usage tracking
     const { error: upsertError } = await supabase
       .from('keyword_analysis_usage')
@@ -256,7 +282,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       data: outputData,
-      remainingAnalyses: 0 // Since limit is 1 per day
+      remainingAnalyses: 4 - (usageData?.usage_count || 0), // 5 per day limit
+      keyword_id: analysisId // Include the analysis ID for redirect
     }, { headers: corsHeaders });
 
   } catch (error) {

@@ -16,6 +16,9 @@ export const constraints = {
       max_scheduled_queries: 500,
     },
   },
+  keyword_analysis: {
+    credit_cost: 3,
+  },
   models: {
     explorer: {
       models: [

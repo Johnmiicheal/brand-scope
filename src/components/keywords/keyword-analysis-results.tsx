@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Monitor, Eye, TrendingUp, Target, Calendar, MapPin } from "lucide-react";
+import { Monitor, Eye, TrendingUp, Target, Calendar, MapPin, Download } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -125,6 +125,61 @@ export function KeywordAnalysisResults({ keywords, metadata, onScheduleKeyword }
     setIsScheduleModalOpen(true);
   };
 
+  const exportToCSV = () => {
+    const headers = [
+      'Conversational Keyword',
+      'Google Seed Keyword',
+      'Intent',
+      'Category',
+      'Search Volume',
+      'Competition Index',
+      'Low CPC',
+      'Trend (6M)',
+      'Relevance Score'
+    ];
+
+    const csvData = keywordEntries.map(([, keyword]) => [
+      keyword.conversational_keyword,
+      keyword.google_seed_keyword,
+      keyword.intent,
+      keyword.category,
+      keyword.search_volume,
+      keyword.competition_index,
+      keyword.low_cpc,
+      keyword.trend_6m,
+      keyword.relevance_score
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...csvData.map(row => 
+        row.map(cell => {
+          // Escape cells that contain commas, quotes, or newlines
+          const cellStr = String(cell);
+          if (cellStr.includes(',') || cellStr.includes('"') || cellStr.includes('\n')) {
+            return `"${cellStr.replace(/"/g, '""')}"`;
+          }
+          return cellStr;
+        }).join(',')
+      )
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `keyword-analysis-${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    toast({
+      title: "Export Complete",
+      description: `Exported ${keywordEntries.length} keywords to CSV`,
+    });
+  };
+
   return (
     <motion.div
       className="space-y-6"
@@ -158,10 +213,23 @@ export function KeywordAnalysisResults({ keywords, metadata, onScheduleKeyword }
       {/* Keywords Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Keyword Opportunities</CardTitle>
-          <CardDescription>
-            Click on any keyword row to schedule it for monitoring
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Keyword Opportunities</CardTitle>
+              <CardDescription>
+                Click on any keyword row to schedule it for monitoring
+              </CardDescription>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={exportToCSV}
+              className="flex items-center gap-2"
+            >
+              <Download className="w-4 h-4" />
+              Export CSV
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <motion.div variants={staggerContainer}>

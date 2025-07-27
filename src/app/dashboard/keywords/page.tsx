@@ -1,18 +1,19 @@
 "use client";
 
-import { useState } from "react";
-import { Bot, Loader2, Search, AlertCircle, Calendar, Sparkles } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Bot, Loader2, Search, AlertCircle, Zap, Sparkles, History } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
-import { toast } from "@/components/ui/use-toast";
-import { KeywordAnalysisResults } from "@/components/keywords/keyword-analysis-results";
+import { toast } from "sonner";
+
 import { Select, SelectItem, SelectContent, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type FormData = {
@@ -22,24 +23,7 @@ type FormData = {
   language: string;
 };
 
-type KeywordAnalysisResponse = {
-  success: boolean;
-  data: {
-    keywords: Record<string, {
-      conversational_keyword: string;
-      intent: string;
-      google_seed_keyword: string;
-      category: string;
-      search_volume: number;
-      competition_index: number;
-      low_cpc: string;
-      trend_6m: string;
-      relevance_score: number;
-    }>;
-    metadata: Array<{ language: string; country: string }>;
-  };
-  remainingAnalyses: number;
-};
+
 
 const fadeIn = {
   hidden: { opacity: 0 },
@@ -52,6 +36,7 @@ const slideUp = {
 };
 
 export default function KeywordAnalysisPage() {
+  const router = useRouter();
   const [formData, setFormData] = useState<FormData>({
     businessBrief: "",
     keyword: "",
@@ -59,10 +44,30 @@ export default function KeywordAnalysisPage() {
     language: "en",
   });
   const [isLoading, setIsLoading] = useState(false);
-  const [results, setResults] = useState<KeywordAnalysisResponse['data'] | null>(null);
+
   const [error, setError] = useState<string | null>(null);
   const [dailyLimitReached, setDailyLimitReached] = useState(false);
+  const [analysisTime, setAnalysisTime] = useState(0);
   const { user } = useAuth();
+
+  // Timer for analysis duration
+  useEffect(() => {
+    let interval: NodeJS.Timeout | undefined = undefined;
+
+    if (isLoading) {
+      interval = setInterval(() => {
+        setAnalysisTime((prevTime) => prevTime + 1);
+      }, 1000);
+    } else {
+      setAnalysisTime(0);
+    }
+
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
+  }, [isLoading]);
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -75,11 +80,23 @@ export default function KeywordAnalysisPage() {
     if (dailyLimitReached) setDailyLimitReached(false);
   };
 
+  const formatTime = (totalSeconds: number): string => {
+    if (totalSeconds < 0) return "0s";
+    if (totalSeconds === 0) return "0s";
+
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+
+    if (minutes > 0) {
+      return `${minutes}m ${seconds}s`;
+    }
+    return `${seconds}s`;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
-    setResults(null);
     setDailyLimitReached(false);
 
     // Validate that at least one field is filled
@@ -115,11 +132,16 @@ export default function KeywordAnalysisPage() {
       }
 
       if (data.success && data.data) {
-        setResults(data.data);
-        toast({
-          title: "Analysis Complete",
-          description: `Found ${Object.keys(data.data.keywords).length} keyword opportunities.`,
-        });
+        toast.success(`Keyword analysis completed. Redirecting to results...`);
+
+        // Redirect to history page with keyword_id immediately
+        setTimeout(() => {
+        if (data.keyword_id) {
+          router.push(`/dashboard/keywords/history/${data.keyword_id}`);
+          } else {
+            router.push(`/dashboard/keywords/history`);
+          }
+        }, 1500);
       } else {
         setError("Invalid response format from analysis service");
       }
@@ -132,32 +154,7 @@ export default function KeywordAnalysisPage() {
     }
   };
 
-  const handleScheduleKeyword = async (keyword: string, frequency: string, country: string) => {
-    try {
-      const response = await fetch('/api/schedule-query', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          query: keyword,
-          frequency: frequency,
-          mode: 'explorer',
-          location: country === 'global' ? 'Global' : country,
-          user_id: user?.id,
-          attached_brand_id: [""],
-        }),
-      });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to schedule keyword monitoring');
-      }
-
-      // Success - the KeywordAnalysisResults component will handle the success message
-    } catch (error) {
-      console.error('Error scheduling keyword:', error);
-      throw error; // Re-throw to let the component handle the error display
-    }
-  };
 
   const hasAnyInput = formData.businessBrief.trim() || formData.keyword.trim() || formData.website.trim();
 
@@ -169,23 +166,34 @@ export default function KeywordAnalysisPage() {
       variants={fadeIn}
     >
       <motion.div className="flex flex-col gap-2" variants={slideUp}>
-        <div className="flex items-center gap-3">
-          <Bot className="w-8 h-8 text-primary" />
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Keyword Analysis</h1>
-            <p className="text-muted-foreground">
-              Discover 50 keyword opportunities for your business with AI-powered analysis
-            </p>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Bot className="w-8 h-8 text-primary" />
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">Keyword Analysis</h1>
+              <p className="text-muted-foreground">
+                Discover 50 keyword opportunities for your business with AI-powered analysis
+              </p>
+            </div>
           </div>
+          <Button 
+            variant="outline" 
+            onClick={() => router.push('/dashboard/keywords/history')}
+            className="flex items-center gap-2"
+          >
+            <History className="w-4 h-4" />
+            View History
+          </Button>
         </div>
       </motion.div>
 
-      {/* Daily Limit Info */}
+      {/* Credit Cost Info */}
       <motion.div variants={slideUp}>
         <Alert className="bg-blue-500/10 border-blue-500/20 border-dashed text-blue-500">
-          <Calendar className="h-4 w-4" />
-          <AlertDescription className="flex">
-            You have <strong className="text-blue-500">1 keyword analysis</strong> available per day. Use it wisely to discover the best opportunities for your brand.
+          <Zap className="h-4 w-4" />
+          <AlertDescription className="flex items-center gap-2">
+            Each keyword analysis costs <Badge variant="secondary" className="bg-blue-500/20 text-blue-600">3 Credits</Badge> and provides 
+            <strong className="text-blue-500">50 keyword opportunities</strong> with detailed metrics.
           </AlertDescription>
         </Alert>
       </motion.div>
@@ -290,12 +298,12 @@ export default function KeywordAnalysisPage() {
                       {isLoading ? (
                         <>
                           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Analyzing Keywords...
+                          Analyzing Keywords... {formatTime(analysisTime)}
                         </>
                       ) : (
                         <>
                           <Search className="w-4 h-4 mr-2" />
-                          Analyze Keywords
+                          Analyze Keywords (3 Credits)
                         </>
                       )}
                     </Button>
@@ -329,23 +337,7 @@ export default function KeywordAnalysisPage() {
         </Card>
       </motion.div>
 
-      {/* Results */}
-      <AnimatePresence>
-        {results && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.5 }}
-          >
-            <KeywordAnalysisResults
-              keywords={results.keywords}
-              metadata={results.metadata}
-              onScheduleKeyword={handleScheduleKeyword}
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
+
     </motion.div>
   );
 } 
