@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Building2, Calendar, ExternalLink, Globe, MapPin } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { CreateBrandModal } from "@/components/dashboard/create-brand-modal";
 
 
 interface Brand {
@@ -27,7 +28,7 @@ export default function ProjectsPage() {
   const [brands, setBrands] = useState<Brand[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
+  const [showBrandModal, setShowBrandModal] = useState(false);
   useEffect(() => {
     if (user?.id) {
       fetchBrands();
@@ -102,9 +103,7 @@ export default function ProjectsPage() {
             Manage and view analysis for all your brand projects
           </p>
         </div>
-        <div className="text-sm text-muted-foreground">
-          {brands.length} {brands.length === 1 ? "brand" : "brands"}
-        </div>
+        <Button onClick={() => setShowBrandModal(true)}>Create Brand</Button>
       </div>
 
       {brands.length === 0 ? (
@@ -194,6 +193,7 @@ export default function ProjectsPage() {
           ))}
         </div>
       )}
+      <CreateBrandModal showBrandModal={showBrandModal} setShowBrandModal={setShowBrandModal} />
     </div>
   );
 }

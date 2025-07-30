@@ -55,13 +55,14 @@ export default function Home() {
       id: "pro",
       name: "Pro Plan",
       description: "Get Started with essential AI Analysis.",
-      price: "$29",
+      price: "$89",
       features: [
         "Country Monitoring",
         "Company Research",
         "SEO Keyword Analysis",
         "Brand Analysis",
       ],
+      credits: "2250 Credits",
       searches: "30 Searches",
       monitoring: "10 Monitoring",
       frequency: "(Weekly only)",
@@ -72,13 +73,14 @@ export default function Home() {
       id: "plus",
       name: "Plus Plan",
       description: "Scale your insights and monitoring.",
-      price: "$189",
+      price: "$249",
       features: [
         "Country Monitoring",
         "Company Research",
         "SEO Keyword Analysis",
         "Brand Analysis",
       ],
+      credits: "7200 Credits",
       searches: "300 Searches",
       monitoring: "100 Monitoring",
       frequency: "(Daily + Weekly)",
@@ -89,13 +91,14 @@ export default function Home() {
       id: "premium",
       name: "Premium Plan",
       description: "For comprehensive insights and monitoring.",
-      price: "$300",
+      price: "$699",
       features: [
         "Country Monitoring",
         "Company Research",
         "SEO Keyword Analysis",
         "Brand Analysis",
       ],
+      credits: "27000 Credits",
       searches: "900 Searches",
       monitoring: "300 Monitoring",
       frequency: "(Daily + Weekly)",
@@ -488,11 +491,11 @@ export default function Home() {
                       <ul className="space-y-3 text-sm text-neutral-200 mb-8">
                         <li className="flex items-center gap-3">
                           <Check className="h-4 w-4 text-green-400 flex-shrink-0" />{" "}
-                          {plan.monitoring}
+                          {plan.credits}
                         </li>
                         <li className="flex items-center gap-3">
                           <Check className="h-4 w-4 text-green-400 flex-shrink-0" />{" "}
-                          {plan.searches} {plan.frequency}
+                          Prompt Monitoring {plan.frequency}
                         </li>
                         <li className="flex items-center gap-3">
                           <Check className="h-4 w-4 text-green-400 flex-shrink-0" />{" "}

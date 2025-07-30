@@ -7,7 +7,7 @@ import { v4 as uuidv4 } from "uuid";
 import { NextResponse } from "next/server";
 import { countries } from "@/lib/countries";
 import { updateCreditUsage } from "@/lib/creditUsage";
-import { calculateCreditsRequired, getAvailableModels } from "@/lib/constraints";
+import { calculateCreditsRequired, getAvailableModels, getConstraints } from "@/lib/constraints";
 
 // --- Supabase and AI Clients ---
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -672,8 +672,79 @@ async function processQuery(
     }`
   );
 
-
+  // Check if user has enough credits before processing
+  console.log(`💳 Checking credits for user ${query.user_id}...`);
   
+  // Get user's subscription and current usage
+  const { data: subscription, error: subError } = await supabase
+    .from('user_subscriptions')
+    .select('query_count, status, price_id')
+    .eq('user_id', query.user_id)
+    .single();
+
+  if (subError) {
+    console.error(`❌ Error fetching subscription for user ${query.user_id}:`, subError);
+    throw new Error(`Cannot verify user credits: ${subError.message}`);
+  }
+
+  // Get product details via Stripe API using price_id
+  let productName = 'Pro'; // Default fallback
+  
+  if (subscription.price_id) {
+    try {
+      const response = await fetch(`https://airankia.com/api/stripe/subscription-info?priceId=${subscription.price_id}`);
+      if (response.ok) {
+        const { product } = await response.json();
+        productName = product?.name || 'Pro';
+        console.log(`📦 Retrieved product name: ${productName} for user ${query.user_id}`);
+      } else {
+        console.warn(`⚠️ Failed to fetch product info for price_id: ${subscription.price_id}, using default`);
+      }
+    } catch (error) {
+      console.warn(`⚠️ Error fetching product details for user ${query.user_id}:`, error);
+      // Continue with default product name
+    }
+  }
+
+  const userConstraints = getConstraints(productName);
+  const currentUsage = subscription.query_count || 0;
+  const creditsRequired = query.credits_per_run || 1;
+
+  console.log(`📊 Credit check for user ${query.user_id}:`);
+  console.log(`  - Current usage: ${currentUsage}`);
+  console.log(`  - Max credits: ${userConstraints.max_credits}`);
+  console.log(`  - Credits required: ${creditsRequired}`);
+  console.log(`  - Remaining: ${userConstraints.max_credits - currentUsage}`);
+
+  // Check if user has enough credits
+  if (currentUsage + creditsRequired > userConstraints.max_credits) {
+    console.warn(`⚠️ User ${query.user_id} has insufficient credits for query ${query.id}`);
+    throw new Error(`Insufficient credits. You need ${creditsRequired} credits but only have ${userConstraints.max_credits - currentUsage} remaining.`);
+  }
+
+  // Check if subscription is active
+  if (subscription.status !== 'active') {
+    console.warn(`⚠️ User ${query.user_id} subscription is not active (${subscription.status}) for query ${query.id}`);
+    throw new Error(`Your subscription is not active (status: ${subscription.status}). Please check your billing.`);
+  }
+
+  console.log(`✅ User ${query.user_id} has sufficient credits. Proceeding with query processing...`);
+
+  // Update credits immediately after passing the check to prevent race conditions
+  try {
+    const creditsUsed = query.credits_per_run || 1;
+    const creditResult = await updateCreditUsage(query.user_id, creditsUsed, 'monitoring');
+    if (!creditResult.success) {
+      console.error(`❌ Error updating credits for query ${query.id}:`, creditResult.error);
+      throw new Error(`Failed to update credits: ${creditResult.error}`);
+    } else {
+      console.log(`💳 Successfully updated ${creditsUsed} credits for user ${query.user_id} before processing`);
+    }
+  } catch (creditError) {
+    console.error(`❌ Exception updating credits for query ${query.id}:`, creditError);
+    throw new Error(`Failed to track credit usage: ${creditError instanceof Error ? creditError.message : 'Unknown error'}`);
+  }
+
   // Call the search-google endpoint to get Google search results (only if enabled)
   if (query.include_google_search !== false) {
     console.log("🔍 Calling search-google endpoint...");
@@ -1204,25 +1275,6 @@ async function processQuery(
     console.log(
       `  Successfully updated query ${query.id}. Success: ${successfulExtraction}/${objectModels.length}. Failures: ${failedExtraction}.`
     );
-    
-    // Track credit usage for monitoring (using the actual selected models)
-    try {
-      const creditsUsed = query.credits_per_run || calculateCreditsRequired(
-        analysisMode, 
-        selectedModels, 
-        query.include_google_search !== false
-      );
-      const creditResult = await updateCreditUsage(query.user_id, creditsUsed, 'monitoring');
-      if (!creditResult.success) {
-        console.error(`  Error tracking monitoring credit usage for query ${query.id}:`, creditResult.error);
-        // Don't fail the request, just log the error
-      } else {
-        console.log(`  ✅ Tracked ${creditsUsed} monitoring credits for user ${query.user_id} (${selectedModels.length} models${query.include_google_search !== false ? ' + Google AI Overview' : ''})`);
-      }
-    } catch (creditError) {
-      console.error(`  Error tracking monitoring credit usage for query ${query.id}:`, creditError);
-      // Don't fail the request, just log the error
-    }
     
     return {
       id: query.id,

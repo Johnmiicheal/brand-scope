@@ -25,6 +25,7 @@ import {
   DialogOverlay,
 } from "../ui/dialog";
 import { countries } from "@/lib/countries";
+import { toast } from "sonner";
 
 interface CreateBrandModalProps {
   showBrandModal: boolean;
@@ -94,11 +95,7 @@ export const CreateBrandModal = ({
       // Set the first brand as selected if available
       if (data && data.length > 0) {
         setSelectedBrand(data[0] as unknown as Brand);
-      } else {
-        // Show brand creation modal if no valid brands exist
-        setShowBrandModal(true);
-      }
-
+      } 
       setLoading(false);
     } catch (error) {
       console.error("Error:", error);
@@ -169,8 +166,12 @@ export const CreateBrandModal = ({
       setShowBrandModal(false);
       fetchBrands();
 
-      // Trigger brand analysis
-      await analyzeBrand(brandId);
+       // Trigger brand analysis
+      // await analyzeBrand(brandId);
+      toast.success("Brand created successfully");
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
 
       setSubmitting(false);
     } catch (error) {

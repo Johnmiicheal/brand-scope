@@ -521,13 +521,14 @@ function DashboardContent() {
     {
       id: "pro",
       name: "Pro Plan",
-      price: "$29/month",
+      price: "$89/month",
       features: [
         "Country Monitoring",
         "Company Research",
         "SEO Keyword Analysis",
         "Brand Analysis",
       ],
+      credits: "2250 Credits",
       searches: "30 Searches",
       monitoring: "10 Monitoring",
       frequency: "(Weekly only)",
@@ -537,13 +538,14 @@ function DashboardContent() {
     {
       id: "plus",
       name: "Plus Plan",
-      price: "$189/month",
+      price: "$249/month",
       features: [
         "Country Monitoring",
         "Company Research",
         "SEO Keyword Analysis",
         "Brand Analysis",
       ],
+      credits: "7200 Credits",
       searches: "300 Searches",
       monitoring: "100 Monitoring",
       frequency: "(Daily + Weekly)",
@@ -553,13 +555,14 @@ function DashboardContent() {
     {
       id: "premium",
       name: "Premium Plan",
-      price: "$300/month",
+      price: "$699/month",
       features: [
         "Country Monitoring",
         "Company Research",
         "SEO Keyword Analysis",
         "Brand Analysis",
       ],
+      credits: "27000 Credits",
       searches: "900 Searches",
       monitoring: "300 Monitoring",
       frequency: "(Daily + Weekly)",
@@ -3148,9 +3151,9 @@ function DashboardContent() {
                 {plans.map((plan) => (
                   <div
                     key={plan.id}
-                    className={`border border-neutral-600 rounded-lg p-4 transition-all hover:translate-y-[-5px] cursor-pointer relative ${
+                    className={`border border-neutral-600 rounded-lg p-4 transition-all hover:translate-y-[-5px] items-start flex flex-col gap-3 cursor-pointer relative ${
                       selectedPlan === plan.product_id
-                        ? "outline-2 outline-blue-500 outline-offset-2"
+                        ? "!border-2 !border-blue-500"
                         : ""
                     } ${
                       plan.recommended
@@ -3159,21 +3162,23 @@ function DashboardContent() {
                     }`}
                     onClick={() => setSelectedPlan(plan?.product_id || "")}
                   >
+                    <div className="flex items-center gap-2">
+                    <h3 className="text-md font-bold">{plan.name}</h3>
                     {plan.recommended && (
-                      <div className="bg-blue-500 text-white text-xs font-bold px-3 py-1 rounded-t-full inline-block absolute top-0 left-0 right-0 -mt-4">
+                      <div className="bg-blue-500 text-white text-xs font-bold px-3 py-1 rounded-xl">
                         POPULAR
                       </div>
                     )}
-                    <h3 className="text-md font-bold mb-2">{plan.name}</h3>
+                    </div>
                     <p className="text-3xl font-bold mb-4">{plan.price}</p>
                     <div className="space-y-2 text-left">
                       <p className="flex items-center">
                         <Check className="w-5 h-5 text-blue-500 mr-2" />
-                        {plan.searches}
+                        {plan.credits}
                       </p>
                       <p className="flex items-center">
                         <Check className="w-5 h-5 text-blue-500 mr-2" />
-                        {plan.monitoring} {plan.frequency}
+                        Prompt Monitoring {plan.frequency}
                       </p>
                       {plan.features.map((feature, index) => (
                         <p key={index} className="flex items-center">
@@ -3459,8 +3464,25 @@ function DashboardContent() {
                   variant="outline"
                   className="w-full !border !border-accent md:w-fit rounded-full"
                 >
-                  <Filter className="w-4 h-4" />
-                  {currentBrand ? currentBrand.name : "Select a Brand"}
+                  {currentBrand ? (
+                    <div className="flex items-center gap-2">
+                      {currentBrand.logo_url ? (
+                        <Image src={currentBrand.logo_url} alt={currentBrand.name} width={20} height={20} className="rounded-full" />
+                      ) : (
+                        <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
+                          <span className="text-xs font-medium text-white">
+                            {currentBrand.name.charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                      )}
+                      {currentBrand.name}
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <Filter className="w-4 h-4" />
+                      Select a Brand
+                    </div>
+                  )}
                   <ChevronDown className="w-4 h-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -3483,6 +3505,15 @@ function DashboardContent() {
                     className="rounded-md"
                   >
                     <div className="flex items-center gap-2">
+                    {brand.logo_url ? (
+                        <Image src={brand.logo_url} alt={brand.name} width={20} height={20} className="rounded-full" />
+                      ) : (
+                        <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
+                          <span className="text-xs font-medium text-white">
+                            {brand.name.charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                      )}
                       <span>{brand.name}</span>
                     </div>
                   </DropdownMenuItem>
@@ -3510,434 +3541,248 @@ function DashboardContent() {
             className="mt-4"
           >
             <div className="min-h-screen ">
-              <div className="space-y-6">
-                <Tabs defaultValue="ai-analysis" className="w-full">
-                  <TabsList className="w-full bg-background h-14">
-                    <TabsTrigger
-                      value="ai-analysis"
-                      className="data-[state=active]:!bg-blue-500/20 border-none rounded-full"
-                    >
-                      <Gemini.Color className="w-4 h-4" />
-                      AI Analysis
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="citations"
-                      className="data-[state=active]:!bg-blue-500/20 border-none rounded-lg"
-                    >
-                      <TextSearch className="w-4 h-4" />
-                      Citations
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="google-search"
-                      className="data-[state=active]:!bg-blue-500/20 border-none rounded-full"
-                    >
-                      <Search className="w-4 h-4" />
-                      Google Search
-                    </TabsTrigger>
-                  </TabsList>
-                  <TabsContent value="ai-analysis" className="space-y-4">
-                    <motion.div
-                      className="w-full flex justify-between items-center gap-2 rounded-md p-3 bg-blue-500/10 border-dashed border-1 border-blue-500/20 cursor-pointer hover:bg-blue-500/20 transition duration-300"
-                      onClick={() => setIsExpanded(!isExpanded)}
-                      whileTap={{ scale: 0.98 }}
-                    >
-                      <div className="flex items-center gap-2">
-                        <Clock9 className="w-4 h-4 text-muted-foreground" />
-                        <p className="text-muted-foreground">
-                          {currentTime.toLocaleTimeString(undefined, {
-                            hour: "numeric",
-                            minute: "2-digit",
-                            second: "2-digit",
-                            hour12: false,
-                          })}
-                        </p>
-                        {"•"}
-                        <p className="text-muted-foreground">
-                          {queries.length} total prompts
-                        </p>
-                        {"•"}
-                        <p className="text-muted-foreground">
-                          {
-                            queries.filter((query) => query.status === "active")
-                              .length
-                          }{" "}
-                          active
-                        </p>
-                      </div>
-                      <motion.div
-                        animate={{ rotate: isExpanded ? 180 : 0 }}
-                        transition={{ duration: 0.3, ease: "easeInOut" }}
+              {queries.length > 0 ? (
+                <div className="space-y-6">
+                  <Tabs defaultValue="ai-analysis" className="w-full">
+                    <TabsList className="w-full bg-background h-14">
+                      <TabsTrigger
+                        value="ai-analysis"
+                        className="data-[state=active]:!bg-blue-500/20 border-none rounded-full"
                       >
-                        <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                        <Gemini.Color className="w-4 h-4" />
+                        AI Analysis
+                      </TabsTrigger>
+                      <TabsTrigger
+                        value="citations"
+                        className="data-[state=active]:!bg-blue-500/20 border-none rounded-lg"
+                      >
+                        <TextSearch className="w-4 h-4" />
+                        Citations
+                      </TabsTrigger>
+                      <TabsTrigger
+                        value="google-search"
+                        className="data-[state=active]:!bg-blue-500/20 border-none rounded-full"
+                      >
+                        <Search className="w-4 h-4" />
+                        Google Search
+                      </TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="ai-analysis" className="space-y-4">
+                      <motion.div
+                        className="w-full flex justify-between items-center gap-2 rounded-md p-3 bg-blue-500/10 border-dashed border-1 border-blue-500/20 cursor-pointer hover:bg-blue-500/20 transition duration-300"
+                        onClick={() => setIsExpanded(!isExpanded)}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        <div className="flex items-center gap-2">
+                          <Clock9 className="w-4 h-4 text-muted-foreground" />
+                          <p className="text-muted-foreground">
+                            {currentTime.toLocaleTimeString(undefined, {
+                              hour: "numeric",
+                              minute: "2-digit",
+                              second: "2-digit",
+                              hour12: false,
+                            })}
+                          </p>
+                          {"•"}
+                          <p className="text-muted-foreground">
+                            {queries.length} total prompts
+                          </p>
+                          {"•"}
+                          <p className="text-muted-foreground">
+                            {
+                              queries.filter((query) => query.status === "active")
+                                .length
+                            }{" "}
+                            active
+                          </p>
+                        </div>
+                        <motion.div
+                          animate={{ rotate: isExpanded ? 180 : 0 }}
+                          transition={{ duration: 0.3, ease: "easeInOut" }}
+                        >
+                          <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                        </motion.div>
                       </motion.div>
-                    </motion.div>
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ duration: 0.3 }}
-                      className="w-full"
-                    >
-                      <div className="flex md:flex-row flex-col justify-start md:items-center gap-4 w-full">
-                        {/* Export Buttons */}
-                        <div className="flex gap-2">
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 0.3 }}
+                        className="w-full"
+                      >
+                        <div className="flex md:flex-row flex-col justify-start md:items-center gap-4 w-full">
+                          {/* Export Buttons */}
+                          <div className="flex gap-2">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  className="w-full !border !border-accent md:w-fit rounded-full"
+                                >
+                                  <Download className="w-4 h-4" />
+                                  Export
+                                  <ChevronDown className="w-4 h-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent
+                                align="start"
+                                className="pb-2 px-2 space-y-3 rounded-xl w-50"
+                              >
+                                <DropdownMenuLabel className="text-xs text-white/20 ">
+                                  Export Options
+                                </DropdownMenuLabel>
+                                <DropdownMenuItem
+                                  onClick={exportToCSV}
+                                  className="rounded-md"
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <span>Export as CSV</span>
+                                  </div>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={exportToExcelWithCharts}
+                                  className="rounded-md"
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <span>Export as Excel</span>
+                                  </div>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={exportToHTMLReport}
+                                  className="rounded-md"
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <span>Generate HTML Report</span>
+                                  </div>
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button
                                 variant="outline"
-                                className="w-full !border !border-accent md:w-fit rounded-full"
+                                className="w-full !border !border-accent md:w-fit"
                               >
-                                <Download className="w-4 h-4" />
-                                Export
-                                <ChevronDown className="w-4 h-4" />
+                                {getDisplayValue()}
+                                <span>
+                                  <ChevronDown className="w-4 h-4 opacity-40" />
+                                </span>
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent
-                              align="start"
-                              className="pb-2 px-2 space-y-3 rounded-xl w-50"
-                            >
-                              <DropdownMenuLabel className="text-xs text-white/20 ">
-                                Export Options
+                            <DropdownMenuContent className="w-80">
+                              <DropdownMenuLabel>
+                                Filter by Brand
                               </DropdownMenuLabel>
-                              <DropdownMenuItem
-                                onClick={exportToCSV}
-                                className="rounded-md"
-                              >
-                                <div className="flex items-center gap-2">
-                                  <span>Export as CSV</span>
+                              <DropdownMenuSeparator />
+
+                              {/* Search Input */}
+                              <div className="px-2 py-2">
+                                <div className="relative">
+                                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                                  <Input
+                                    placeholder="Search brands..."
+                                    value={brandSearchQuery}
+                                    onChange={(e) =>
+                                      setBrandSearchQuery(e.target.value)
+                                    }
+                                    className="pl-8"
+                                  />
                                 </div>
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={exportToExcelWithCharts}
-                                className="rounded-md"
+                              </div>
+
+                              {/* Selected Brands Grid */}
+                              {selectedBrands.size > 0 &&
+                                !selectedBrands.has("all") && (
+                                  <div className="px-2 py-2">
+                                    <div className="text-xs text-muted-foreground mb-2">
+                                      Selected ({selectedBrands.size})
+                                    </div>
+                                    <div className="flex flex-wrap gap-1">
+                                      {Array.from(selectedBrands).map(
+                                        (brandName) => (
+                                          <div
+                                            key={brandName}
+                                            className="flex items-center gap-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 px-2 py-1 rounded-full text-xs"
+                                          >
+                                            <span className="truncate max-w-24">
+                                              {brandName}
+                                            </span>
+                                            <button
+                                              onClick={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                removeBrandFromSelection(
+                                                  brandName
+                                                );
+                                              }}
+                                              className="hover:bg-blue-200 dark:hover:bg-blue-800 rounded-full p-0.5 transition-colors"
+                                            >
+                                              <X className="h-3 w-3" />
+                                            </button>
+                                          </div>
+                                        )
+                                      )}
+                                    </div>
+                                    <DropdownMenuSeparator className="my-2" />
+                                  </div>
+                                )}
+
+                              {/* All Brands Option */}
+                              <DropdownMenuCheckboxItem
+                                checked={selectedBrands.has("all")}
+                                onCheckedChange={(checked) =>
+                                  handleCheckedChange("all", checked)
+                                }
                               >
-                                <div className="flex items-center gap-2">
-                                  <span>Export as Excel</span>
-                                </div>
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={exportToHTMLReport}
-                                className="rounded-md"
-                              >
-                                <div className="flex items-center gap-2">
-                                  <span>Generate HTML Report</span>
-                                </div>
-                              </DropdownMenuItem>
+                                All Brands
+                              </DropdownMenuCheckboxItem>
+
+                              {/* Scrollable Brand List */}
+                              <ScrollArea className="h-[200px]">
+                                {filteredBrandsForSearch?.length > 0 ? (
+                                  filteredBrandsForSearch.map((brand, index) => (
+                                    <DropdownMenuCheckboxItem
+                                      key={index}
+                                      checked={selectedBrands.has(brand.name)}
+                                      onCheckedChange={(checked) =>
+                                        handleCheckedChange(brand.name, checked)
+                                      }
+                                    >
+                                      {brand.name}
+                                    </DropdownMenuCheckboxItem>
+                                  ))
+                                ) : (
+                                  <div className="px-2 py-2 text-sm text-muted-foreground text-center">
+                                    {brandSearchQuery
+                                      ? "No brands found"
+                                      : "No brands available"}
+                                  </div>
+                                )}
+                              </ScrollArea>
+
+                              {/* Clear Search */}
+                              {brandSearchQuery && (
+                                <>
+                                  <DropdownMenuSeparator />
+                                  <div className="px-2 py-1">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => setBrandSearchQuery("")}
+                                      className="w-full text-xs"
+                                    >
+                                      Clear Search
+                                    </Button>
+                                  </div>
+                                </>
+                              )}
                             </DropdownMenuContent>
                           </DropdownMenu>
-                        </div>
 
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="outline"
-                              className="w-full !border !border-accent md:w-fit"
-                            >
-                              {getDisplayValue()}
-                              <span>
-                                <ChevronDown className="w-4 h-4 opacity-40" />
-                              </span>
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent className="w-80">
-                            <DropdownMenuLabel>
-                              Filter by Brand
-                            </DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-
-                            {/* Search Input */}
-                            <div className="px-2 py-2">
-                              <div className="relative">
-                                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                                <Input
-                                  placeholder="Search brands..."
-                                  value={brandSearchQuery}
-                                  onChange={(e) =>
-                                    setBrandSearchQuery(e.target.value)
-                                  }
-                                  className="pl-8"
-                                />
-                              </div>
-                            </div>
-
-                            {/* Selected Brands Grid */}
-                            {selectedBrands.size > 0 &&
-                              !selectedBrands.has("all") && (
-                                <div className="px-2 py-2">
-                                  <div className="text-xs text-muted-foreground mb-2">
-                                    Selected ({selectedBrands.size})
-                                  </div>
-                                  <div className="flex flex-wrap gap-1">
-                                    {Array.from(selectedBrands).map(
-                                      (brandName) => (
-                                        <div
-                                          key={brandName}
-                                          className="flex items-center gap-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 px-2 py-1 rounded-full text-xs"
-                                        >
-                                          <span className="truncate max-w-24">
-                                            {brandName}
-                                          </span>
-                                          <button
-                                            onClick={(e) => {
-                                              e.preventDefault();
-                                              e.stopPropagation();
-                                              removeBrandFromSelection(
-                                                brandName
-                                              );
-                                            }}
-                                            className="hover:bg-blue-200 dark:hover:bg-blue-800 rounded-full p-0.5 transition-colors"
-                                          >
-                                            <X className="h-3 w-3" />
-                                          </button>
-                                        </div>
-                                      )
-                                    )}
-                                  </div>
-                                  <DropdownMenuSeparator className="my-2" />
-                                </div>
-                              )}
-
-                            {/* All Brands Option */}
-                            <DropdownMenuCheckboxItem
-                              checked={selectedBrands.has("all")}
-                              onCheckedChange={(checked) =>
-                                handleCheckedChange("all", checked)
-                              }
-                            >
-                              All Brands
-                            </DropdownMenuCheckboxItem>
-
-                            {/* Scrollable Brand List */}
-                            <ScrollArea className="h-[200px]">
-                              {filteredBrandsForSearch?.length > 0 ? (
-                                filteredBrandsForSearch.map((brand, index) => (
-                                  <DropdownMenuCheckboxItem
-                                    key={index}
-                                    checked={selectedBrands.has(brand.name)}
-                                    onCheckedChange={(checked) =>
-                                      handleCheckedChange(brand.name, checked)
-                                    }
-                                  >
-                                    {brand.name}
-                                  </DropdownMenuCheckboxItem>
-                                ))
-                              ) : (
-                                <div className="px-2 py-2 text-sm text-muted-foreground text-center">
-                                  {brandSearchQuery
-                                    ? "No brands found"
-                                    : "No brands available"}
-                                </div>
-                              )}
-                            </ScrollArea>
-
-                            {/* Clear Search */}
-                            {brandSearchQuery && (
-                              <>
-                                <DropdownMenuSeparator />
-                                <div className="px-2 py-1">
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => setBrandSearchQuery("")}
-                                    className="w-full text-xs"
-                                  >
-                                    Clear Search
-                                  </Button>
-                                </div>
-                              </>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-
-                        {/* Date Range Selection */}
-                        {isNotDesktop ? (
-                          <div className="grid grid-cols-4 w-full items-center gap-2 whitespace-nowrap">
-                            <Button
-                              variant={
-                                selectedDateRange === "today"
-                                  ? "default"
-                                  : "outline"
-                              }
-                              size="sm"
-                              onClick={() => {
-                                setSelectedDateRange("today");
-                                setCustomDateRange({
-                                  from: undefined,
-                                  to: undefined,
-                                });
-                              }}
-                              className={`text-xs ${
-                                selectedDateRange === "today" &&
-                                "rounded-full bg-blue-500/20 text-blue-500 border border-blue-500 hover:text-white"
-                              }`}
-                            >
-                              Today
-                            </Button>
-                            <Button
-                              variant={
-                                selectedDateRange === "7days"
-                                  ? "default"
-                                  : "outline"
-                              }
-                              size="sm"
-                              onClick={() => {
-                                setSelectedDateRange("7days");
-                                setCustomDateRange({
-                                  from: undefined,
-                                  to: undefined,
-                                });
-                              }}
-                              className={`text-xs ${
-                                selectedDateRange === "7days" &&
-                                "rounded-full bg-blue-500/20 text-blue-500 border border-blue-500 hover:text-white"
-                              }`}
-                            >
-                              7 Days
-                            </Button>
-                            <Button
-                              variant={
-                                selectedDateRange === "30days"
-                                  ? "default"
-                                  : "outline"
-                              }
-                              size="sm"
-                              onClick={() => {
-                                setSelectedDateRange("30days");
-                                setCustomDateRange({
-                                  from: undefined,
-                                  to: undefined,
-                                });
-                              }}
-                              className={`text-xs ${
-                                selectedDateRange === "30days" &&
-                                "rounded-full bg-blue-500/20 text-blue-500 border border-blue-500 hover:text-white"
-                              }`}
-                            >
-                              30 Days
-                            </Button>
-                            <Button
-                              variant={
-                                selectedDateRange === "all"
-                                  ? "default"
-                                  : "outline"
-                              }
-                              size="sm"
-                              onClick={() => {
-                                setSelectedDateRange("all");
-                                setCustomDateRange({
-                                  from: undefined,
-                                  to: undefined,
-                                });
-                              }}
-                              className={`text-xs ${
-                                selectedDateRange === "all" &&
-                                "rounded-full bg-blue-500/20 text-blue-500 border border-blue-500 hover:text-white"
-                              }`}
-                            >
-                              All Time
-                            </Button>
-
-                            {/* Custom Date Range Picker */}
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <Button
-                                  variant={
-                                    selectedDateRange === "custom"
-                                      ? "default"
-                                      : "outline"
-                                  }
-                                  size="sm"
-                                  className={cn(
-                                    "text-xs justify-start text-left font-normal col-span-2",
-                                    !customDateRange.from &&
-                                      !customDateRange.to &&
-                                      "text-muted-foreground"
-                                  )}
-                                >
-                                  <CalendarIcon className="mr-2 h-4 w-4" />
-                                  {customDateRange.from ? (
-                                    customDateRange.to ? (
-                                      <>
-                                        {format(
-                                          customDateRange.from,
-                                          "LLL dd, y"
-                                        )}{" "}
-                                        -{" "}
-                                        {format(
-                                          customDateRange.to,
-                                          "LLL dd, y"
-                                        )}
-                                      </>
-                                    ) : (
-                                      format(customDateRange.from, "LLL dd, y")
-                                    )
-                                  ) : (
-                                    <span>Pick a date range</span>
-                                  )}
-                                </Button>
-                              </PopoverTrigger>
-                              <PopoverContent
-                                className="w-auto p-0"
-                                align="start"
-                              >
-                                <Calendar
-                                  initialFocus
-                                  mode="range"
-                                  defaultMonth={customDateRange.from}
-                                  selected={customDateRange}
-                                  onSelect={(range) => {
-                                    setCustomDateRange(
-                                      range || {
-                                        from: undefined,
-                                        to: undefined,
-                                      }
-                                    );
-                                    if (range?.from && range?.to) {
-                                      setSelectedDateRange("custom");
-                                    }
-                                  }}
-                                  numberOfMonths={2}
-                                />
-                              </PopoverContent>
-                            </Popover>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-2 group">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className={`min-w-[120px] text-sm py-4 rounded-full !border !border-accent`}
-                            >
-                              <span className="group-hover:hidden">
-                                {selectedDateRange === "today" ? (
-                                  "Today"
-                                ) : selectedDateRange === "7days" ? (
-                                  "7 Days"
-                                ) : selectedDateRange === "30days" ? (
-                                  "30 Days"
-                                ) : selectedDateRange === "all" ? (
-                                  "All Time"
-                                ) : customDateRange.from ? (
-                                  customDateRange.to ? (
-                                    <>
-                                      {format(
-                                        customDateRange.from,
-                                        "LLL dd, y"
-                                      )}{" "}
-                                      -{" "}
-                                      {format(customDateRange.to, "LLL dd, y")}
-                                    </>
-                                  ) : (
-                                    format(customDateRange.from, "LLL dd, y")
-                                  )
-                                ) : (
-                                  <span>Select Date Range</span>
-                                )}
-                              </span>
-                              <span className="hidden group-hover:block">
-                                Select Date Range
-                              </span>
-                            </Button>
-                            <div className="flex items-center gap-2 opacity-0 max-w-0 group-hover:max-w-[600px] group-hover:ml-2 group-hover:opacity-100 transition-all duration-300 ease-in-out overflow-hidden whitespace-nowrap">
+                          {/* Date Range Selection */}
+                          {isNotDesktop ? (
+                            <div className="grid grid-cols-4 w-full items-center gap-2 whitespace-nowrap">
                               <Button
                                 variant={
                                   selectedDateRange === "today"
@@ -4034,7 +3879,7 @@ function DashboardContent() {
                                     }
                                     size="sm"
                                     className={cn(
-                                      "text-xs justify-start text-left font-normal",
+                                      "text-xs justify-start text-left font-normal col-span-2",
                                       !customDateRange.from &&
                                         !customDateRange.to &&
                                         "text-muted-foreground"
@@ -4055,10 +3900,7 @@ function DashboardContent() {
                                           )}
                                         </>
                                       ) : (
-                                        format(
-                                          customDateRange.from,
-                                          "LLL dd, y"
-                                        )
+                                        format(customDateRange.from, "LLL dd, y")
                                       )
                                     ) : (
                                       <span>Pick a date range</span>
@@ -4090,292 +3932,499 @@ function DashboardContent() {
                                 </PopoverContent>
                               </Popover>
                             </div>
-                          </div>
-                        )}
-
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="outline"
-                              className="w-full !border !border-accent md:w-fit"
-                            >
-                              {selectedModel.size === 0
-                                ? "All Models"
-                                : selectedModel.size === 1
-                                ? Array.from(selectedModel)[0]
-                                : `${selectedModel.size} models selected`}
-                              <span>
-                                <ChevronDown className="w-4 h-4 opacity-40" />
-                              </span>
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent className="w-56">
-                            <DropdownMenuLabel>
-                              Filter by Model
-                            </DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuCheckboxItem
-                              checked={selectedModel.size === 0}
-                              onCheckedChange={(checked) => {
-                                if (checked) {
-                                  setSelectedModel(new Set<string>([]));
-                                }
-                              }}
-                            >
-                              All Models
-                            </DropdownMenuCheckboxItem>
-                            <ScrollArea className="h-[200px]">
-                              {analysis_models?.map((model: string) => (
-                                <DropdownMenuCheckboxItem
-                                  key={model}
-                                  checked={selectedModel.has(model)}
-                                  onCheckedChange={(checked) => {
-                                    setSelectedModel((prev) => {
-                                      const newSelection = new Set(prev);
-                                      if (checked) {
-                                        newSelection.add(model);
-                                      } else {
-                                        newSelection.delete(model);
-                                      }
-                                      return newSelection;
+                          ) : (
+                            <div className="flex items-center gap-2 group">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className={`min-w-[120px] text-sm py-4 rounded-full !border !border-accent`}
+                              >
+                                <span className="group-hover:hidden">
+                                  {selectedDateRange === "today" ? (
+                                    "Today"
+                                  ) : selectedDateRange === "7days" ? (
+                                    "7 Days"
+                                  ) : selectedDateRange === "30days" ? (
+                                    "30 Days"
+                                  ) : selectedDateRange === "all" ? (
+                                    "All Time"
+                                  ) : customDateRange.from ? (
+                                    customDateRange.to ? (
+                                      <>
+                                        {format(
+                                          customDateRange.from,
+                                          "LLL dd, y"
+                                        )}{" "}
+                                        -{" "}
+                                        {format(customDateRange.to, "LLL dd, y")}
+                                      </>
+                                    ) : (
+                                      format(customDateRange.from, "LLL dd, y")
+                                    )
+                                  ) : (
+                                    <span>Select Date Range</span>
+                                  )}
+                                </span>
+                                <span className="hidden group-hover:block">
+                                  Select Date Range
+                                </span>
+                              </Button>
+                              <div className="flex items-center gap-2 opacity-0 max-w-0 group-hover:max-w-[600px] group-hover:ml-2 group-hover:opacity-100 transition-all duration-300 ease-in-out overflow-hidden whitespace-nowrap">
+                                <Button
+                                  variant={
+                                    selectedDateRange === "today"
+                                      ? "default"
+                                      : "outline"
+                                  }
+                                  size="sm"
+                                  onClick={() => {
+                                    setSelectedDateRange("today");
+                                    setCustomDateRange({
+                                      from: undefined,
+                                      to: undefined,
                                     });
                                   }}
+                                  className={`text-xs ${
+                                    selectedDateRange === "today" &&
+                                    "rounded-full bg-blue-500/20 text-blue-500 border border-blue-500 hover:text-white"
+                                  }`}
                                 >
-                                  {model}
-                                </DropdownMenuCheckboxItem>
-                              ))}
-                            </ScrollArea>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-
-                        <Button
-                          onClick={() =>
-                            setShowGoogleResults(!showGoogleResults)
-                          }
-                          variant="outline"
-                          className={`rounded-full !border !border-accent group ${
-                            showGoogleResults && "opacity-60"
-                          }`}
-                        >
-                          <Eye className="w-4 h-4" />
-                          <span className="hidden group-hover:block">
-                            {showGoogleResults
-                              ? "Hide Google Results"
-                              : "Show Google Results"}
-                          </span>
-                        </Button>
-                      </div>
-                    </motion.div>
-                    <p className="text-muted-foreground items-center flex">
-                      <Eye className="w-4 h-4 mr-2" />
-                      Currently viewing:{" "}
-                      <em className="text-white">
-                        &quot;{selectedQuery?.query}&quot;
-                      </em>
-                    </p>
-                    <AnimatePresence>
-                      {isExpanded && (
-                        <motion.div
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: "auto", opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: 0.3, ease: "easeInOut" }}
-                          className="overflow-hidden"
-                        >
-                          <Card className="bg-background rounded-md p-4 border-[#e2e2e2]/70 dark:border-accent">
-                            <ScheduledQueriesList
-                              queries={queries}
-                              selectedQuery={selectedQuery?.query}
-                              onSelectQuery={(query) => {
-                                setSelectedQuery(query);
-                                setIsExpanded(false); // Close the list after selection
-                              }}
-                            />
-                          </Card>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                    
-                    {/* Check for unavailable selected models and show empty states */}
-                    {(() => {
-                      const isAiOverviewSelected = selectedModel.has("Google AI Overview");
-                      const isAiModeSelected = selectedModel.has("Google AI Mode");
-                      const hasAiOverviewData = brandMentionsInSummaries?.some(b => (b.ai_overview_mentions || 0) > 0) || false;
-                      const hasAiModeData = brandMentionsInSummaries?.some(b => (b.google_ai_mode_mentions || 0) > 0) || false;
-
-                      const selectedUnavailableModels = [];
-                      if (isAiOverviewSelected && !hasAiOverviewData) selectedUnavailableModels.push("Google AI Overview");
-                      if (isAiModeSelected && !hasAiModeData) selectedUnavailableModels.push("Google AI Mode");
-
-                      // If we have selected models but they're all unavailable, show empty state
-                      if (selectedModel.size > 0 &&
-                          ((isAiOverviewSelected && !hasAiOverviewData) || (isAiModeSelected && !hasAiModeData)) &&
-                          selectedModel.size === (
-                              (isAiOverviewSelected && !hasAiOverviewData ? 1 : 0) +
-                              (isAiModeSelected && !hasAiModeData ? 1 : 0)
-                          )
-                      ) {
-                        return (
-                          <Card className="bg-background shadow-none border-[#e2e2e2]/70 dark:border-accent">
-                            <CardContent className="flex flex-col items-center justify-center py-16">
-                              <div className="text-center space-y-4">
-                                <div className="w-12 h-12 bg-yellow-500/10 rounded-full flex items-center justify-center mx-auto">
-                                  <Info className="w-6 h-6 text-yellow-500" />
-                                </div>
-                                <div>
-                                  <h3 className="text-lg font-semibold">Selected Model{selectedUnavailableModels.length > 1 ? 's' : ''} Not Available</h3>
-                                  <p className="text-muted-foreground mt-2 max-w-md">
-                                    {selectedUnavailableModels.includes("Google AI Overview") && selectedUnavailableModels.includes("Google AI Mode") ? (
-                                      <>Google AI Overview and Google AI Mode are not available for this query. Google AI Overview requires specific search results, and Google AI Mode only works with English prompts.</>
-                                    ) : selectedUnavailableModels.includes("Google AI Overview") ? (
-                                      <>Google AI Overview is not available for this query. This feature requires specific Google search results to be present.</>
-                                    ) : (
-                                      <>Google AI Mode is not available for this query. This feature only works with English language prompts.</>
-                                    )}
-                                  </p>
-                                  <p className="text-sm text-muted-foreground mt-3">
-                                    Try selecting different models or use &quot;All Models&quot; to see available data.
-                                  </p>
-                                </div>
-                                <Button
-                                  variant="outline"
-                                  onClick={() => setSelectedModel(new Set<string>([]))}
-                                  className="mt-4"
-                                >
-                                  Show All Available Models
+                                  Today
                                 </Button>
+                                <Button
+                                  variant={
+                                    selectedDateRange === "7days"
+                                      ? "default"
+                                      : "outline"
+                                  }
+                                  size="sm"
+                                  onClick={() => {
+                                    setSelectedDateRange("7days");
+                                    setCustomDateRange({
+                                      from: undefined,
+                                      to: undefined,
+                                    });
+                                  }}
+                                  className={`text-xs ${
+                                    selectedDateRange === "7days" &&
+                                    "rounded-full bg-blue-500/20 text-blue-500 border border-blue-500 hover:text-white"
+                                  }`}
+                                >
+                                  7 Days
+                                </Button>
+                                <Button
+                                  variant={
+                                    selectedDateRange === "30days"
+                                      ? "default"
+                                      : "outline"
+                                  }
+                                  size="sm"
+                                  onClick={() => {
+                                    setSelectedDateRange("30days");
+                                    setCustomDateRange({
+                                      from: undefined,
+                                      to: undefined,
+                                    });
+                                  }}
+                                  className={`text-xs ${
+                                    selectedDateRange === "30days" &&
+                                    "rounded-full bg-blue-500/20 text-blue-500 border border-blue-500 hover:text-white"
+                                  }`}
+                                >
+                                  30 Days
+                                </Button>
+                                <Button
+                                  variant={
+                                    selectedDateRange === "all"
+                                      ? "default"
+                                      : "outline"
+                                  }
+                                  size="sm"
+                                  onClick={() => {
+                                    setSelectedDateRange("all");
+                                    setCustomDateRange({
+                                      from: undefined,
+                                      to: undefined,
+                                    });
+                                  }}
+                                  className={`text-xs ${
+                                    selectedDateRange === "all" &&
+                                    "rounded-full bg-blue-500/20 text-blue-500 border border-blue-500 hover:text-white"
+                                  }`}
+                                >
+                                  All Time
+                                </Button>
+
+                                {/* Custom Date Range Picker */}
+                                <Popover>
+                                  <PopoverTrigger asChild>
+                                    <Button
+                                      variant={
+                                        selectedDateRange === "custom"
+                                          ? "default"
+                                          : "outline"
+                                      }
+                                      size="sm"
+                                      className={cn(
+                                        "text-xs justify-start text-left font-normal",
+                                        !customDateRange.from &&
+                                          !customDateRange.to &&
+                                          "text-muted-foreground"
+                                      )}
+                                    >
+                                      <CalendarIcon className="mr-2 h-4 w-4" />
+                                      {customDateRange.from ? (
+                                        customDateRange.to ? (
+                                          <>
+                                            {format(
+                                              customDateRange.from,
+                                              "LLL dd, y"
+                                            )}{" "}
+                                            -{" "}
+                                            {format(
+                                              customDateRange.to,
+                                              "LLL dd, y"
+                                            )}
+                                          </>
+                                        ) : (
+                                          format(
+                                            customDateRange.from,
+                                            "LLL dd, y"
+                                          )
+                                        )
+                                      ) : (
+                                        <span>Pick a date range</span>
+                                      )}
+                                    </Button>
+                                  </PopoverTrigger>
+                                  <PopoverContent
+                                    className="w-auto p-0"
+                                    align="start"
+                                  >
+                                    <Calendar
+                                      initialFocus
+                                      mode="range"
+                                      defaultMonth={customDateRange.from}
+                                      selected={customDateRange}
+                                      onSelect={(range) => {
+                                        setCustomDateRange(
+                                          range || {
+                                            from: undefined,
+                                            to: undefined,
+                                          }
+                                        );
+                                        if (range?.from && range?.to) {
+                                          setSelectedDateRange("custom");
+                                        }
+                                      }}
+                                      numberOfMonths={2}
+                                    />
+                                  </PopoverContent>
+                                </Popover>
                               </div>
-                            </CardContent>
-                          </Card>
-                        );
-                      }
-                      return null;
-                    })()}
+                            </div>
+                          )}
 
-                    <div className="flex md:flex-row flex-col gap-4 w-full h-full">
-                      <MetricsHeader
-                        brands={brandMentionsInSummaries}
-                        temporalBrands={temportalBrandMentionsInSummaries}
-                        selectedBrand={selectedBrands}
-                        selectedModel={selectedModel}
-                      />
-                      <IndustryRankingsTable
-                        brands={brandMentionsInSummaries}
-                        setSelectedBrand={setSelectedBrands}
-                        selectedBrand={selectedBrands}
-                        selectedModel={selectedModel}
-                      />
-                    </div>
-                    <StepsTabContent
-                      citations={(() => {
-                        if (!results || results.length === 0) return null;
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="outline"
+                                className="w-full !border !border-accent md:w-fit"
+                              >
+                                {selectedModel.size === 0
+                                  ? "All Models"
+                                  : selectedModel.size === 1
+                                  ? Array.from(selectedModel)[0]
+                                  : `${selectedModel.size} models selected`}
+                                <span>
+                                  <ChevronDown className="w-4 h-4 opacity-40" />
+                                </span>
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent className="w-56">
+                              <DropdownMenuLabel>
+                                Filter by Model
+                              </DropdownMenuLabel>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuCheckboxItem
+                                checked={selectedModel.size === 0}
+                                onCheckedChange={(checked) => {
+                                  if (checked) {
+                                    setSelectedModel(new Set<string>([]));
+                                  }
+                                }}
+                              >
+                                All Models
+                              </DropdownMenuCheckboxItem>
+                              <ScrollArea className="h-[200px]">
+                                {analysis_models?.map((model: string) => (
+                                  <DropdownMenuCheckboxItem
+                                    key={model}
+                                    checked={selectedModel.has(model)}
+                                    onCheckedChange={(checked) => {
+                                      setSelectedModel((prev) => {
+                                        const newSelection = new Set(prev);
+                                        if (checked) {
+                                          newSelection.add(model);
+                                        } else {
+                                          newSelection.delete(model);
+                                        }
+                                        return newSelection;
+                                      });
+                                    }}
+                                  >
+                                    {model}
+                                  </DropdownMenuCheckboxItem>
+                                ))}
+                              </ScrollArea>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
 
-                        // Extract citations from model_summary using new schema
-                        const allCitations: any[] = [];
-
-                        results
-                          .flatMap((result: any) => result.model_summary || [])
-                          .flatMap((summary: any) => summary.reasoning || [])
-                          .forEach((item: any) => {
-                            if (item && typeof item === "object") {
-                              // Handle url_citation.url (nested structure)
-                              if (item.url_citation?.url) {
-                                allCitations.push({
-                                  url: item.url_citation.url,
-                                  title: item.url_citation.title || "No title",
-                                  snippet:
-                                    item.url_citation.snippet || "No snippet",
-                                  source:
-                                    item.source ||
-                                    item.domain ||
-                                    "Unknown source",
-                                });
-                              }
-                              // Handle direct url field
-                              if (
-                                item.url &&
-                                item.url !== item.url_citation?.url
-                              ) {
-                                allCitations.push({
-                                  url: item.url,
-                                  title: item.title || "No title",
-                                  snippet: item.text || "No snippet",
-                                  source:
-                                    item.source ||
-                                    item.domain ||
-                                    "Unknown source",
-                                });
-                              }
+                          <Button
+                            onClick={() =>
+                              setShowGoogleResults(!showGoogleResults)
                             }
-                          });
-
-                        return allCitations.length > 0 ? allCitations : null;
-                      })()}
-                      monitoringId={selectedQuery?.mode_id || ""}
-                      prompt={selectedQuery?.query || ""}
-                      country={selectedQuery?.location || ""}
-                      brand={currentBrand}
-                      orientation={"horizontal"}
-                    />
-                    {/* <Tabs defaultValue="keywords" className="w-full">
-                      <TabsList className="grid w-full grid-cols-2 bg-muted/20">
-                        <TabsTrigger
-                          value="keywords"
-                          className="data-[state=active]:bg-blue-500/10"
-                        >
-                          Keywords
-                        </TabsTrigger>
-                        <TabsTrigger
-                          value="steps"
-                          className="data-[state=active]:bg-blue-500/10"
-                        >
-                          Steps
-                        </TabsTrigger>
-                      </TabsList>
-                      <TabsContent value="keywords">
-                        <KeywordAnalysisCard />
-                      </TabsContent>
-                      <TabsContent value="steps">
-                       
-                      </TabsContent>
-                    </Tabs> */}
-                  </TabsContent>
-                  <TabsContent value="citations">
-                    <CitationsCard
-                      results={results || []}
-                      selectedDateRange={selectedDateRange}
-                      customDateRange={customDateRange}
-                      selectedModel={selectedModel}
-                      googleSearchResults={googleSearchResults}
-                    />
-                  </TabsContent>
-                  <TabsContent value="google-search">
-                    <div className="">
-                      {showGoogleResults &&
-                        googleSearchResults &&
-                        googleSearchResults.search_results &&
-                        googleSearchResults.search_results.length > 0 && (
-                          <ScrollArea className="min-h-[500px] w-full">
-                            <GoogleResults
-                              googleResults={
-                                googleSearchResults.search_results[0].results
-                              }
-                              rankings={
-                                googleSearchResults.search_results[0]?.rankings
-                              }
-                            />
-                          </ScrollArea>
+                            variant="outline"
+                            className={`rounded-full !border !border-accent group ${
+                              showGoogleResults && "opacity-60"
+                            }`}
+                          >
+                            <Eye className="w-4 h-4" />
+                            <span className="hidden group-hover:block">
+                              {showGoogleResults
+                                ? "Hide Google Results"
+                                : "Show Google Results"}
+                            </span>
+                          </Button>
+                        </div>
+                      </motion.div>
+                      <p className="text-muted-foreground items-center flex">
+                        <Eye className="w-4 h-4 mr-2" />
+                        Currently viewing:{" "}
+                        <em className="text-white">
+                          &quot;{selectedQuery?.query}&quot;
+                        </em>
+                      </p>
+                      <AnimatePresence>
+                        {isExpanded && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: "auto", opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.3, ease: "easeInOut" }}
+                            className="overflow-hidden"
+                          >
+                            <Card className="bg-background rounded-md p-4 border-[#e2e2e2]/70 dark:border-accent">
+                              <ScheduledQueriesList
+                                queries={queries}
+                                selectedQuery={selectedQuery?.query}
+                                onSelectQuery={(query) => {
+                                  setSelectedQuery(query);
+                                  setIsExpanded(false); // Close the list after selection
+                                }}
+                              />
+                            </Card>
+                          </motion.div>
                         )}
-                    </div>
-                  </TabsContent>
-                </Tabs>
+                      </AnimatePresence>
+                      
+                      {/* Check for unavailable selected models and show empty states */}
+                      {(() => {
+                        const isAiOverviewSelected = selectedModel.has("Google AI Overview");
+                        const isAiModeSelected = selectedModel.has("Google AI Mode");
+                        const hasAiOverviewData = brandMentionsInSummaries?.some(b => (b.ai_overview_mentions || 0) > 0) || false;
+                        const hasAiModeData = brandMentionsInSummaries?.some(b => (b.google_ai_mode_mentions || 0) > 0) || false;
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 w-full h-full">
-                  {/* {keywords && (
-                      <KeywordCloud keywords={keywords} />
-                  )} */}
+                        const selectedUnavailableModels = [];
+                        if (isAiOverviewSelected && !hasAiOverviewData) selectedUnavailableModels.push("Google AI Overview");
+                        if (isAiModeSelected && !hasAiModeData) selectedUnavailableModels.push("Google AI Mode");
+
+                        // If we have selected models but they're all unavailable, show empty state
+                        if (selectedModel.size > 0 &&
+                            ((isAiOverviewSelected && !hasAiOverviewData) || (isAiModeSelected && !hasAiModeData)) &&
+                            selectedModel.size === (
+                                (isAiOverviewSelected && !hasAiOverviewData ? 1 : 0) +
+                                (isAiModeSelected && !hasAiModeData ? 1 : 0)
+                            )
+                        ) {
+                          return (
+                            <Card className="bg-background shadow-none border-[#e2e2e2]/70 dark:border-accent">
+                              <CardContent className="flex flex-col items-center justify-center py-16">
+                                <div className="text-center space-y-4">
+                                  <div className="w-12 h-12 bg-yellow-500/10 rounded-full flex items-center justify-center mx-auto">
+                                    <Info className="w-6 h-6 text-yellow-500" />
+                                  </div>
+                                  <div>
+                                    <h3 className="text-lg font-semibold">Selected Model{selectedUnavailableModels.length > 1 ? 's' : ''} Not Available</h3>
+                                    <p className="text-muted-foreground mt-2 max-w-md">
+                                      {selectedUnavailableModels.includes("Google AI Overview") && selectedUnavailableModels.includes("Google AI Mode") ? (
+                                        <>Google AI Overview and Google AI Mode are not available for this query. Google AI Overview requires specific search results, and Google AI Mode only works with English prompts.</>
+                                      ) : selectedUnavailableModels.includes("Google AI Overview") ? (
+                                        <>Google AI Overview is not available for this query. This feature requires specific Google search results to be present.</>
+                                      ) : (
+                                        <>Google AI Mode is not available for this query. This feature only works with English language prompts.</>
+                                      )}
+                                    </p>
+                                    <p className="text-sm text-muted-foreground mt-3">
+                                      Try selecting different models or use &quot;All Models&quot; to see available data.
+                                    </p>
+                                  </div>
+                                  <Button
+                                    variant="outline"
+                                    onClick={() => setSelectedModel(new Set<string>([]))}
+                                    className="mt-4"
+                                  >
+                                    Show All Available Models
+                                  </Button>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          );
+                        }
+                        return null;
+                      })()}
+
+                      <div className="flex md:flex-row flex-col gap-4 w-full h-full">
+                        <MetricsHeader
+                          brands={brandMentionsInSummaries}
+                          temporalBrands={temportalBrandMentionsInSummaries}
+                          selectedBrand={selectedBrands}
+                          selectedModel={selectedModel}
+                        />
+                        <IndustryRankingsTable
+                          brands={brandMentionsInSummaries}
+                          setSelectedBrand={setSelectedBrands}
+                          selectedBrand={selectedBrands}
+                          selectedModel={selectedModel}
+                        />
+                      </div>
+                      <StepsTabContent
+                        citations={(() => {
+                          if (!results || results.length === 0) return null;
+
+                          // Extract citations from model_summary using new schema
+                          const allCitations: any[] = [];
+
+                          results
+                            .flatMap((result: any) => result.model_summary || [])
+                            .flatMap((summary: any) => summary.reasoning || [])
+                            .forEach((item: any) => {
+                              if (item && typeof item === "object") {
+                                // Handle url_citation.url (nested structure)
+                                if (item.url_citation?.url) {
+                                  allCitations.push({
+                                    url: item.url_citation.url,
+                                    title: item.url_citation.title || "No title",
+                                    snippet:
+                                      item.url_citation.snippet || "No snippet",
+                                    source:
+                                      item.source ||
+                                      item.domain ||
+                                      "Unknown source",
+                                  });
+                                }
+                                // Handle direct url field
+                                if (
+                                  item.url &&
+                                  item.url !== item.url_citation?.url
+                                ) {
+                                  allCitations.push({
+                                    url: item.url,
+                                    title: item.title || "No title",
+                                    snippet: item.text || "No snippet",
+                                    source:
+                                      item.source ||
+                                      item.domain ||
+                                      "Unknown source",
+                                  });
+                                }
+                              }
+                            });
+
+                          return allCitations.length > 0 ? allCitations : null;
+                        })()}
+                        monitoringId={selectedQuery?.mode_id || ""}
+                        prompt={selectedQuery?.query || ""}
+                        country={selectedQuery?.location || ""}
+                        brand={currentBrand}
+                        orientation={"horizontal"}
+                      />
+                      {/* <Tabs defaultValue="keywords" className="w-full">
+                        <TabsList className="grid w-full grid-cols-2 bg-muted/20">
+                          <TabsTrigger
+                            value="keywords"
+                            className="data-[state=active]:bg-blue-500/10"
+                          >
+                            Keywords
+                          </TabsTrigger>
+                          <TabsTrigger
+                            value="steps"
+                            className="data-[state=active]:bg-blue-500/10"
+                          >
+                            Steps
+                          </TabsTrigger>
+                        </TabsList>
+                        <TabsContent value="keywords">
+                          <KeywordAnalysisCard />
+                        </TabsContent>
+                        <TabsContent value="steps">
+                        
+                        </TabsContent>
+                      </Tabs> */}
+                    </TabsContent>
+                    <TabsContent value="citations">
+                      <CitationsCard
+                        results={results || []}
+                        selectedDateRange={selectedDateRange}
+                        customDateRange={customDateRange}
+                        selectedModel={selectedModel}
+                        googleSearchResults={googleSearchResults}
+                      />
+                    </TabsContent>
+                    <TabsContent value="google-search">
+                      <div className="">
+                        {showGoogleResults &&
+                          googleSearchResults &&
+                          googleSearchResults.search_results &&
+                          googleSearchResults.search_results.length > 0 && (
+                            <ScrollArea className="min-h-[500px] w-full">
+                              <GoogleResults
+                                googleResults={
+                                  googleSearchResults.search_results[0].results
+                                }
+                                rankings={
+                                  googleSearchResults.search_results[0]?.rankings
+                                }
+                              />
+                            </ScrollArea>
+                          )}
+                      </div>
+                    </TabsContent>
+                  </Tabs>
                 </div>
-              </div>
+              ): (
+                <div className="flex flex-col items-center justify-center h-full min-h-[400px]">
+                  <div className="text-center space-y-6">
+                    <div className="w-16 h-16 bg-yellow-500/10 rounded-full flex items-center justify-center mx-auto">
+                      <Search className="w-8 h-8 text-yellow-500" />
+                    </div>
+                    <div className="space-y-2">
+                      <h3 className="text-lg font-semibold text-white">
+                        No queries attached to this brand yet
+                      </h3>
+                      <p className="text-muted-foreground max-w-md">
+                        Start monitoring your brand&apos;s performance by creating your first query
+                      </p>
+                    </div>
+                    <Button 
+                      onClick={() => router.push('/dashboard/search?attached_brand_id=' + currentBrand?.id)}
+                      className="bg-blue-600 hover:bg-blue-700 text-white rounded-full"
+                    >
+                      Start Monitoring
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           </motion.div>
         </AnimatePresence>

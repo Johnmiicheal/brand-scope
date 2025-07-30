@@ -7,7 +7,7 @@ import { generateObject, generateText } from "ai";
 import { z } from "zod";
 import { countries } from "@/lib/countries";
 import { updateCreditUsage } from "@/lib/creditUsage";
-import { getAvailableModels } from "@/lib/constraints";
+import { getAvailableModels, getConstraints } from "@/lib/constraints";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -21,6 +21,35 @@ const openrouter = createOpenRouter({ apiKey: openRouterApiKey });
 
 // Maximum number of concurrent requests
 const CONCURRENCY_LIMIT = 3;
+
+// In-memory lock to prevent concurrent processing of queries for the same user
+const userProcessingLocks = new Map<string, Promise<any>>();
+
+async function acquireUserLock(userId: string, queryId: string, processingFunction: () => Promise<any>) {
+  console.log(`🔒 Acquiring lock for user ${userId} (query ${queryId})`);
+  
+  // Check if there's already a processing operation for this user
+  const existingLock = userProcessingLocks.get(userId);
+  
+  if (existingLock) {
+    console.log(`⏳ User ${userId} already being processed, waiting... (query ${queryId})`);
+    // Wait for the existing operation to complete
+    await existingLock;
+  }
+  
+  // Create a new processing promise for this user
+  const processingPromise = processingFunction();
+  userProcessingLocks.set(userId, processingPromise);
+  
+  try {
+    const result = await processingPromise;
+    console.log(`🔓 Released lock for user ${userId} (query ${queryId})`);
+    return result;
+  } finally {
+    // Always clean up the lock when done
+    userProcessingLocks.delete(userId);
+  }
+}
 
 // Google AI Mode Response Schemas
 const AiOverviewReferenceSchema = z.object({
@@ -252,7 +281,7 @@ const StoredResultsSchema = z
     brandName?: string,
   ): Promise<void> {
     try {
-      const apiUrl = `https://brandscope.vercel.app/api/search-google`;
+      const apiUrl = `https://airankia.com/api/search-google`;
       const internalApiKey = process.env.INTERNAL_API_KEY;
       
       // Log environment setup
@@ -598,7 +627,7 @@ export async function POST(req: NextRequest) {
     // Fetch the next batch of queries
     const { data: queries, error } = await supabase
       .from("scheduled_queries")
-      .select("id, query, frequency, mode, user_id, mode_id, location, selected_models, credits_per_run, include_google_search, attached_brand_name, attached_brand_industry, attached_brand_logo_url, attached_brand_website, attached_brand_language, attached_brand_location")
+      .select("id, query, frequency, mode, user_id, mode_id, location, selected_models, credits_per_run, include_google_search, attached_brand_id, selected_models")
       .lte("next_analysis_at", now)
       .eq("status", "active")
       .order("next_analysis_at", { ascending: true })
@@ -623,10 +652,12 @@ export async function POST(req: NextRequest) {
       const chunkResults = await Promise.all(
         chunk.map(async (query) => {
           try {
-            console.log(`Processing query ID: ${query.id}`);
+            console.log(`Processing query ID: ${query.id} for user: ${query.user_id}`);
             
-            // Process the query directly
-            const result = await processQueryDirectly(query);
+            // Use user-level locking to prevent concurrent processing for the same user
+            const result = await acquireUserLock(query.user_id, query.id, async () => {
+              return await processQueryDirectly(query);
+            });
             
             return { queryId: query.id, status: "success", result };
           } catch (error: any) {
@@ -654,7 +685,7 @@ export async function POST(req: NextRequest) {
       console.log(`Scheduling next batch. ${count - (offset + batchSize)} queries remaining.`);
       
       // Trigger the next batch asynchronously
-      fetch(`${process.env.BASE_SYSTEM_URL}/api/process-next-batch`, {
+      fetch(`${process.env.BASE_SYSTEM_URL || "http://localhost:3000" }/api/process-next-batch`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -685,15 +716,161 @@ async function processQueryDirectly(query: any) {
   const now = new Date().toISOString();
   
   try {
-    // Your query processing logic here
-    // This should be the same as in your main cron job file
-    
-     console.log(
+    console.log(
       `Processing query ID: ${query.id}, Text: "${query.query}", Mode: ${
         query.mode || "Default"
       }`
     );
-  
+
+    // Check if user has enough credits before processing
+    console.log(`💳 Checking credits for user ${query.user_id}...`);
+    
+    // Get user's subscription and current usage
+    const { data: subscription, error: subError } = await supabase
+      .from('user_subscriptions')
+      .select('query_count, status, price_id')
+      .eq('user_id', query.user_id)
+      .single();
+
+    if (subError) {
+      console.error(`❌ Error fetching subscription for user ${query.user_id}:`, subError);
+      throw new Error(`Cannot verify user credits: ${subError.message}`);
+    }
+
+    // Get product details via Stripe API using price_id
+    let productName = 'Pro'; // Default fallback
+    
+    if (subscription.price_id) {
+      try {
+        const response = await fetch(`https://airankia.com/api/stripe/subscription-info?priceId=${subscription.price_id}`);
+        if (response.ok) {
+          const { product } = await response.json();
+          productName = product?.name || 'Pro';
+          console.log(`📦 Retrieved product name: ${productName} for user ${query.user_id}`);
+        } else {
+          console.warn(`⚠️ Failed to fetch product info for price_id: ${subscription.price_id}, using default`);
+        }
+      } catch (error) {
+        console.warn(`⚠️ Error fetching product details for user ${query.user_id}:`, error);
+        // Continue with default product name
+      }
+    }
+
+    const userConstraints = getConstraints(productName);
+    const currentUsage = subscription.query_count || 0;
+    const creditsRequired = query.credits_per_run || 1;
+
+    console.log(`📊 Credit check for user ${query.user_id}:`);
+    console.log(`  - Current usage: ${currentUsage}`);
+    console.log(`  - Max credits: ${userConstraints.max_credits}`);
+    console.log(`  - Credits required: ${creditsRequired}`);
+    console.log(`  - Remaining: ${userConstraints.max_credits - currentUsage}`);
+
+    // Check if user has enough credits
+    if (currentUsage + creditsRequired > userConstraints.max_credits) {
+      console.warn(`⚠️ User ${query.user_id} has insufficient credits. Pausing query ${query.id}`);
+      
+      // Pause the query instead of processing it
+      const { error: pauseError } = await supabase
+        .from('scheduled_queries')
+        .update({ 
+          status: 'paused',
+          last_analysis_at: now,
+          // Don't update next_analysis_at so it stays the same when unpaused
+        })
+        .eq('id', query.id);
+
+      if (pauseError) {
+        console.error(`❌ Error pausing query ${query.id}:`, pauseError);
+      } else {
+        console.log(`✅ Query ${query.id} has been paused due to insufficient credits`);
+      }
+
+      return {
+        success: false,
+        queryId: query.id,
+        status: 'paused',
+        reason: 'insufficient_credits',
+        creditsRequired,
+        currentUsage,
+        maxCredits: userConstraints.max_credits,
+      };
+    }
+
+    // Check if subscription is active
+    if (subscription.status !== 'active') {
+      console.warn(`⚠️ User ${query.user_id} subscription is not active (${subscription.status}). Pausing query ${query.id}`);
+      
+      // Pause the query
+      const { error: pauseError } = await supabase
+        .from('scheduled_queries')
+        .update({ 
+          status: 'paused',
+          last_analysis_at: now,
+        })
+        .eq('id', query.id);
+
+      if (pauseError) {
+        console.error(`❌ Error pausing query ${query.id}:`, pauseError);
+      } else {
+        console.log(`✅ Query ${query.id} has been paused due to inactive subscription`);
+      }
+
+      return {
+        success: false,
+        queryId: query.id,
+        status: 'paused',
+        reason: 'inactive_subscription',
+        subscriptionStatus: subscription.status,
+      };
+    }
+
+    console.log(`✅ User ${query.user_id} has sufficient credits. Proceeding with query processing...`);
+
+    // Update credits immediately after passing the check to prevent race conditions
+    try {
+      const creditsUsed = query.credits_per_run || 1;
+      const creditResult = await updateCreditUsage(query.user_id, creditsUsed, 'monitoring');
+      if (!creditResult.success) {
+        console.error(`❌ Error updating credits for query ${query.id}:`, creditResult.error);
+        // Pause the query since we couldn't track credits
+        await supabase
+          .from('scheduled_queries')
+          .update({ 
+            status: 'paused',
+            last_analysis_at: now,
+          })
+          .eq('id', query.id);
+        
+        return {
+          success: false,
+          queryId: query.id,
+          status: 'paused',
+          reason: 'credit_tracking_failed',
+          error: creditResult.error,
+        };
+      } else {
+        console.log(`💳 Successfully updated ${creditsUsed} credits for user ${query.user_id} before processing`);
+      }
+    } catch (creditError) {
+      console.error(`❌ Exception updating credits for query ${query.id}:`, creditError);
+      // Pause the query since we couldn't track credits
+      await supabase
+        .from('scheduled_queries')
+        .update({ 
+          status: 'paused',
+          last_analysis_at: now,
+        })
+        .eq('id', query.id);
+      
+      return {
+        success: false,
+        queryId: query.id,
+        status: 'paused',
+        reason: 'credit_tracking_exception',
+        error: creditError instanceof Error ? creditError.message : 'Unknown error',
+      };
+    }
     
     // Call the search-google endpoint to get Google search results (only if enabled)
     if (query.include_google_search !== false) {
@@ -1151,27 +1328,12 @@ async function processQueryDirectly(query: any) {
       throw new Error(`Failed to update query record: ${updateError.message}`);
     }
     
-    // Track credit usage for monitoring (using the actual selected models)
-    try {
-      const creditsUsed = query.credits_per_run || selectedModels.length;
-      const creditResult = await updateCreditUsage(query.user_id, creditsUsed, 'monitoring');
-      if (!creditResult.success) {
-        console.error(`  Error tracking monitoring credit usage for query ${query.id}:`, creditResult.error);
-        // Don't fail the request, just log the error
-      } else {
-        console.log(`  ✅ Tracked ${creditsUsed} monitoring credits for user ${query.user_id} (${selectedModels.length} models)`);
-      }
-    } catch (creditError) {
-      console.error(`  Error tracking monitoring credit usage for query ${query.id}:`, creditError);
-      // Don't fail the request, just log the error
-    }
-    
     return { 
       success: true, 
       queryId: query.id,
       nextScheduled: nextAnalysisDate,
       newAnalysisRun,
-      creditsUsed: query.credits_per_run || selectedModels.length,
+      creditsUsed: query.credits_per_run || 1,
     };
   } catch (error: any) {
     console.error(`Error in processQueryDirectly for query ${query.id}:`, error);
