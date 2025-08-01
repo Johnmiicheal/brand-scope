@@ -149,89 +149,6 @@ export function MetricsHeader({
     );
   }
 
-  const total_mentions = selectedBrandsData.reduce(
-    (acc, b) => acc + (b?.total_mentions || 0),
-    0
-  );
-  // const visibilityScore = total_mentions / all_total_mentions || 0;
-  const mentions = total_mentions || 0;
-  const maxModels = selectedModel.size === 0 ? 6 : selectedModel.size;
-  const maxMentions = Math.max(...brands.map((brand) => brand.total_mentions));
-  const getCoverageRatio = (brands: Brand[], type: "ratio" | "count") => {
-    const totalMentionsPerModel = brands.reduce((acc, brand) => {
-      return (
-        acc +
-        (brand.claude_mentions > 0 ? 1 : 0) +
-        (brand.perplexity_mentions > 0 ? 1 : 0) +
-        (brand.gemini_mentions > 0 ? 1 : 0) +
-        (brand.gpt_search_mentions > 0 ? 1 : 0) +
-        (brand.ai_overview_mentions > 0 ? 1 : 0) +
-        (brand.google_ai_mode_mentions > 0 ? 1 : 0)
-      );
-    }, 0);
-     // When models are selected, only count mentions from those specific models
-     let finalTotalMentions = totalMentionsPerModel;
-     let finalMaxModels = maxModels;
-
-     if (selectedModel.size > 0) {
-       finalTotalMentions = brands.reduce((acc, brand) => {
-         let brandModelCount = 0;
-         if (
-           selectedModel.has("Claude 4.0 Sonnet") &&
-           brand.claude_mentions > 0
-         ) {
-           brandModelCount++;
-         }
-         if (
-           selectedModel.has("Perplexity Sonar") &&
-           brand.perplexity_mentions > 0
-         ) {
-           brandModelCount++;
-         }
-         if (
-           selectedModel.has("Gemini 2.5 Flash") &&
-           brand.gemini_mentions > 0
-         ) {
-           brandModelCount++;
-         }
-         if (
-           selectedModel.has("GPT 4o Web Search") &&
-           brand.gpt_search_mentions > 0
-         ) {
-           brandModelCount++;
-         }
-         if (
-           selectedModel.has("Google AI Overview") &&
-           brand.ai_overview_mentions > 0
-         ) {
-           brandModelCount++;
-         }
-         if (
-           selectedModel.has("Google AI Mode") &&
-           brand.google_ai_mode_mentions > 0
-         ) {
-           brandModelCount++;
-         }
-         return acc + brandModelCount;
-       }, 0);
-
-       finalMaxModels = selectedModel.size;
-     }
-
-    if (type === "ratio") {
-      return `⌀ ${finalTotalMentions} / ${finalMaxModels * brands.length}`;
-    } else {
-      return (finalTotalMentions / (finalMaxModels * brands.length)).toFixed(2);
-    }
-  };
-  const getMentionsIndex = (brands: Brand[]) => {
-    const totalMentions = brands.reduce(
-      (acc, brand) => acc + brand.total_mentions,
-      0
-    );
-    return totalMentions / maxMentions;
-  };
-
   // Get unique models with count of brands mentioned by each model
   const getUniqueModelsForSelectedBrands = () => {
     const modelCounts: Record<string, number> = {};
@@ -284,6 +201,111 @@ export function MetricsHeader({
 
   const activeModels = getUniqueModelsForSelectedBrands();
 
+  const total_mentions = selectedBrandsData.reduce(
+    (acc, b) => acc + (b?.total_mentions || 0),
+    0
+  );
+  // const visibilityScore = total_mentions / all_total_mentions || 0;
+  const mentions = total_mentions || 0;
+  // Calculate the maximum number of models that successfully analyzed across all brands
+  const getMaxActiveModels = () => {
+    if (selectedModel.size > 0) {
+      // If specific models are selected, use that count
+      return selectedModel.size;
+    }
+
+    // Find the maximum number of models that successfully analyzed across all brands
+    const modelCounts = new Set<string>();
+
+    brands.forEach((brand) => {
+      if (brand.claude_mentions > 0) modelCounts.add("Claude 4.0 Sonnet");
+      if (brand.perplexity_mentions > 0) modelCounts.add("Perplexity Sonar");
+      if (brand.gemini_mentions > 0) modelCounts.add("Gemini 2.5 Flash");
+      if (brand.gpt_search_mentions > 0) modelCounts.add("GPT 4o Web Search");
+      if (brand.ai_overview_mentions > 0) modelCounts.add("Google AI Overview");
+      if (brand.google_ai_mode_mentions > 0) modelCounts.add("Google AI Mode");
+    });
+
+    return modelCounts.size;
+  };
+
+  const maxModels = getMaxActiveModels();
+  const maxMentions = Math.max(...brands.map((brand) => brand.total_mentions));
+  const getCoverageRatio = (brands: Brand[], type: "ratio" | "count") => {
+    const totalMentionsPerModel = brands.reduce((acc, brand) => {
+      return (
+        acc +
+        (brand.claude_mentions > 0 ? 1 : 0) +
+        (brand.perplexity_mentions > 0 ? 1 : 0) +
+        (brand.gemini_mentions > 0 ? 1 : 0) +
+        (brand.gpt_search_mentions > 0 ? 1 : 0) +
+        (brand.ai_overview_mentions > 0 ? 1 : 0) +
+        (brand.google_ai_mode_mentions > 0 ? 1 : 0)
+      );
+    }, 0);
+    // When models are selected, only count mentions from those specific models
+    let finalTotalMentions = totalMentionsPerModel;
+    let finalMaxModels = maxModels;
+
+    if (selectedModel.size > 0) {
+      finalTotalMentions = brands.reduce((acc, brand) => {
+        let brandModelCount = 0;
+        if (
+          selectedModel.has("Claude 4.0 Sonnet") &&
+          brand.claude_mentions > 0
+        ) {
+          brandModelCount++;
+        }
+        if (
+          selectedModel.has("Perplexity Sonar") &&
+          brand.perplexity_mentions > 0
+        ) {
+          brandModelCount++;
+        }
+        if (
+          selectedModel.has("Gemini 2.5 Flash") &&
+          brand.gemini_mentions > 0
+        ) {
+          brandModelCount++;
+        }
+        if (
+          selectedModel.has("GPT 4o Web Search") &&
+          brand.gpt_search_mentions > 0
+        ) {
+          brandModelCount++;
+        }
+        if (
+          selectedModel.has("Google AI Overview") &&
+          brand.ai_overview_mentions > 0
+        ) {
+          brandModelCount++;
+        }
+        if (
+          selectedModel.has("Google AI Mode") &&
+          brand.google_ai_mode_mentions > 0
+        ) {
+          brandModelCount++;
+        }
+        return acc + brandModelCount;
+      }, 0);
+
+      finalMaxModels = selectedModel.size;
+    }
+
+    if (type === "ratio") {
+      return `⌀ ${finalTotalMentions} / ${finalMaxModels * brands.length}`;
+    } else {
+      return (finalTotalMentions / (finalMaxModels * brands.length)).toFixed(2);
+    }
+  };
+  const getMentionsIndex = (brands: Brand[]) => {
+    const totalMentions = brands.reduce(
+      (acc, brand) => acc + brand.total_mentions,
+      0
+    );
+    return totalMentions / maxMentions;
+  };
+
   // Calculate visibility trend from previous analysis date
   const getVisibilityTrend = () => {
     if (
@@ -330,7 +352,33 @@ export function MetricsHeader({
       const maxMentions = Math.max(
         ...temporalBrands.map((b) => b.total_mentions)
       );
-      const maxModels = selectedModel.size === 0 ? 6 : selectedModel.size;
+      // Calculate the maximum number of models that successfully analyzed across all brands
+      const getMaxActiveModels = () => {
+        if (selectedModel.size > 0) {
+          // If specific models are selected, use that count
+          return selectedModel.size;
+        }
+
+        // Find the maximum number of models that successfully analyzed across all brands
+        const modelCounts = new Set<string>();
+
+        brands.forEach((brand) => {
+          if (brand.claude_mentions > 0) modelCounts.add("Claude 4.0 Sonnet");
+          if (brand.perplexity_mentions > 0)
+            modelCounts.add("Perplexity Sonar");
+          if (brand.gemini_mentions > 0) modelCounts.add("Gemini 2.5 Flash");
+          if (brand.gpt_search_mentions > 0)
+            modelCounts.add("GPT 4o Web Search");
+          if (brand.ai_overview_mentions > 0)
+            modelCounts.add("Google AI Overview");
+          if (brand.google_ai_mode_mentions > 0)
+            modelCounts.add("Google AI Mode");
+        });
+
+        return modelCounts.size;
+      };
+
+      const maxModels = getMaxActiveModels();
 
       const totalMentionsPerModel = brandsData.reduce((acc, brand) => {
         return (
@@ -454,7 +502,33 @@ export function MetricsHeader({
     const previousData = dataByDate[previousDate];
 
     const calculateCoverageRatio = (brandsData: TemporalBrand[]) => {
-      const maxModels = selectedModel.size === 0 ? 6 : selectedModel.size;
+      // Calculate the maximum number of models that successfully analyzed across all brands
+      const getMaxActiveModels = () => {
+        if (selectedModel.size > 0) {
+          // If specific models are selected, use that count
+          return selectedModel.size;
+        }
+
+        // Find the maximum number of models that successfully analyzed across all brands
+        const modelCounts = new Set<string>();
+
+        brands.forEach((brand) => {
+          if (brand.claude_mentions > 0) modelCounts.add("Claude 4.0 Sonnet");
+          if (brand.perplexity_mentions > 0)
+            modelCounts.add("Perplexity Sonar");
+          if (brand.gemini_mentions > 0) modelCounts.add("Gemini 2.5 Flash");
+          if (brand.gpt_search_mentions > 0)
+            modelCounts.add("GPT 4o Web Search");
+          if (brand.ai_overview_mentions > 0)
+            modelCounts.add("Google AI Overview");
+          if (brand.google_ai_mode_mentions > 0)
+            modelCounts.add("Google AI Mode");
+        });
+
+        return modelCounts.size;
+      };
+
+      const maxModels = getMaxActiveModels();
       const totalMentionsPerModel = brandsData.reduce((acc, brand) => {
         return (
           acc +
@@ -509,7 +583,7 @@ export function MetricsHeader({
             brand.google_ai_mode_mentions > 0
           ) {
             brandModelCount++;
-          } 
+          }
           return acc + brandModelCount;
         }, 0);
 
@@ -658,6 +732,7 @@ export function MetricsHeader({
       <CompetitorChart
         selectedModel={selectedModel}
         brandAnalytics={temporalBrands}
+        fullBrandAnalytics={brands}
         selectedBrands={selectedBrand}
       />
     </div>

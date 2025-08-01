@@ -52,6 +52,18 @@ interface BrandAnalysis {
   google_ai_mode_mentions: number;
 }
 
+interface Brand {
+  brand_name: string;
+  gpt_mentions: number;
+  gpt_search_mentions: number;
+  claude_mentions: number;
+  perplexity_mentions: number;
+  gemini_mentions: number;
+  total_mentions: number;
+  ai_overview_mentions: number;
+  google_ai_mode_mentions: number;
+}
+
 const chartConfig = {
   brand: {
     label: "Brand",
@@ -62,6 +74,7 @@ const chartConfig = {
 
 interface CompetitorChartProps {
   brandAnalytics: BrandAnalysis[];
+  fullBrandAnalytics: Brand[]
   selectedBrands: Set<string>;
   selectedModel: Set<string>;
 }
@@ -70,6 +83,7 @@ export function CompetitorChart({
   brandAnalytics,
   selectedBrands,
   selectedModel,
+  fullBrandAnalytics
 }: CompetitorChartProps) {
   // Filter to get only selected brands
   const selectedBrandData = brandAnalytics?.filter((b) =>
@@ -77,7 +91,29 @@ export function CompetitorChart({
   );
 
 
-  const maxModels = selectedModel.size === 0 ? 6 : selectedModel.size;
+  // Calculate the maximum number of models that successfully analyzed across all brands
+  const getMaxActiveModels = () => {
+    if (selectedModel.size > 0) {
+      // If specific models are selected, use that count
+      return selectedModel.size;
+    }
+    
+    // Find the maximum number of models that successfully analyzed across all brands
+    const modelCounts = new Set<string>();
+    
+    fullBrandAnalytics.forEach((brand) => {
+      if (brand.claude_mentions > 0) modelCounts.add("Claude 4.0 Sonnet");
+      if (brand.perplexity_mentions > 0) modelCounts.add("Perplexity Sonar");
+      if (brand.gemini_mentions > 0) modelCounts.add("Gemini 2.5 Flash");
+      if (brand.gpt_search_mentions > 0) modelCounts.add("GPT 4o Web Search");
+      if (brand.ai_overview_mentions > 0) modelCounts.add("Google AI Overview");
+      if (brand.google_ai_mode_mentions > 0) modelCounts.add("Google AI Mode");
+    });
+    
+    return modelCounts.size;
+  };
+  
+  const maxModels = getMaxActiveModels();
 
   const getCoverageRatio = (brand: BrandAnalysis, type: "ratio" | "count") => {
     const totalMentionsPerModel =

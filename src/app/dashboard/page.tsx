@@ -145,6 +145,8 @@ const INDUSTRIES = [
 // Define props for the new table component
 interface IndustryRankingsTableProps {
   brands: {
+    ai_overview_mentions: number;
+    google_ai_mode_mentions: number;
     brand_name: string;
     gpt_mentions: number;
     gpt_search_mentions: number;
@@ -177,59 +179,35 @@ function IndustryRankingsTable({
   const [brandFetch, setBrandFetch] = useState<BrandFetchProps[]>([]);
   const [lastFetchedBrands, setLastFetchedBrands] = useState<string[]>([]);
   const brand_name = brands.map((brand) => brand.brand_name.split(" ")[0]);
-  // useEffect(() => {
-  //   const fetchBrandData = async () => {
-  //     try {
-  //       if (brand_name.length > 0) {
-  //         const brandDataPromises = brand_name.map(async (name) => {
-  //           const response = await fetch(
-  //             `https://api.brandfetch.io/v2/search/${encodeURIComponent(
-  //               name
-  //             )}?c=1idSVUQuJldhOA4nY-0`
-  //           );
-
-  //           if (!response.ok) {
-  //             throw new Error(`Failed to fetch brand data for ${name}`);
-  //           }
-
-  //           const data = await response.json();
-
-  //           // Return the first item from the response array for this brand
-  //           if (data && data.length > 0) {
-  //             return data[0] as BrandFetchProps;
-  //           }
-  //           return null;
-  //         });
-
-  //         const brandDataResults = await Promise.all(brandDataPromises);
-  //         const validBrandData = brandDataResults.filter(
-  //           Boolean
-  //         ) as BrandFetchProps[];
-
-  //         setBrandFetch(validBrandData);
-  //         setLastFetchedBrands([...brand_name]);
-  //       }
-  //     } catch (error) {
-  //       console.error("Error fetching brand data:", error);
-  //     }
-  //   };
-
-  //   // Only fetch if brand names have actually changed
-  //   const brandsChanged =
-  //     JSON.stringify(brand_name.sort()) !==
-  //     JSON.stringify(lastFetchedBrands.sort());
-
-  //   if (brand_name.length > 0 && (brandFetch.length === 0 || brandsChanged)) {
-  //     fetchBrandData();
-  //   }
-  // }, [brand_name, brands]);
 
   if (!brands || !brandFetch) return null;
-
-  // console.log(brandFetch)
+ 
 
   const maxMentions = Math.max(...brands.map((brand) => brand.total_mentions));
-  const maxModels = selectedModel.size === 0 ? 6 : selectedModel.size;
+  
+  // Calculate the maximum number of models that successfully analyzed across all brands
+  const getMaxActiveModels = () => {
+    if (selectedModel.size > 0) {
+      // If specific models are selected, use that count
+      return selectedModel.size;
+    }
+    
+    // Find the maximum number of models that successfully analyzed across all brands
+    const modelCounts = new Set<string>();
+    
+    brands.forEach((brand) => {
+      if (brand.claude_mentions > 0) modelCounts.add("Claude 4.0 Sonnet");
+      if (brand.perplexity_mentions > 0) modelCounts.add("Perplexity Sonar");
+      if (brand.gemini_mentions > 0) modelCounts.add("Gemini 2.5 Flash");
+      if (brand.gpt_search_mentions > 0) modelCounts.add("GPT 4o Web Search");
+      if (brand.ai_overview_mentions > 0) modelCounts.add("Google AI Overview");
+      if (brand.google_ai_mode_mentions > 0) modelCounts.add("Google AI Mode");
+    });
+    
+    return modelCounts.size;
+  };
+  
+  const maxModels = getMaxActiveModels();
   const getCoverageRatio = (brand: any, type: "ratio" | "count") => {
     const totalMentionsPerModel =
       (brand.claude_mentions > 0 ? 1 : 0) +
@@ -2619,6 +2597,8 @@ function DashboardContent() {
       return dateCompare;
     });
   }, [results, analysis_brands, selectedModel]);
+
+  // console.log("Temp Data: ", temportalBrandMentionsInSummaries)
 
   // Calculate brand mentions in model summaries
   const brandMentionsInSummaries = useMemo(() => {
