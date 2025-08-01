@@ -14,6 +14,7 @@ import {
   Globe,
   ScanFace,
   UserSearch,
+  ChevronRight,
 } from "lucide-react";
 import Image from "next/image";
 import { IconMarquee } from "@/components/marquee";
@@ -31,6 +32,16 @@ import { SparklesCore } from "@/components/fancy-web/sparkles";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { motion as m, AnimatePresence } from "framer-motion";
+import {
+  AiStudio,
+  Claude,
+  DeepSeek,
+  Gemini,
+  Grok,
+  Meta,
+  OpenAI,
+  Perplexity,
+} from "@lobehub/icons";
 
 export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
@@ -40,15 +51,31 @@ export default function Home() {
   useEffect(() => {
     setIsLoading(true);
     const checkUser = async () => {
-      const {data, error} = await supabase.auth.getUser();
+      const { data, error } = await supabase.auth.getUser();
       if (error) {
         console.error("Error fetching user:", error);
       } else {
         setIsAuthenticated(true);
       }
-    }
+    };
     checkUser();
   }, []);
+
+  const modelIcons: Record<
+    string,
+    React.ComponentType<{ className?: string }>
+  > = {
+    "gpt-4o-search": OpenAI,
+    "claude-search": Claude.Color,
+    "perplexity-sonar": Perplexity,
+    "gemini-search": Gemini.Color,
+    "google-ai-mode": AiStudio.Color,
+    "google-ai-overview": Gemini.Color,
+    "deepseek-v3": DeepSeek.Color,
+    "gpt-4.1-nano": OpenAI,
+    "grok-3-mini": Grok,
+    "llama-4-maverick": Meta.Color,
+  };
 
   const plans = [
     {
@@ -60,7 +87,15 @@ export default function Home() {
         "Country Monitoring",
         "Company Research",
         "SEO Keyword Analysis",
-        "Brand Analysis",
+        "Native AI Search",
+      ],
+      models: [
+        { name: "GPT 4o Web Search", key: "gpt-4o-search" },
+        { name: "Claude 4.0 Sonnet", key: "claude-search" },
+        { name: "Perplexity Sonar", key: "perplexity-sonar" },
+        { name: "Gemini 2.5 Flash", key: "gemini-search" },
+        { name: "Google AI Overview", key: "google-ai-overview" },
+        { name: "Google AI Mode", key: "google-ai-mode" },
       ],
       credits: "2250 Credits",
       searches: "30 Searches",
@@ -78,9 +113,17 @@ export default function Home() {
         "Country Monitoring",
         "Company Research",
         "SEO Keyword Analysis",
-        "Brand Analysis",
+        "Native AI Search",
       ],
       credits: "7200 Credits",
+      models: [
+        { name: "GPT 4o Web Search", key: "gpt-4o-search" },
+        { name: "Claude 4.0 Sonnet", key: "claude-search" },
+        { name: "Perplexity Sonar", key: "perplexity-sonar" },
+        { name: "Gemini 2.5 Flash", key: "gemini-search" },
+        { name: "Google AI Overview", key: "google-ai-overview" },
+        { name: "Google AI Mode", key: "google-ai-mode" },
+      ],
       searches: "300 Searches",
       monitoring: "100 Monitoring",
       frequency: "(Daily + Weekly)",
@@ -96,9 +139,21 @@ export default function Home() {
         "Country Monitoring",
         "Company Research",
         "SEO Keyword Analysis",
-        "Brand Analysis",
+        "Native AI Search",
       ],
       credits: "27000 Credits",
+      models: [
+        { name: "GPT 4o Web Search", key: "gpt-4o-search" },
+        { name: "Claude 4.0 Sonnet", key: "claude-search" },
+        { name: "Perplexity Sonar", key: "perplexity-sonar" },
+        { name: "Gemini 2.5 Flash", key: "gemini-search" },
+        { name: "Google AI Overview", key: "google-ai-overview" },
+        { name: "Google AI Mode", key: "google-ai-mode" },
+        { name: "DeepSeek v3", key: "deepseek-v3" },
+        { name: "GPT 4.1 Nano", key: "gpt-4.1-nano" },
+        { name: "Grok 3 Mini", key: "grok-3-mini" },
+        { name: "Llama 4 Maverick", key: "llama-4-maverick" },
+      ],
       searches: "900 Searches",
       monitoring: "300 Monitoring",
       frequency: "(Daily + Weekly)",
@@ -108,7 +163,7 @@ export default function Home() {
   ];
 
   const formatPrice = (priceString: string) => {
-    const numericPrice = parseInt(priceString.replace(/[^0-9]/g, ''));
+    const numericPrice = parseInt(priceString.replace(/[^0-9]/g, ""));
     return isYearly ? numericPrice * 11 : numericPrice;
   };
 
@@ -119,29 +174,40 @@ export default function Home() {
         animate={{ opacity: 1 }}
         className="relative pb-20"
       >
-        <div className="max-w-[1920px] flex flex-col relative h-full items-center mx-auto">
+        <div className="max-w-[1684px] border-x border-b p-2 border-dashed flex flex-col relative h-full items-center mx-auto">
           <header className="bg-background container mx-auto py-6 flex justify-between items-center">
             <div className="flex items-center gap-2">
-              <Image src="/icons/air-logo-light.png" alt="AI Rankia Logo" width={120} height={120} />
+              <Image
+                src="/icons/air-logo-light.png"
+                alt="AI Rankia Logo"
+                width={120}
+                height={120}
+              />
             </div>
             <div className="flex gap-4 items-center">
               {isAuthenticated ? (
-                <Link href="/dashboard" className="text-sm font-medium hover:underline">
+                <Link
+                  href="/dashboard"
+                  className="text-sm font-medium hover:underline"
+                >
                   <Button variant="outline" size="sm">
                     Dashboard
                   </Button>
                 </Link>
               ) : (
-                <>  
-              <Link href="/login" className="text-sm font-medium hover:underline">
-                Log in
-              </Link>
-              <Link href="/signup">
-                <Button variant="outline" size="sm">
-                  Sign up
-                </Button>
-              </Link>
-              </>
+                <>
+                  <Link
+                    href="/login"
+                    className="text-sm font-medium hover:underline"
+                  >
+                    Log in
+                  </Link>
+                  <Link href="/signup">
+                    <Button variant="outline" size="sm">
+                      Sign up
+                    </Button>
+                  </Link>
+                </>
               )}
             </div>
           </header>
@@ -160,36 +226,39 @@ export default function Home() {
                   direction="top"
                   className="text-4xl md:text-7xl font-bold text-center"
                 />
-                <m.p 
+                <m.p
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: 2.5, duration: 0.8 }}
-                    className="font-normal text-base text-neutral-300 max-w-2xl text-center mx-auto"
+                  className="font-normal text-base text-neutral-300 max-w-2xl text-center mx-auto"
+                >
+                  Using the latest and top AI models, we'll work with you on how
+                  to{" "}
+                  <strong>
+                    expand your brand's reach and unlock millions of customers{" "}
+                  </strong>
+                  who are using AI to discover new products and brands
+                </m.p>
+                <div className="relative w-fit mx-auto mt-8 cursor-pointer">
+                  <GlowEffect
+                    colors={["#0D47A1", "#1976D2", "#42A5F5", "#90CAF9", "#7B1FA2", "#E91E63"]}
+                    mode={"rotate"}
+                    blur="soft"
+                    duration={6}
+                    scale={0.85}
+                    className={"w-57 -ml-3 rounded-full"}
+                  />
+                  <button
+                    onClick={() => window.location.assign("/dashboard")}
+                    className="rounded-full relative cursor-pointer inline-flex items-center gap-2 bg-zinc-950 px-4 py-3 text-base font-medium text-zinc-50 outline outline-1 outline-[#fff2f21f]"
                   >
-                    Using the latest and top AI models, we'll work with you on how
-                    to{" "}
-                    <strong>
-                      expand your brand's reach and unlock millions of customers{" "}
-                    </strong>
-                    who are using AI to discover new products and brands
-                  </m.p>
-                  <div className="relative w-fit mx-auto mt-8 cursor-pointer">
-                    <GlowEffect
-                      colors={["#0D47A1", "#1976D2", "#42A5F5", "#90CAF9"]}
-                      mode={"rotate"}
-                      blur="soft"
-                      duration={6}
-                      scale={0.8}
-                      className={"w-57 -ml-3"}
-                    />
-                    <button onClick={() => window.location.assign('/dashboard')} className="relative cursor-pointer inline-flex items-center gap-2 rounded-md bg-zinc-950 px-4 py-3 text-base font-medium text-zinc-50 outline outline-1 outline-[#fff2f21f]">
-                      Analyse your Brand <ArrowRight className="h-5 w-5" />
-                    </button>
-                  </div>
+                    Analyse your Brand <ChevronRight className="h-5 w-5" />
+                  </button>
+                </div>
               </m.div>
               <div className="relative w-full max-w-[1920px] mx-auto -mt-30">
                 <Image
-                  src="/air-hero-dash.png"
+                  src="/air-dash.png"
                   width={2400}
                   height={1350}
                   alt="AI Rankia Dashboard"
@@ -210,11 +279,8 @@ export default function Home() {
               <IconMarquee />
               <div className="text-center mb-6 mt-4">
                 <p className="text-neutral-400 max-w-2xl mx-auto text-sm">
-                  *We analyze your brand across{" "}
-                  <span className="font-regular italic font-['Instrument_Serif']">
-                    all major AI platforms{" "}
-                  </span>
-                  to ensure comprehensive insights.*
+                  *We analyze your brand across all major AI Search Engines to
+                  ensure comprehensive insights.*
                 </p>
               </div>
             </section>
@@ -275,7 +341,10 @@ export default function Home() {
                       scale={0.7}
                       className="mt-1.5 -ml-8 w-61"
                     />
-                    <button onClick={() => window.location.assign('/login')} className="relative cursor-pointer inline-flex items-center gap-2 rounded-md bg-zinc-950 px-4 py-3 text-base font-medium text-zinc-50 outline outline-1 outline-[#fff2f21f]">
+                    <button
+                      onClick={() => window.location.assign("/login")}
+                      className="relative cursor-pointer inline-flex items-center gap-2 rounded-md bg-zinc-950 px-4 py-3 text-base font-medium text-zinc-50 outline outline-1 outline-[#fff2f21f]"
+                    >
                       Start Analysis <ArrowRight className="h-5 w-5" />
                     </button>
                   </div>
@@ -293,8 +362,8 @@ export default function Home() {
                 <p className="text-sm lg:text-base max-w-5xl my-4 mx-auto text-neutral-500 text-center font-normal dark:text-neutral-300">
                   AI Rankia doesn't just analyze, it illuminates. Discover
                   untapped opportunities in keyword optimization, competitive
-                  positioning, and market trends before your competitors do. Make
-                  strategic decisions with clarity, not uncertainty.
+                  positioning, and market trends before your competitors do.
+                  Make strategic decisions with clarity, not uncertainty.
                 </p>
               </div>
 
@@ -345,8 +414,8 @@ export default function Home() {
                       Actionable Strategies
                     </h3>
                     <p className="text-neutral-400 text-sm">
-                      Get clear recommendations to improve visibility and optimize
-                      for AI discovery.
+                      Get clear recommendations to improve visibility and
+                      optimize for AI discovery.
                     </p>
                   </SpotlightCard>
                 </m.div>
@@ -379,8 +448,8 @@ export default function Home() {
                       Optimize for AI Search
                     </h3>
                     <p className="text-neutral-400 text-sm">
-                      Ensure your brand appears prominently when users search via
-                      AI assistants and chatbots.
+                      Ensure your brand appears prominently when users search
+                      via AI assistants and chatbots.
                     </p>
                   </SpotlightCard>
                 </m.div>
@@ -427,32 +496,43 @@ export default function Home() {
                 Pricing Plans
               </h2>
               <p className="text-neutral-400 text-center max-w-xl mx-auto mb-8">
-                Choose the plan that scales with your brand's AI visibility needs.
+                Choose the plan that scales with your brand's AI visibility
+                needs.
               </p>
 
               <div className="flex items-center justify-center gap-3 mb-12">
-                <span className={`text-sm ${!isYearly ? 'text-white' : 'text-neutral-400'}`}>
+                <span
+                  className={`text-sm ${
+                    !isYearly ? "text-white" : "text-neutral-400"
+                  }`}
+                >
                   Monthly
                 </span>
                 <button
                   onClick={() => setIsYearly(!isYearly)}
                   className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                    isYearly ? 'bg-blue-600' : 'bg-neutral-700'
+                    isYearly ? "bg-blue-600" : "bg-neutral-700"
                   }`}
                 >
                   <span
                     className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      isYearly ? 'translate-x-6' : 'translate-x-1'
+                      isYearly ? "translate-x-6" : "translate-x-1"
                     }`}
                   />
                 </button>
-                <span className={`text-sm ${isYearly ? 'text-white' : 'text-neutral-400'}`}>
+                <span
+                  className={`text-sm ${
+                    isYearly ? "text-white" : "text-neutral-400"
+                  }`}
+                >
                   Yearly
-                  <span className="ml-1 text-xs text-blue-400">(Save 8.3%)</span>
+                  <span className="ml-1 text-xs text-blue-400">
+                    (Save 8.3%)
+                  </span>
                 </span>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-px max-w-6xl mx-auto border border-muted">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-px max-w-7xl mx-auto border border-muted">
                 {plans.map((plan) => (
                   <div
                     key={plan.id}
@@ -468,12 +548,16 @@ export default function Home() {
                       </span>
                     )}
                     <div>
-                      <h3 className="text-xl font-semibold mb-1">{plan.name}</h3>
-                      <p className="text-neutral-300 text-sm mb-6">{plan.description}</p>
+                      <h3 className="text-xl font-semibold mb-1">
+                        {plan.name}
+                      </h3>
+                      <p className="text-neutral-300 text-sm mb-6">
+                        {plan.description}
+                      </p>
                       <div className="mb-6">
                         <AnimatePresence mode="wait">
                           <m.div
-                            key={isYearly ? 'yearly' : 'monthly'}
+                            key={isYearly ? "yearly" : "monthly"}
                             initial={{ opacity: 0, y: -20 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: 20 }}
@@ -482,7 +566,7 @@ export default function Home() {
                             <p className="text-3xl font-bold">
                               ${formatPrice(plan.price)}
                               <span className="text-base font-normal text-neutral-400">
-                                /{isYearly ? 'yr' : 'mo'}
+                                /{isYearly ? "yr" : "mo"}
                               </span>
                             </p>
                           </m.div>
@@ -513,13 +597,39 @@ export default function Home() {
                           <Check className="h-4 w-4 text-green-400 flex-shrink-0" />{" "}
                           {plan.features[3]}
                         </li>
+
+                        {/* AI Models Section */}
+                        <li className="flex items-start gap-3 mt-4">
+                          <div className="flex-1">
+                            <div className="flex flex-wrap gap-2 mt-2">
+                              {plan.models.map((model, index) => {
+                                const IconComponent = modelIcons[model.key];
+                                return (
+                                  <div
+                                    key={index}
+                                    className="flex items-center gap-1 bg-neutral-800/50 px-2 py-1 rounded-md"
+                                  >
+                                    {IconComponent && (
+                                      <IconComponent className="h-3 w-3" />
+                                    )}
+                                    <span className="text-xs text-neutral-300">
+                                      {model.name}
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </li>
                       </ul>
                     </div>
-                    <Button className={`w-full mt-6 ${
-                      plan.recommended 
-                        ? "bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/30"
-                        : "bg-neutral-800 hover:bg-neutral-700"
-                    }`}>
+                    <Button
+                      className={`w-full mt-6 ${
+                        plan.recommended
+                          ? "bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/30"
+                          : "bg-neutral-800 hover:bg-neutral-700"
+                      }`}
+                    >
                       Choose {plan.name}
                     </Button>
                   </div>
@@ -532,13 +642,14 @@ export default function Home() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.4 }} // Slightly later delay
                 viewport={{ once: true }}
-                className="max-w-6xl mx-auto mt-6 bg-zinc-950 p-8 border flex flex-col md:flex-row items-center justify-between"
+                className="max-w-7xl mx-auto mt-6 bg-zinc-950 p-8 border flex flex-col md:flex-row items-center justify-between"
               >
                 <div className="md:w-2/3 mb-6 md:mb-0">
                   <h3 className="text-xl font-semibold mb-2">Enterprise</h3>
                   <p className="text-neutral-400 text-sm mb-4">
-                    Tailored solutions for large organizations with comprehensive
-                    AI brand analysis needs across multiple markets and products.
+                    Tailored solutions for large organizations with
+                    comprehensive AI brand analysis needs across multiple
+                    markets and products.
                   </p>
                   <ul className="space-y-2 text-sm text-neutral-300 columns-1">
                     <li className="flex items-center gap-2">
@@ -577,9 +688,9 @@ export default function Home() {
                     </AccordionTrigger>
                     <AccordionContent className="text-neutral-400 text-sm md:text-base">
                       It's the process of ensuring your brand and content are
-                      accurately represented and easily discoverable by AI models
-                      like ChatGPT, Gemini, Claude, etc., which are increasingly
-                      used for information discovery.
+                      accurately represented and easily discoverable by AI
+                      models like ChatGPT, Gemini, Claude, etc., which are
+                      increasingly used for information discovery.
                     </AccordionContent>
                   </AccordionItem>
                   <AccordionItem value="item-2" className="">
@@ -588,9 +699,9 @@ export default function Home() {
                     </AccordionTrigger>
                     <AccordionContent className="text-neutral-400 text-sm md:text-base">
                       We use multiple leading AI models to simulate user queries
-                      related to your brand and industry. We analyze the responses
-                      for visibility, sentiment, accuracy, and competitive
-                      positioning.
+                      related to your brand and industry. We analyze the
+                      responses for visibility, sentiment, accuracy, and
+                      competitive positioning.
                     </AccordionContent>
                   </AccordionItem>
                   <AccordionItem value="item-3" className="">
@@ -599,8 +710,8 @@ export default function Home() {
                     </AccordionTrigger>
                     <AccordionContent className="text-neutral-400 text-sm md:text-base">
                       We cover all major platforms including those from OpenAI,
-                      Google, Anthropic, Meta, Mistral, Perplexity, and more. Our
-                      platform support is constantly expanding.
+                      Google, Anthropic, Meta, Mistral, Perplexity, and more.
+                      Our platform support is constantly expanding.
                     </AccordionContent>
                   </AccordionItem>
                   <AccordionItem value="item-4" className="">
@@ -618,9 +729,9 @@ export default function Home() {
             </section>
 
             {/* Final CTA Section */}
-            <section className="py-20 text-center relative overflow-hidden">
+            <section className="pt-20 text-center relative overflow-hidden w-full">
               <div className=" w-full bg-background flex flex-col items-center justify-center overflow-hidden rounded-md">
-                <h1 className="md:text-7xl text-3xl lg:text-9xl font-bold text-center text-white relative z-20">
+                <h1 className="md:text-7xl text-3xl lg:text-9xl font-bold text-center text-white/50 relative z-20">
                   AI Rankia
                 </h1>
                 <div className="w-[40rem] h-40 relative">
@@ -643,7 +754,7 @@ export default function Home() {
                   {/* Radial Gradient to prevent sharp edges */}
                   <div className="absolute inset-0 w-full h-full bg-background [mask-image:radial-gradient(350px_200px_at_top,transparent_20%,white)]"></div>
                 </div>
-            </div>
+              </div>
             </section>
           </main>
 
@@ -665,7 +776,7 @@ export default function Home() {
             </div>
           </footer>
         </div>
-        </m.div>
-      </div>
+      </m.div>
+    </div>
   );
 }
