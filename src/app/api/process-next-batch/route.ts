@@ -569,7 +569,7 @@ async function callGeminiSearch(prompt: string): Promise<{
     const responseData = data[0];
     
     // Extract content from new nested output structure
-    const text = responseData.output?.output?.[0] || '';
+    const text = responseData.output?.output || '';
     
     // Extract citations from groundingChunks
     const citations: any[] = [];
