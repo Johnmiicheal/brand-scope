@@ -1329,7 +1329,7 @@ export async function POST(req: Request) {
     const finalBrandId = cleanedBrandId && cleanedBrandId.length > 0 ? cleanedBrandId : null;
 
     // Calculate credits required for the scheduled analysis
-    const analysisMode = (mode || 'voyager').toLowerCase() as 'explorer' | 'voyager';
+    const analysisMode = (mode || 'explorer').toLowerCase() as 'explorer' | 'voyager';
     const availableModels = getAvailableModels(analysisMode);
     const modelsToUse = selected_models.length > 0 ? selected_models.filter(model => availableModels.includes(model)) : availableModels;
     const creditsRequired = calculateCreditsRequired(analysisMode, modelsToUse, include_google_search);

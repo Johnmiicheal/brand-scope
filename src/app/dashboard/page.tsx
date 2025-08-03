@@ -7,7 +7,7 @@
 "use client";
 
 import { useEffect, useState, useRef, useMemo, Suspense } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import {
   Brand,
@@ -181,20 +181,19 @@ function IndustryRankingsTable({
   const brand_name = brands.map((brand) => brand.brand_name.split(" ")[0]);
 
   if (!brands || !brandFetch) return null;
- 
 
   const maxMentions = Math.max(...brands.map((brand) => brand.total_mentions));
-  
+
   // Calculate the maximum number of models that successfully analyzed across all brands
   const getMaxActiveModels = () => {
     if (selectedModel.size > 0) {
       // If specific models are selected, use that count
       return selectedModel.size;
     }
-    
+
     // Find the maximum number of models that successfully analyzed across all brands
     const modelCounts = new Set<string>();
-    
+
     brands.forEach((brand) => {
       if (brand.claude_mentions > 0) modelCounts.add("Claude 4.0 Sonnet");
       if (brand.perplexity_mentions > 0) modelCounts.add("Perplexity Sonar");
@@ -203,10 +202,10 @@ function IndustryRankingsTable({
       if (brand.ai_overview_mentions > 0) modelCounts.add("Google AI Overview");
       if (brand.google_ai_mode_mentions > 0) modelCounts.add("Google AI Mode");
     });
-    
+
     return modelCounts.size;
   };
-  
+
   const maxModels = getMaxActiveModels();
   const getCoverageRatio = (brand: any, type: "ratio" | "count") => {
     const totalMentionsPerModel =
@@ -450,6 +449,11 @@ function DashboardContent() {
   const [loadingGoogleResults, setLoadingGoogleResults] = useState(false);
   const [showGoogleResults, setShowGoogleResults] = useState(true);
 
+  // Handle URL parameters for selected query and brand clearing
+  const searchParams = useSearchParams();
+  const selectedQueryId = searchParams.get('selectedQuery');
+  const shouldClearBrand = searchParams.get('clearBrand') === 'true';
+
   const fetchBrands = async () => {
     try {
       setIsLoading(true);
@@ -478,8 +482,8 @@ function DashboardContent() {
 
       setUserBrands(data || []);
 
-      // Set the first brand as selected if available
-      if (data && data.length > 0) {
+      // Set the first brand as selected if available and not clearing brand
+      if (data && data.length > 0 && !shouldClearBrand) {
         setCurrentBrand(data[0]);
       }
 
@@ -613,16 +617,18 @@ function DashboardContent() {
           setSubscription(
             fetchedSubscriptionData as unknown as UserSubscription
           );
-          
+
           // Safely fetch price and product data from server API
           try {
-            const response = await fetch(`/api/stripe/subscription-info?priceId=${fetchedSubscriptionData.price_id}`);
+            const response = await fetch(
+              `/api/stripe/subscription-info?priceId=${fetchedSubscriptionData.price_id}`
+            );
             if (response.ok) {
               const { product } = await response.json();
               setProduct(product);
             }
           } catch (error) {
-            console.error('Error fetching subscription info:', error);
+            console.error("Error fetching subscription info:", error);
           }
           setSubsLoading(false);
         }
@@ -667,10 +673,22 @@ function DashboardContent() {
         if (data && data.monitoring) {
           if (currentBrand) {
             setQueries(filteredDataByMyBrand);
-            setSelectedQuery(filteredDataByMyBrand[0]);
+            // If we have a selectedQueryId from URL, find and select that query
+            if (selectedQueryId) {
+              const foundQuery = filteredDataByMyBrand.find(q => q.id === selectedQueryId);
+              setSelectedQuery(foundQuery || filteredDataByMyBrand[0]);
+            } else {
+              setSelectedQuery(filteredDataByMyBrand[0]);
+            }
           } else {
             setQueries(data.monitoring);
-            setSelectedQuery(data.monitoring[0]);
+            // If we have a selectedQueryId from URL, find and select that query
+            if (selectedQueryId) {
+              const foundQuery = data.monitoring.find(q => q.id === selectedQueryId);
+              setSelectedQuery(foundQuery || data.monitoring[0]);
+            } else {
+              setSelectedQuery(data.monitoring[0]);
+            }
           }
           setIsLoading(false);
         } else {
@@ -3143,12 +3161,12 @@ function DashboardContent() {
                     onClick={() => setSelectedPlan(plan?.product_id || "")}
                   >
                     <div className="flex items-center gap-2">
-                    <h3 className="text-md font-bold">{plan.name}</h3>
-                    {plan.recommended && (
-                      <div className="bg-blue-500 text-white text-xs font-bold px-3 py-1 rounded-xl">
-                        POPULAR
-                      </div>
-                    )}
+                      <h3 className="text-md font-bold">{plan.name}</h3>
+                      {plan.recommended && (
+                        <div className="bg-blue-500 text-white text-xs font-bold px-3 py-1 rounded-xl">
+                          POPULAR
+                        </div>
+                      )}
                     </div>
                     <p className="text-3xl font-bold mb-4">{plan.price}</p>
                     <div className="space-y-2 text-left">
@@ -3447,7 +3465,13 @@ function DashboardContent() {
                   {currentBrand ? (
                     <div className="flex items-center gap-2">
                       {currentBrand.logo_url ? (
-                        <Image src={currentBrand.logo_url} alt={currentBrand.name} width={20} height={20} className="rounded-full" />
+                        <Image
+                          src={currentBrand.logo_url}
+                          alt={currentBrand.name}
+                          width={20}
+                          height={20}
+                          className="rounded-full"
+                        />
                       ) : (
                         <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
                           <span className="text-xs font-medium text-white">
@@ -3473,20 +3497,29 @@ function DashboardContent() {
                 <DropdownMenuLabel className="text-xs text-white/20 ">
                   Brand Options
                 </DropdownMenuLabel>
-                <DropdownMenuItem onClick={() => setCurrentBrand(null)} className="rounded-md">
+                <DropdownMenuItem
+                  onClick={() => setCurrentBrand(null)}
+                  className="rounded-md"
+                >
                   <div className="flex items-center gap-2">
                     <span>View All Prompts</span>
                   </div>
                 </DropdownMenuItem>
                 {userBrands.map((brand) => (
                   <DropdownMenuItem
-                  key={brand?.id}
+                    key={brand?.id}
                     onClick={() => setCurrentBrand(brand)}
                     className="rounded-md"
                   >
                     <div className="flex items-center gap-2">
-                    {brand.logo_url ? (
-                        <Image src={brand.logo_url} alt={brand.name} width={20} height={20} className="rounded-full" />
+                      {brand.logo_url ? (
+                        <Image
+                          src={brand.logo_url}
+                          alt={brand.name}
+                          width={20}
+                          height={20}
+                          className="rounded-full"
+                        />
                       ) : (
                         <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
                           <span className="text-xs font-medium text-white">
@@ -3570,8 +3603,9 @@ function DashboardContent() {
                           {"•"}
                           <p className="text-muted-foreground">
                             {
-                              queries.filter((query) => query.status === "active")
-                                .length
+                              queries.filter(
+                                (query) => query.status === "active"
+                              ).length
                             }{" "}
                             active
                           </p>
@@ -3721,17 +3755,22 @@ function DashboardContent() {
                               {/* Scrollable Brand List */}
                               <ScrollArea className="h-[200px]">
                                 {filteredBrandsForSearch?.length > 0 ? (
-                                  filteredBrandsForSearch.map((brand, index) => (
-                                    <DropdownMenuCheckboxItem
-                                      key={index}
-                                      checked={selectedBrands.has(brand.name)}
-                                      onCheckedChange={(checked) =>
-                                        handleCheckedChange(brand.name, checked)
-                                      }
-                                    >
-                                      {brand.name}
-                                    </DropdownMenuCheckboxItem>
-                                  ))
+                                  filteredBrandsForSearch.map(
+                                    (brand, index) => (
+                                      <DropdownMenuCheckboxItem
+                                        key={index}
+                                        checked={selectedBrands.has(brand.name)}
+                                        onCheckedChange={(checked) =>
+                                          handleCheckedChange(
+                                            brand.name,
+                                            checked
+                                          )
+                                        }
+                                      >
+                                        {brand.name}
+                                      </DropdownMenuCheckboxItem>
+                                    )
+                                  )
                                 ) : (
                                   <div className="px-2 py-2 text-sm text-muted-foreground text-center">
                                     {brandSearchQuery
@@ -3880,7 +3919,10 @@ function DashboardContent() {
                                           )}
                                         </>
                                       ) : (
-                                        format(customDateRange.from, "LLL dd, y")
+                                        format(
+                                          customDateRange.from,
+                                          "LLL dd, y"
+                                        )
                                       )
                                     ) : (
                                       <span>Pick a date range</span>
@@ -3936,7 +3978,10 @@ function DashboardContent() {
                                           "LLL dd, y"
                                         )}{" "}
                                         -{" "}
-                                        {format(customDateRange.to, "LLL dd, y")}
+                                        {format(
+                                          customDateRange.to,
+                                          "LLL dd, y"
+                                        )}
                                       </>
                                     ) : (
                                       format(customDateRange.from, "LLL dd, y")
@@ -4198,6 +4243,7 @@ function DashboardContent() {
                               <ScheduledQueriesList
                                 queries={queries}
                                 selectedQuery={selectedQuery?.query}
+                                brandContext={setCurrentBrand}
                                 onSelectQuery={(query) => {
                                   setSelectedQuery(query);
                                   setIsExpanded(false); // Close the list after selection
@@ -4207,25 +4253,38 @@ function DashboardContent() {
                           </motion.div>
                         )}
                       </AnimatePresence>
-                      
+
                       {/* Check for unavailable selected models and show empty states */}
                       {(() => {
-                        const isAiOverviewSelected = selectedModel.has("Google AI Overview");
-                        const isAiModeSelected = selectedModel.has("Google AI Mode");
-                        const hasAiOverviewData = brandMentionsInSummaries?.some(b => (b.ai_overview_mentions || 0) > 0) || false;
-                        const hasAiModeData = brandMentionsInSummaries?.some(b => (b.google_ai_mode_mentions || 0) > 0) || false;
+                        const isAiOverviewSelected =
+                          selectedModel.has("Google AI Overview");
+                        const isAiModeSelected =
+                          selectedModel.has("Google AI Mode");
+                        const hasAiOverviewData =
+                          brandMentionsInSummaries?.some(
+                            (b) => (b.ai_overview_mentions || 0) > 0
+                          ) || false;
+                        const hasAiModeData =
+                          brandMentionsInSummaries?.some(
+                            (b) => (b.google_ai_mode_mentions || 0) > 0
+                          ) || false;
 
                         const selectedUnavailableModels = [];
-                        if (isAiOverviewSelected && !hasAiOverviewData) selectedUnavailableModels.push("Google AI Overview");
-                        if (isAiModeSelected && !hasAiModeData) selectedUnavailableModels.push("Google AI Mode");
+                        if (isAiOverviewSelected && !hasAiOverviewData)
+                          selectedUnavailableModels.push("Google AI Overview");
+                        if (isAiModeSelected && !hasAiModeData)
+                          selectedUnavailableModels.push("Google AI Mode");
 
                         // If we have selected models but they're all unavailable, show empty state
-                        if (selectedModel.size > 0 &&
-                            ((isAiOverviewSelected && !hasAiOverviewData) || (isAiModeSelected && !hasAiModeData)) &&
-                            selectedModel.size === (
-                                (isAiOverviewSelected && !hasAiOverviewData ? 1 : 0) +
-                                (isAiModeSelected && !hasAiModeData ? 1 : 0)
-                            )
+                        if (
+                          selectedModel.size > 0 &&
+                          ((isAiOverviewSelected && !hasAiOverviewData) ||
+                            (isAiModeSelected && !hasAiModeData)) &&
+                          selectedModel.size ===
+                            (isAiOverviewSelected && !hasAiOverviewData
+                              ? 1
+                              : 0) +
+                              (isAiModeSelected && !hasAiModeData ? 1 : 0)
                         ) {
                           return (
                             <Card className="bg-background shadow-none border-[#e2e2e2]/70 dark:border-accent">
@@ -4235,23 +4294,55 @@ function DashboardContent() {
                                     <Info className="w-6 h-6 text-yellow-500" />
                                   </div>
                                   <div>
-                                    <h3 className="text-lg font-semibold">Selected Model{selectedUnavailableModels.length > 1 ? 's' : ''} Not Available</h3>
+                                    <h3 className="text-lg font-semibold">
+                                      Selected Model
+                                      {selectedUnavailableModels.length > 1
+                                        ? "s"
+                                        : ""}{" "}
+                                      Not Available
+                                    </h3>
                                     <p className="text-muted-foreground mt-2 max-w-md">
-                                      {selectedUnavailableModels.includes("Google AI Overview") && selectedUnavailableModels.includes("Google AI Mode") ? (
-                                        <>Google AI Overview and Google AI Mode are not available for this query. Google AI Overview requires specific search results, and Google AI Mode only works with English prompts.</>
-                                      ) : selectedUnavailableModels.includes("Google AI Overview") ? (
-                                        <>Google AI Overview is not available for this query. This feature requires specific Google search results to be present.</>
+                                      {selectedUnavailableModels.includes(
+                                        "Google AI Overview"
+                                      ) &&
+                                      selectedUnavailableModels.includes(
+                                        "Google AI Mode"
+                                      ) ? (
+                                        <>
+                                          Google AI Overview and Google AI Mode
+                                          are not available for this query.
+                                          Google AI Overview requires specific
+                                          search results, and Google AI Mode
+                                          only works with English prompts.
+                                        </>
+                                      ) : selectedUnavailableModels.includes(
+                                          "Google AI Overview"
+                                        ) ? (
+                                        <>
+                                          Google AI Overview is not available
+                                          for this query. This feature requires
+                                          specific Google search results to be
+                                          present.
+                                        </>
                                       ) : (
-                                        <>Google AI Mode is not available for this query. This feature only works with English language prompts.</>
+                                        <>
+                                          Google AI Mode is not available for
+                                          this query. This feature only works
+                                          with English language prompts.
+                                        </>
                                       )}
                                     </p>
                                     <p className="text-sm text-muted-foreground mt-3">
-                                      Try selecting different models or use &quot;All Models&quot; to see available data.
+                                      Try selecting different models or use
+                                      &quot;All Models&quot; to see available
+                                      data.
                                     </p>
                                   </div>
                                   <Button
                                     variant="outline"
-                                    onClick={() => setSelectedModel(new Set<string>([]))}
+                                    onClick={() =>
+                                      setSelectedModel(new Set<string>([]))
+                                    }
                                     className="mt-4"
                                   >
                                     Show All Available Models
@@ -4286,7 +4377,9 @@ function DashboardContent() {
                           const allCitations: any[] = [];
 
                           results
-                            .flatMap((result: any) => result.model_summary || [])
+                            .flatMap(
+                              (result: any) => result.model_summary || []
+                            )
                             .flatMap((summary: any) => summary.reasoning || [])
                             .forEach((item: any) => {
                               if (item && typeof item === "object") {
@@ -4294,7 +4387,8 @@ function DashboardContent() {
                                 if (item.url_citation?.url) {
                                   allCitations.push({
                                     url: item.url_citation.url,
-                                    title: item.url_citation.title || "No title",
+                                    title:
+                                      item.url_citation.title || "No title",
                                     snippet:
                                       item.url_citation.snippet || "No snippet",
                                     source:
@@ -4373,7 +4467,8 @@ function DashboardContent() {
                                   googleSearchResults.search_results[0].results
                                 }
                                 rankings={
-                                  googleSearchResults.search_results[0]?.rankings
+                                  googleSearchResults.search_results[0]
+                                    ?.rankings
                                 }
                               />
                             </ScrollArea>
@@ -4382,7 +4477,7 @@ function DashboardContent() {
                     </TabsContent>
                   </Tabs>
                 </div>
-              ): (
+              ) : (
                 <div className="flex flex-col items-center justify-center h-full min-h-[400px]">
                   <div className="text-center space-y-6">
                     <div className="w-16 h-16 bg-yellow-500/10 rounded-full flex items-center justify-center mx-auto">
@@ -4393,11 +4488,17 @@ function DashboardContent() {
                         No queries attached to this brand yet
                       </h3>
                       <p className="text-muted-foreground max-w-md">
-                        Start monitoring your brand&apos;s performance by creating your first query
+                        Start monitoring your brand&apos;s performance by
+                        creating your first query
                       </p>
                     </div>
-                    <Button 
-                      onClick={() => router.push('/dashboard/search?attached_brand_id=' + currentBrand?.id)}
+                    <Button
+                      onClick={() =>
+                        router.push(
+                          "/dashboard/search?attached_brand_id=" +
+                            currentBrand?.id
+                        )
+                      }
                       className="bg-blue-600 hover:bg-blue-700 text-white rounded-full"
                     >
                       Start Monitoring

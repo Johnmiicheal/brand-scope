@@ -766,7 +766,7 @@ export default function Home() {
                 reserved.
               </span>
               <div className="flex space-x-4 mt-4 md:mt-0">
-                <Link href="#" className="hover:text-white transition-colors">
+                <Link href="/privacy-policy" className="hover:text-white transition-colors">
                   Privacy Policy
                 </Link>
                 <Link href="#" className="hover:text-white transition-colors">

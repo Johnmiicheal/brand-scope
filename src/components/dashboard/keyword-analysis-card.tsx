@@ -225,6 +225,7 @@ export function KeywordAnalysisCard() {
           location: scheduleCountry,
           user_id: user.id,
           attached_brand_id: [""],
+          mode: "Explorer"
         }),
       });
       if (!response.ok) {

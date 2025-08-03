@@ -39,6 +39,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { TbStarFilled } from "react-icons/tb";
+import { Brand } from "@/contexts/brand-data-context";
 
 type FilterOptions = {
   frequency: "all" | "daily" | "weekly";
@@ -63,10 +64,12 @@ export type ScheduledQuery = {
 
 export function ScheduledQueriesList({
   queries: initialQueries,
+  brandContext,
   onSelectQuery,
   selectedQuery
 }: {
   queries: ScheduledQuery[];
+  brandContext?: (brand: Brand | null) => void;
   onSelectQuery?: (query: ScheduledQuery) => void;
   selectedQuery?: string;
 }) {
@@ -135,17 +138,19 @@ export function ScheduledQueriesList({
   };
 
   const handleViewOnDashboard = (query: ScheduledQuery) => {
+    // Always set brand context to null when selecting a query
+    console.log('Setting brand context to null');
+    brandContext?.(null);
     onSelectQuery?.(query); 
+    
     if(window.location.pathname === "/dashboard/library") {
       setTimeout(() => {
-        router.push('/dashboard')
-        onSelectQuery?.(query);
+        router.push(`/dashboard?selectedQuery=${query.id}&clearBrand=true`)
         toast.info('Redirecting to dashboard page...')
       }, 1000)
     }else if(window.location.pathname.includes( "/dashboard/projects")) {
       setTimeout(() => {
-        router.push('/dashboard')
-        onSelectQuery?.(query);
+        router.push(`/dashboard?selectedQuery=${query.id}&clearBrand=true`)
         toast.info('Redirecting to dashboard page to view the query...')
       }, 1000)
     }
