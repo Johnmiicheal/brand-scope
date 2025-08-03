@@ -157,7 +157,7 @@ export default function ProjectsPage() {
             Manage and view analysis for all your brand projects
           </p>
         </div>
-        <Button onClick={() => setShowBrandModal(true)}>Create Brand</Button>
+        <Button onClick={() => setShowBrandModal(true)} className="bg-blue-600 hover:bg-blue-500 text-white rounded-full">Create Brand</Button>
       </div>
 
       {brands.length === 0 ? (
@@ -248,7 +248,7 @@ export default function ProjectsPage() {
                     className="w-full"
                     onClick={() => openDeleteDialog(brand)}
                   >
-                    <Trash2 className="h-4 w-4 mr-2" />
+                    <Trash2 className="h-4 w-4" />
                     Delete Project
                   </Button>
                 </div>
