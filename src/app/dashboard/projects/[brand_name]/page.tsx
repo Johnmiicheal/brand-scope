@@ -109,6 +109,7 @@ export default function BrandProjectPage() {
   const [error, setError] = useState<string | null>(null);
   const [brandMetrics, setBrandMetrics] = useState<BrandMetrics | null>(null);
   const [temporalData, setTemporalData] = useState<TemporalBrandData[]>([]);
+  const [googleSearchResults, setGoogleSearchResults] = useState<any[]>([]);
 
   useEffect(() => {
     if (user?.id && brandName) {
@@ -171,11 +172,31 @@ export default function BrandProjectPage() {
         return;
       }
 
+      // Fetch Google search results for each monitored session
+      const googleResultsPromises = monitoredSessionsData.map(async (session: any) => {
+        const { data: search_results, error: searchError } = await supabase
+          .from('search_results')
+          .select('*')
+          .eq('mode_id', session.id);
+        
+        if (searchError) {
+          console.error(`Error fetching search results for session ${session.id}:`, searchError);
+          return { sessionId: session.id, results: [] };
+        }
+        
+        return { sessionId: session.id, results: search_results || [] };
+      });
+
+      const googleResults = await Promise.all(googleResultsPromises);
+      setGoogleSearchResults(googleResults);
+      console.log('Google search results for all sessions:', googleResults);
+
+
       setMonitoredSessions((monitoredSessionsData as unknown as []) || []);
 
       // Calculate brand-specific metrics from monitored sessions
       if (monitoredSessionsData && monitoredSessionsData.length > 0) {
-        calculateBrandMetrics(monitoredSessionsData, brandData.name as string);
+        calculateBrandMetrics(monitoredSessionsData, brandData.name as string, googleResults);
       }
     } catch (error) {
       console.error("Error:", error);
@@ -185,7 +206,7 @@ export default function BrandProjectPage() {
     }
   };
 
-  const calculateBrandMetrics = (queries: any[], brandName: string) => {
+  const calculateBrandMetrics = (queries: any[], brandName: string, googleSearchResults: any[] = []) => {
     // Extract brand data from queries results to match metrics card format
     const brandData: any[] = [];
     const temporalDataMap: Record<string, TemporalBrandData> = {};
@@ -216,6 +237,64 @@ export default function BrandProjectPage() {
               grok_mentions: 0,
               llama_mentions: 0,
             };
+
+            // Check for Google search results for this query
+            const queryGoogleResults = googleSearchResults.find(
+              (sessionResults) => sessionResults.sessionId === query.id
+            );
+            
+            // If Google search results exist for this query, analyze them for brand mentions
+            if (queryGoogleResults && queryGoogleResults.results.length > 0) {
+              let googleMentions = 0;
+              
+              // Check each Google search result for brand mentions
+              queryGoogleResults.results.forEach((result: any) => {
+                const contentToCheck = [
+                  result.title || '',
+                  result.snippet || '',
+                  result.content || ''
+                ].join(' ').toLowerCase();
+                
+                const brandNameLower = brandName.toLowerCase();
+                
+                // Check for exact brand name mentions
+                if (contentToCheck.includes(brandNameLower)) {
+                  googleMentions += 1;
+                }
+                
+                // Check for partial matches (brand name contains target or vice versa)
+                if (brandNameLower.includes(contentToCheck) || contentToCheck.includes(brandNameLower)) {
+                  googleMentions += 1;
+                }
+                
+                // Check for word-by-word matches
+                const brandWords = brandNameLower.split(/\s+/);
+                const contentWords = contentToCheck.split(/\s+/);
+                
+                for (const brandWord of brandWords) {
+                  if (brandWord.length > 2) { // Only check words longer than 2 chars
+                    for (const contentWord of contentWords) {
+                      if (contentWord.includes(brandWord) || brandWord.includes(contentWord)) {
+                        googleMentions += 1;
+                        break;
+                      }
+                    }
+                  }
+                }
+              });
+              
+              // If brand mentions found in Google results, count towards AI overview
+              if (googleMentions > 0) {
+                brandEntry.ai_overview_mentions += googleMentions;
+                brandEntry.total_mentions += googleMentions;
+                console.log(`Added ${googleMentions} Google search result mentions to AI overview for query ${query.id}`);
+              } else {
+                // Still count as AI overview if Google results exist but no specific mentions found
+                brandEntry.ai_overview_mentions += 1;
+                brandEntry.total_mentions += 1;
+                console.log(`Added Google search results presence to AI overview for query ${query.id}`);
+              }
+            }
 
             analysisRun.model_results.forEach((modelResult: any) => {
               if (
@@ -276,8 +355,6 @@ export default function BrandProjectPage() {
                     brandEntry.perplexity_mentions += 1;
                   } else if (modelName.includes("Gemini")) {
                     brandEntry.gemini_mentions += 1;
-                  } else if (modelName.includes("AI Overview")) {
-                    brandEntry.ai_overview_mentions += 1;
                   } else if (modelName.includes("AI Mode")) {
                     brandEntry.google_ai_mode_mentions += 1;
                   } else if (modelName.includes("DeepSeek")) {
@@ -1078,6 +1155,57 @@ export default function BrandProjectPage() {
               <ScheduledQueriesList
                 queries={monitoredSessions as unknown as ScheduledQuery[]}
               />
+              
+              {/* Google Search Results Display */}
+              {googleSearchResults.length > 0 && (
+                <div className="mt-8">
+                  <h3 className="text-lg font-semibold mb-4">Google Search Results</h3>
+                  <div className="space-y-4">
+                    {googleSearchResults.map((sessionResults) => (
+                      <Card key={sessionResults.sessionId} className="bg-background border-[#e2e2e2]/70 dark:border-accent">
+                        <CardHeader>
+                          <CardTitle className="text-sm">
+                            Session: {sessionResults.sessionId.slice(0, 8)}...
+                          </CardTitle>
+                          <CardDescription>
+                            {sessionResults.results.length} search results found
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          {sessionResults.results.length > 0 ? (
+                            <div className="space-y-2">
+                              {sessionResults.results.slice(0, 5).map((result: any, index: number) => (
+                                <div key={index} className="p-3 bg-muted/50 rounded-lg">
+                                  <div className="text-sm font-medium text-blue-600">
+                                    {result.title || `Result ${index + 1}`}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground mt-1">
+                                    {result.snippet || 'No snippet available'}
+                                  </div>
+                                  {result.url && (
+                                    <div className="text-xs text-green-600 mt-1 truncate">
+                                      {result.url}
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                              {sessionResults.results.length > 5 && (
+                                <div className="text-xs text-muted-foreground text-center">
+                                  +{sessionResults.results.length - 5} more results
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="text-sm text-muted-foreground text-center py-4">
+                              No search results available for this session
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              )}
             </TabsContent>
           </Tabs>
         )}
