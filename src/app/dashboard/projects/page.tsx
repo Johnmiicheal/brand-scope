@@ -6,10 +6,22 @@ import { supabase } from "@/lib/supabase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Building2, Calendar, ExternalLink, Globe, MapPin } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Input } from "@/components/ui/input";
+import { Building2, Calendar, ExternalLink, Globe, MapPin, Trash2 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { CreateBrandModal } from "@/components/dashboard/create-brand-modal";
+import { toast } from "sonner";
 
 
 interface Brand {
@@ -29,6 +41,9 @@ export default function ProjectsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showBrandModal, setShowBrandModal] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [brandToDelete, setBrandToDelete] = useState<Brand | null>(null);
+  const [confirmText, setConfirmText] = useState("");
   useEffect(() => {
     if (user?.id) {
       fetchBrands();
@@ -69,6 +84,45 @@ export default function ProjectsPage() {
       month: "short",
       day: "numeric",
     });
+  };
+
+  const handleDeleteBrand = async () => {
+    if (!brandToDelete || confirmText !== brandToDelete.name) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("brand_project")
+        .delete()
+        .eq("id", brandToDelete.id)
+        .eq("user_id", user?.id || "");
+
+      if (error) {
+        console.error("Error deleting brand:", error);
+        setError("Failed to delete brand project");
+        return;
+      }
+
+      // Remove the brand from the local state
+      setBrands(brands.filter(brand => brand.id !== brandToDelete.id));
+      toast.success("Brand project deleted successfully");
+      
+      // Reset the dialog state
+      setDeleteDialogOpen(false);
+      setBrandToDelete(null);
+      setConfirmText("");
+    } catch (error) {
+      console.error("Error:", error);
+      toast.error("Failed to delete brand project");
+      setError("Failed to delete brand project");
+    }
+  };
+
+  const openDeleteDialog = (brand: Brand) => {
+    setBrandToDelete(brand);
+    setConfirmText("");
+    setDeleteDialogOpen(true);
   };
 
   if (loading) {
@@ -181,11 +235,21 @@ export default function ProjectsPage() {
                   </div>
                 </div>
 
-                <div className="pt-4 border-t">
+                <div className="pt-4 border-t space-y-2">
                   <Button asChild className="w-full bg-blue-600 hover:bg-blue-500">
                     <Link href={`/dashboard/projects/${encodeURIComponent(brand.name)}`}>
                       View Analysis
                     </Link>
+                  </Button>
+                  
+                  <Button 
+                    variant="destructive" 
+                    size="sm" 
+                    className="w-full"
+                    onClick={() => openDeleteDialog(brand)}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete Project
                   </Button>
                 </div>
               </CardContent>
@@ -194,6 +258,49 @@ export default function ProjectsPage() {
         </div>
       )}
       <CreateBrandModal showBrandModal={showBrandModal} setShowBrandModal={setShowBrandModal} />
+      
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Brand Project</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the brand project 
+              <strong> &quot;{brandToDelete?.name}&quot;</strong> and all associated data.
+              <br /><br />
+              To confirm deletion, please type the brand name exactly: <strong>{brandToDelete?.name}</strong>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          
+          <div className="py-4">
+            <Input
+              placeholder="Type the brand name to confirm"
+              value={confirmText}
+              onChange={(e) => setConfirmText(e.target.value)}
+              className="w-full"
+            />
+          </div>
+          
+          <AlertDialogFooter>
+            <AlertDialogCancel 
+              onClick={() => {
+                setDeleteDialogOpen(false);
+                setBrandToDelete(null);
+                setConfirmText("");
+              }}
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteBrand}
+              disabled={confirmText !== brandToDelete?.name}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Delete Project
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
