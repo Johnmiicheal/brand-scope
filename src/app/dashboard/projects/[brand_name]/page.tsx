@@ -6,31 +6,52 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { 
-  ArrowLeft, 
-  Calendar, 
-  Eye,
-  Activity
-} from "lucide-react";
+import { ArrowLeft, Calendar, Eye, Activity } from "lucide-react";
 import Link from "next/link";
-import { Tabs, TabsContent, TabsList, TabsTrigger, } from "@/components/ui/tabs";
-import { ScheduledQueriesList, ScheduledQuery } from "@/components/library/scheduled-queries-list";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  ScheduledQueriesList,
+  ScheduledQuery,
+} from "@/components/library/scheduled-queries-list";
 import { MonitoredSummary } from "@/components/dashboard/monitored-summary";
 import { motion } from "framer-motion";
 import { Info, TrendingUp, ArrowUpRight, ArrowDownRight } from "lucide-react";
-import { 
+import {
   Tooltip,
   TooltipTrigger,
   TooltipProvider,
   TooltipContent,
 } from "@/components/ui/tooltip";
+import { ChartContainer } from "@/components/ui/chart";
 import {
-  ChartContainer,
-} from "@/components/ui/chart";
-import { Area, AreaChart, CartesianGrid, XAxis, YAxis, Tooltip as ChartTooltip, Bar, BarChart } from "recharts";
+  Area,
+  AreaChart,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+  Tooltip as ChartTooltip,
+  Bar,
+  BarChart,
+} from "recharts";
+import {
+  OpenAI,
+  Claude,
+  Perplexity,
+  Gemini,
+  AiStudio,
+  DeepSeek,
+  Grok,
+  Meta,
+} from "@lobehub/icons";
 
 interface Brand {
   id: string;
@@ -80,7 +101,7 @@ export default function BrandProjectPage() {
   const params = useParams();
   const router = useRouter();
   const brandName = decodeURIComponent(params.brand_name as string);
-  
+
   const [brand, setBrand] = useState<Brand | null>(null);
   const [sessions, setSessions] = useState<AnalysisSession[]>([]);
   const [monitoredSessions, setMonitoredSessions] = useState<[]>([]);
@@ -97,7 +118,7 @@ export default function BrandProjectPage() {
 
   const fetchBrandAndSessions = async () => {
     if (!user?.id) return;
-    
+
     try {
       setLoading(true);
       setError(null);
@@ -134,14 +155,18 @@ export default function BrandProjectPage() {
       setSessions((sessionsData as unknown as AnalysisSession[]) || []);
 
       // Then, fetch monitored sessions that have this brand attached
-      const { data: monitoredSessionsData, error: monitoredSessionsError } = await supabase
-        .from("scheduled_queries")
-        .select("*")
-        .eq("user_id", user.id)
-        .contains("attached_brand_id", [brandData.id]);
+      const { data: monitoredSessionsData, error: monitoredSessionsError } =
+        await supabase
+          .from("scheduled_queries")
+          .select("*")
+          .eq("user_id", user.id)
+          .contains("attached_brand_id", [brandData.id]);
 
       if (monitoredSessionsError) {
-        console.error("Error fetching monitored sessions:", monitoredSessionsError);
+        console.error(
+          "Error fetching monitored sessions:",
+          monitoredSessionsError
+        );
         setError("Failed to load monitored sessions");
         return;
       }
@@ -152,7 +177,6 @@ export default function BrandProjectPage() {
       if (monitoredSessionsData && monitoredSessionsData.length > 0) {
         calculateBrandMetrics(monitoredSessionsData, brandData.name as string);
       }
-
     } catch (error) {
       console.error("Error:", error);
       setError("Failed to load brand data");
@@ -161,155 +185,274 @@ export default function BrandProjectPage() {
     }
   };
 
-    const calculateBrandMetrics = (queries: any[], brandName: string) => {
-      // Extract brand data from queries results to match metrics card format
-      const brandData: any[] = [];
-      const temporalDataMap: Record<string, TemporalBrandData> = {};
-      
-      console.log(`Calculating metrics for brand: ${brandName}`);
-      console.log(`Processing ${queries.length} queries`);
+  const calculateBrandMetrics = (queries: any[], brandName: string) => {
+    // Extract brand data from queries results to match metrics card format
+    const brandData: any[] = [];
+    const temporalDataMap: Record<string, TemporalBrandData> = {};
 
-      queries.forEach((query: any) => {
-        if (query.results && Array.isArray(query.results)) {
-          query.results.forEach((analysisRun: any) => {
-            if (analysisRun.model_results && Array.isArray(analysisRun.model_results)) {
-              // Create a brand entry for this analysis run
-              const brandEntry = {
-                brand_name: brandName,
-                gpt_mentions: 0,
-                gpt_search_mentions: 0,
-                claude_mentions: 0,
-                perplexity_mentions: 0,
-                gemini_mentions: 0,
-                total_mentions: 0,
-                ai_overview_mentions: 0,
-                google_ai_mode_mentions: 0,
-              };
+    console.log(`Calculating metrics for brand: ${brandName}`);
+    console.log(`Processing ${queries.length} queries`);
 
-              analysisRun.model_results.forEach((modelResult: any) => {
-                if (modelResult.status === 'fulfilled' && modelResult.data?.brands) {
-                  const brandData = modelResult.data.brands.find((brand: any) => 
-                    brand.name.toLowerCase().includes(brandName.toLowerCase())
-                  );
+    queries.forEach((query: any) => {
+      if (query.results && Array.isArray(query.results)) {
+        query.results.forEach((analysisRun: any) => {
+          if (
+            analysisRun.model_results &&
+            Array.isArray(analysisRun.model_results)
+          ) {
+            // Create a brand entry for this analysis run
+            const brandEntry = {
+              brand_name: brandName,
+              gpt_mentions: 0,
+              gpt_search_mentions: 0,
+              claude_mentions: 0,
+              perplexity_mentions: 0,
+              gemini_mentions: 0,
+              total_mentions: 0,
+              ai_overview_mentions: 0,
+              google_ai_mode_mentions: 0,
+              deepseek_mentions: 0,
+              gpt_4_1_mentions: 0,
+              grok_mentions: 0,
+              llama_mentions: 0,
+            };
+
+            analysisRun.model_results.forEach((modelResult: any) => {
+              if (
+                modelResult.status === "fulfilled" &&
+                modelResult.data?.brands
+              ) {
+                const brandData = modelResult.data.brands.find((brand: any) => {
+                  const modelBrandName = brand.name.toLowerCase();
+                  const targetBrandName = brandName.toLowerCase();
                   
-                  if (brandData) {
-                    // Count mentions by model type
-                    const modelName = modelResult.llm_name || '';
-                    if (modelName.includes('GPT') || modelName.includes('OpenAI')) {
-                      brandEntry.gpt_search_mentions += 1;
-                    } else if (modelName.includes('Claude')) {
-                      brandEntry.claude_mentions += 1;
-                    } else if (modelName.includes('Perplexity')) {
-                      brandEntry.perplexity_mentions += 1;
-                    } else if (modelName.includes('Gemini')) {
-                      brandEntry.gemini_mentions += 1;
-                    } else if (modelName.includes('AI Overview')) {
-                      brandEntry.ai_overview_mentions += 1;
-                    } else if (modelName.includes('AI Mode')) {
-                      brandEntry.google_ai_mode_mentions += 1;
-                    }
-                    
-                    brandEntry.total_mentions += 1;
+                  // Check if the model's brand name contains our target brand name
+                  if (modelBrandName.includes(targetBrandName)) {
+                    return true;
                   }
-                }
-              });
-
-              brandData.push(brandEntry);
-
-              // Store temporal data
-              if (analysisRun.analysis_date) {
-                const date = analysisRun.analysis_date.split('T')[0];
-                if (!temporalDataMap[date]) {
-                  temporalDataMap[date] = {
-                    date,
-                    visibility: 0,
-                    mentions: 0,
-                    coverage: 0,
-                  };
-                }
+                  
+                  // Check if our target brand name contains the model's brand name
+                  if (targetBrandName.includes(modelBrandName)) {
+                    return true;
+                  }
+                  
+                  // Check for common variations and abbreviations
+                  const targetWords = targetBrandName.split(/\s+/);
+                  const modelWords = modelBrandName.split(/\s+/);
+                  
+                  // Check if any word from target brand matches any word from model brand
+                  for (const targetWord of targetWords) {
+                    if (targetWord.length > 2) { // Only check words longer than 2 chars
+                      for (const modelWord of modelWords) {
+                        if (modelWord.includes(targetWord) || targetWord.includes(modelWord)) {
+                          return true;
+                        }
+                      }
+                    }
+                  }
+                  
+                  return false;
+                });
                 
-                temporalDataMap[date].mentions += brandEntry.total_mentions;
-                // Calculate visibility and coverage similar to metrics card
-                const maxMentions = Math.max(...brandData.map(b => b.total_mentions));
-                temporalDataMap[date].visibility = maxMentions > 0 ? (brandEntry.total_mentions / maxMentions) * 100 : 0;
-                temporalDataMap[date].coverage = brandEntry.total_mentions > 0 ? 100 : 0;
+                // Debug: Log all available brand names if no match found
+                if (!brandData && modelResult.data?.brands?.length > 0) {
+                  console.log(`No match found for "${brandName}". Available brands in ${modelResult.llm_name}:`, 
+                    modelResult.data.brands.map((b: any) => b.name)
+                  );
+                }
+
+                if (brandData) {
+                  console.log(`Found brand match: "${brandData.name}" for target "${brandName}" in model ${modelResult.llm_name}`);
+                  // Count mentions by model type
+                  const modelName = modelResult.llm_name || "";
+                  if (
+                    modelName.includes("GPT") ||
+                    modelName.includes("OpenAI")
+                  ) {
+                    brandEntry.gpt_search_mentions += 1;
+                  } else if (modelName.includes("Claude")) {
+                    brandEntry.claude_mentions += 1;
+                  } else if (modelName.includes("Perplexity")) {
+                    brandEntry.perplexity_mentions += 1;
+                  } else if (modelName.includes("Gemini")) {
+                    brandEntry.gemini_mentions += 1;
+                  } else if (modelName.includes("AI Overview")) {
+                    brandEntry.ai_overview_mentions += 1;
+                  } else if (modelName.includes("AI Mode")) {
+                    brandEntry.google_ai_mode_mentions += 1;
+                  } else if (modelName.includes("DeepSeek")) {
+                    brandEntry.deepseek_mentions += 1;
+                  } else if (modelName.includes("Nano")) {
+                    brandEntry.gpt_4_1_mentions += 1;
+                  } else if (modelName.includes("Grok")) {
+                    brandEntry.grok_mentions += 1;
+                  } else if (modelName.includes("Llama")) {
+                    brandEntry.llama_mentions += 1;
+                  }
+
+                  brandEntry.total_mentions += 1;
+                }
               }
+            });
+
+            brandData.push(brandEntry);
+
+            // Store temporal data
+            if (analysisRun.analysis_date) {
+              const date = analysisRun.analysis_date.split("T")[0];
+              if (!temporalDataMap[date]) {
+                temporalDataMap[date] = {
+                  date,
+                  visibility: 0,
+                  mentions: 0,
+                  coverage: 0,
+                };
+              }
+
+              temporalDataMap[date].mentions += brandEntry.total_mentions;
+              // Calculate visibility and coverage similar to metrics card
+              const maxMentions = Math.max(
+                ...brandData.map((b) => b.total_mentions)
+              );
+              temporalDataMap[date].visibility =
+                maxMentions > 0
+                  ? Math.min((brandEntry.total_mentions / maxMentions) * 100, 100)
+                  : 0;
+              temporalDataMap[date].coverage =
+                brandEntry.total_mentions > 0 ? 100 : 0;
             }
-          });
-        }
+          }
+        });
+      }
+    });
+
+    // Use the same calculation logic as metrics card
+    if (brandData.length > 0) {
+      const totalMentions = brandData.reduce(
+        (acc, brand) => acc + brand.total_mentions,
+        0
+      );
+      const maxMentions = Math.max(...brandData.map((b) => b.total_mentions));
+
+      // Calculate coverage ratio like metrics card
+      const totalMentionsPerModel = brandData.reduce((acc, brand) => {
+        return (
+          acc +
+          (brand.claude_mentions > 0 ? 1 : 0) +
+          (brand.perplexity_mentions > 0 ? 1 : 0) +
+          (brand.gemini_mentions > 0 ? 1 : 0) +
+          (brand.gpt_search_mentions > 0 ? 1 : 0) +
+          (brand.ai_overview_mentions > 0 ? 1 : 0) +
+          (brand.google_ai_mode_mentions > 0 ? 1 : 0) +
+          (brand.deepseek_mentions > 0 ? 1 : 0) +
+          (brand.gpt_4_1_mentions > 0 ? 1 : 0) +
+          (brand.grok_mentions > 0 ? 1 : 0) +
+          (brand.llama_mentions > 0 ? 1 : 0)
+        );
+      }, 0);
+
+      const getMaxActiveModels = () => {
+        // Find the maximum number of models that successfully analyzed across all brands
+        const modelCounts = new Set<string>();
+    
+        brandData.forEach((brand) => {
+          if (brand.claude_mentions > 0) modelCounts.add("Claude 4.0 Sonnet");
+          if (brand.perplexity_mentions > 0) modelCounts.add("Perplexity Sonar");
+          if (brand.gemini_mentions > 0) modelCounts.add("Gemini 2.5 Flash");
+          if (brand.gpt_search_mentions > 0) modelCounts.add("GPT 4o Web Search");
+          if (brand.ai_overview_mentions > 0) modelCounts.add("Google AI Overview");
+          if (brand.google_ai_mode_mentions > 0) modelCounts.add("Google AI Mode");
+          if (brand.deepseek_mentions > 0) modelCounts.add("DeepSeek R1");
+          if (brand.gpt_4_1_mentions > 0) modelCounts.add("GPT 4.1 Nano");
+          if (brand.grok_mentions > 0) modelCounts.add("Grok");
+          if (brand.llama_mentions > 0) modelCounts.add("Llama");
+        });
+    
+        return modelCounts.size;
+      };
+    
+      const maxModels = getMaxActiveModels();
+      const coverageRatio = Math.min(
+        (totalMentionsPerModel / (maxModels * brandData.length)) * 100,
+        100
+      );
+      const mentionsIndex = maxMentions > 0 ? Math.min(totalMentions / maxMentions, 1) : 0;
+      const visibilityScore = Math.min((100 * (coverageRatio / 100 + mentionsIndex)) / 2, 100);
+
+      // Calculate model mentions
+      const uniqueModelMentions: Record<string, number> = {};
+      brandData.forEach((brand) => {
+        if (brand.claude_mentions > 0)
+          uniqueModelMentions["Claude 4.0 Sonnet"] =
+            (uniqueModelMentions["Claude 4.0 Sonnet"] || 0) + 1;
+        if (brand.perplexity_mentions > 0)
+          uniqueModelMentions["Perplexity Sonar"] =
+            (uniqueModelMentions["Perplexity Sonar"] || 0) + 1;
+        if (brand.gemini_mentions > 0)
+          uniqueModelMentions["Gemini 2.5 Flash"] =
+            (uniqueModelMentions["Gemini 2.5 Flash"] || 0) + 1;
+        if (brand.gpt_search_mentions > 0)
+          uniqueModelMentions["GPT 4o Web Search"] =
+            (uniqueModelMentions["GPT 4o Web Search"] || 0) + 1;
+        if (brand.ai_overview_mentions > 0)
+          uniqueModelMentions["Google AI Overview"] =
+            (uniqueModelMentions["Google AI Overview"] || 0) + 1;
+        if (brand.google_ai_mode_mentions > 0)
+          uniqueModelMentions["Google AI Mode"] =
+            (uniqueModelMentions["Google AI Mode"] || 0) + 1;
+        if (brand.deepseek_mentions > 0)
+          uniqueModelMentions["DeepSeek R1"] =
+            (uniqueModelMentions["DeepSeek R1"] || 0) + 1;
+        if (brand.gpt_4_1_mentions > 0)
+          uniqueModelMentions["GPT 4.1 Nano"] =
+            (uniqueModelMentions["GPT 4.1 Nano"] || 0) + 1;
+        if (brand.grok_mentions > 0)
+          uniqueModelMentions["Grok"] = (uniqueModelMentions["Grok"] || 0) + 1;
+        if (brand.llama_mentions > 0)
+          uniqueModelMentions["Llama"] =
+            (uniqueModelMentions["Llama"] || 0) + 1;
       });
 
-      // Use the same calculation logic as metrics card
-      if (brandData.length > 0) {
-        const totalMentions = brandData.reduce((acc, brand) => acc + brand.total_mentions, 0);
-        const maxMentions = Math.max(...brandData.map(b => b.total_mentions));
-        
-        // Calculate coverage ratio like metrics card
-        const totalMentionsPerModel = brandData.reduce((acc, brand) => {
-          return (
-            acc +
-            (brand.claude_mentions > 0 ? 1 : 0) +
-            (brand.perplexity_mentions > 0 ? 1 : 0) +
-            (brand.gemini_mentions > 0 ? 1 : 0) +
-            (brand.gpt_search_mentions > 0 ? 1 : 0) +
-            (brand.ai_overview_mentions > 0 ? 1 : 0) +
-            (brand.google_ai_mode_mentions > 0 ? 1 : 0)
-          );
-        }, 0);
+      // Calculate trends
+      const temporalArray = Object.values(temporalDataMap).sort(
+        (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+      );
 
-        const maxModels = 6; // Total possible models
-        const coverageRatio = (totalMentionsPerModel / (maxModels * brandData.length)) * 100;
-        const mentionsIndex = maxMentions > 0 ? (totalMentions / maxMentions) : 0;
-        const visibilityScore = (100 * (coverageRatio / 100 + mentionsIndex)) / 2;
+      let visibilityTrend: number | undefined;
+      let coverageTrend: number | undefined;
+      let mentionsTrend: number | undefined;
 
-        // Calculate model mentions
-        const uniqueModelMentions: Record<string, number> = {};
-        brandData.forEach(brand => {
-          if (brand.claude_mentions > 0) uniqueModelMentions['Claude 4.0 Sonnet'] = (uniqueModelMentions['Claude 4.0 Sonnet'] || 0) + 1;
-          if (brand.perplexity_mentions > 0) uniqueModelMentions['Perplexity Sonar'] = (uniqueModelMentions['Perplexity Sonar'] || 0) + 1;
-          if (brand.gemini_mentions > 0) uniqueModelMentions['Gemini 2.5 Flash'] = (uniqueModelMentions['Gemini 2.5 Flash'] || 0) + 1;
-          if (brand.gpt_search_mentions > 0) uniqueModelMentions['GPT 4o Web Search'] = (uniqueModelMentions['GPT 4o Web Search'] || 0) + 1;
-          if (brand.ai_overview_mentions > 0) uniqueModelMentions['Google AI Overview'] = (uniqueModelMentions['Google AI Overview'] || 0) + 1;
-          if (brand.google_ai_mode_mentions > 0) uniqueModelMentions['Google AI Mode'] = (uniqueModelMentions['Google AI Mode'] || 0) + 1;
-        });
+      if (temporalArray.length >= 2) {
+        const latest = temporalArray[temporalArray.length - 1];
+        const previous = temporalArray[temporalArray.length - 2];
 
-        // Calculate trends
-        const temporalArray = Object.values(temporalDataMap).sort(
-          (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-        );
-        
-        let visibilityTrend: number | undefined;
-        let coverageTrend: number | undefined;
-        let mentionsTrend: number | undefined;
-
-        if (temporalArray.length >= 2) {
-          const latest = temporalArray[temporalArray.length - 1];
-          const previous = temporalArray[temporalArray.length - 2];
-          
-          if (previous.visibility > 0) {
-            visibilityTrend = (latest.visibility - previous.visibility) / previous.visibility;
-          }
-          if (previous.coverage > 0) {
-            coverageTrend = (latest.coverage - previous.coverage) / previous.coverage;
-          }
-          if (previous.mentions > 0) {
-            mentionsTrend = (latest.mentions - previous.mentions) / previous.mentions;
-          }
+        if (previous.visibility > 0) {
+          visibilityTrend =
+            (latest.visibility - previous.visibility) / previous.visibility;
         }
-
-        setBrandMetrics({
-          avgBrandVisibility: visibilityScore,
-          coverageRatio: coverageRatio,
-          totalMentions: totalMentions,
-          uniqueModelMentions: uniqueModelMentions,
-          visibilityTrend,
-          coverageTrend,
-          mentionsTrend,
-        });
-
-        setTemporalData(temporalArray);
+        if (previous.coverage > 0) {
+          coverageTrend =
+            (latest.coverage - previous.coverage) / previous.coverage;
+        }
+        if (previous.mentions > 0) {
+          mentionsTrend =
+            (latest.mentions - previous.mentions) / previous.mentions;
+        }
       }
-    };
+
+      setBrandMetrics({
+        avgBrandVisibility: visibilityScore,
+        coverageRatio: coverageRatio,
+        totalMentions: totalMentions,
+        uniqueModelMentions: uniqueModelMentions,
+        visibilityTrend,
+        coverageTrend,
+        mentionsTrend,
+      });
+
+      setTemporalData(temporalArray);
+    }
+  };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -320,7 +463,6 @@ export default function BrandProjectPage() {
       minute: "2-digit",
     });
   };
-
 
   const getModeColor = (mode: string) => {
     switch (mode.toLowerCase()) {
@@ -333,13 +475,30 @@ export default function BrandProjectPage() {
     }
   };
 
+  // Model to icon mapping
+  const modelIcons: Record<
+    string,
+    React.ComponentType<{ className?: string }>
+  > = {
+    "GPT 4o Web Search": OpenAI,
+    "Claude 4.0 Sonnet": Claude,
+    "Perplexity Sonar": Perplexity,
+    "Gemini 2.5 Flash": Gemini,
+    "Google AI Overview": Gemini.Color,
+    "Google AI Mode": AiStudio.Color,
+    "DeepSeek R1": DeepSeek.Color,
+    "GPT 4.1 Nano": OpenAI,
+    Grok: Grok,
+    Llama: Meta.Color,
+  };
+
   if (loading) {
     return (
       <div className="h-full text-white flex flex-col items-center justify-center">
-      <div className="px-4 sm:px-5 py-6">
-        <p className="text-muted-foreground">Loading...</p>
+        <div className="px-4 sm:px-5 py-6">
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
       </div>
-    </div>
     );
   }
 
@@ -353,7 +512,10 @@ export default function BrandProjectPage() {
               <Button onClick={fetchBrandAndSessions} variant="outline">
                 Try Again
               </Button>
-              <Button onClick={() => router.push("/dashboard/projects")} variant="default">
+              <Button
+                onClick={() => router.push("/dashboard/projects")}
+                variant="default"
+              >
                 Back to Projects
               </Button>
             </div>
@@ -424,8 +586,10 @@ export default function BrandProjectPage() {
       {/* Brand Metrics Dashboard */}
       {brandMetrics && monitoredSessions.length > 0 && (
         <div className="mb-8 space-y-6">
-          <h2 className="text-2xl font-semibold">Brand Performance Analytics</h2>
-          
+          <h2 className="text-2xl font-semibold">
+            Brand Performance Analytics
+          </h2>
+
           {/* KPI Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Average Brand Visibility */}
@@ -443,22 +607,32 @@ export default function BrandProjectPage() {
                       <Info className="w-4 h-4" />
                     </TooltipTrigger>
                     <TooltipContent className="max-w-sm w-full">
-                      <p>Average visibility score across all prompts for this brand</p>
+                      <p>
+                        Average visibility score across all prompts for this
+                        brand
+                      </p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
               </div>
-              <div className="text-2xl font-bold mb-1">{brandMetrics.avgBrandVisibility.toFixed(1)}%</div>
+              <div className="text-2xl font-bold mb-1">
+                {brandMetrics.avgBrandVisibility.toFixed(1)}%
+              </div>
               {brandMetrics.visibilityTrend !== undefined && (
-                <div className={`text-sm flex items-center gap-1 ${
-                  brandMetrics.visibilityTrend > 0 ? 'text-green-600' : 'text-red-600'
-                }`}>
+                <div
+                  className={`text-sm flex items-center gap-1 ${
+                    brandMetrics.visibilityTrend > 0
+                      ? "text-green-600"
+                      : "text-red-600"
+                  }`}
+                >
                   {brandMetrics.visibilityTrend > 0 ? (
                     <ArrowUpRight className="w-3 h-3" />
                   ) : (
                     <ArrowDownRight className="w-3 h-3" />
                   )}
-                  {Math.abs(brandMetrics.visibilityTrend * 100).toFixed(1)}% vs previous
+                  {Math.abs(brandMetrics.visibilityTrend * 100).toFixed(1)}% vs
+                  previous
                 </div>
               )}
             </motion.div>
@@ -478,22 +652,32 @@ export default function BrandProjectPage() {
                       <Info className="w-4 h-4" />
                     </TooltipTrigger>
                     <TooltipContent className="max-w-sm w-full">
-                      <p>Average ratio of models that mentioned this brand across all prompts</p>
+                      <p>
+                        Average ratio of models that mentioned this brand across
+                        all prompts
+                      </p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
               </div>
-              <div className="text-2xl font-bold mb-1">{brandMetrics.coverageRatio.toFixed(1)}%</div>
+              <div className="text-2xl font-bold mb-1">
+                {brandMetrics.coverageRatio.toFixed(1)}%
+              </div>
               {brandMetrics.coverageTrend !== undefined && (
-                <div className={`text-sm flex items-center gap-1 ${
-                  brandMetrics.coverageTrend > 0 ? 'text-green-600' : 'text-red-600'
-                }`}>
+                <div
+                  className={`text-sm flex items-center gap-1 ${
+                    brandMetrics.coverageTrend > 0
+                      ? "text-green-600"
+                      : "text-red-600"
+                  }`}
+                >
                   {brandMetrics.coverageTrend > 0 ? (
                     <ArrowUpRight className="w-3 h-3" />
                   ) : (
                     <ArrowDownRight className="w-3 h-3" />
                   )}
-                  {Math.abs(brandMetrics.coverageTrend * 100).toFixed(1)}% vs previous
+                  {Math.abs(brandMetrics.coverageTrend * 100).toFixed(1)}% vs
+                  previous
                 </div>
               )}
             </motion.div>
@@ -513,22 +697,32 @@ export default function BrandProjectPage() {
                       <Info className="w-4 h-4" />
                     </TooltipTrigger>
                     <TooltipContent className="max-w-sm w-full">
-                      <p>Total number of mentions across all prompts for this brand</p>
+                      <p>
+                        Total number of mentions across all prompts for this
+                        brand
+                      </p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
               </div>
-              <div className="text-2xl font-bold mb-1">{brandMetrics.totalMentions}</div>
+              <div className="text-2xl font-bold mb-1">
+                {brandMetrics.totalMentions}
+              </div>
               {brandMetrics.mentionsTrend !== undefined && (
-                <div className={`text-sm flex items-center gap-1 ${
-                  brandMetrics.mentionsTrend > 0 ? 'text-green-600' : 'text-red-600'
-                }`}>
+                <div
+                  className={`text-sm flex items-center gap-1 ${
+                    brandMetrics.mentionsTrend > 0
+                      ? "text-green-600"
+                      : "text-red-600"
+                  }`}
+                >
                   {brandMetrics.mentionsTrend > 0 ? (
                     <ArrowUpRight className="w-3 h-3" />
                   ) : (
                     <ArrowDownRight className="w-3 h-3" />
                   )}
-                  {Math.abs(brandMetrics.mentionsTrend * 100).toFixed(1)}% vs previous
+                  {Math.abs(brandMetrics.mentionsTrend * 100).toFixed(1)}% vs
+                  previous
                 </div>
               )}
             </motion.div>
@@ -540,18 +734,30 @@ export default function BrandProjectPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, delay: 0.3 }}
             >
-              <div className="text-sm text-muted-foreground mb-1">Listed in Models</div>
-              <div className="text-2xl font-bold mb-2">{Object.keys(brandMetrics.uniqueModelMentions).length}</div>
-              <div className="space-y-1">
-                {Object.entries(brandMetrics.uniqueModelMentions).slice(0, 3).map(([model, count]) => (
-                  <div key={model} className="flex justify-between text-xs">
-                    <span className="truncate">{model.replace(/\s*(4\.0|2\.5|4o)\s*/g, '')}</span>
-                    <span className="text-blue-500 font-semibold">{count}</span>
-                  </div>
-                ))}
+              <div className="text-sm text-muted-foreground mb-1">
+                Listed in Models
+              </div>
+              <div className="space-y-2 mt-2">
+                {Object.entries(brandMetrics.uniqueModelMentions).map(
+                  ([model, count]) => {
+                    const IconComponent = modelIcons[model];
+                    return (
+                      <div key={model} className="flex justify-between text-xs">
+                        <span className="truncate flex items-center gap-1">
+                          <IconComponent className="w-4 h-4" />
+                          {model}
+                        </span>
+                        <span className="text-blue-500 font-semibold">
+                          {count}
+                        </span>
+                      </div>
+                    );
+                  }
+                )}
                 {Object.keys(brandMetrics.uniqueModelMentions).length > 3 && (
                   <div className="text-xs text-muted-foreground">
-                    +{Object.keys(brandMetrics.uniqueModelMentions).length - 3} more
+                    +{Object.keys(brandMetrics.uniqueModelMentions).length - 3}{" "}
+                    more
                   </div>
                 )}
               </div>
@@ -568,26 +774,38 @@ export default function BrandProjectPage() {
                   Brand Visibility Over Time
                 </CardTitle>
                 <CardDescription>
-                  {temporalData.length > 0 ? 'Average visibility trend across all prompts' : 'No temporal data available yet'}
+                  {temporalData.length > 0
+                    ? "Average visibility trend across all prompts"
+                    : "No temporal data available yet"}
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 {temporalData.length > 0 ? (
                   <ChartContainer config={{}} className="h-[300px] w-full">
                     <AreaChart
-                      data={temporalData.map(d => ({
-                        date: new Date(d.date).toLocaleDateString('en-US', { day: '2-digit', month: 'short' }),
-                        visibility: Number(d.visibility.toFixed(1))
+                      data={temporalData.map((d) => ({
+                        date: new Date(d.date).toLocaleDateString("en-US", {
+                          day: "2-digit",
+                          month: "short",
+                        }),
+                        visibility: Number(d.visibility.toFixed(1)),
                       }))}
                       margin={{ left: 12, right: 12, top: 20, bottom: 20 }}
                     >
-                      <CartesianGrid vertical={false} strokeDasharray="3 3" opacity={0.1} />
+                      <CartesianGrid
+                        vertical={false}
+                        strokeDasharray="3 3"
+                        opacity={0.1}
+                      />
                       <XAxis
                         dataKey="date"
                         tickLine={false}
                         axisLine={false}
                         tickMargin={8}
-                        style={{ fontSize: '12px', fill: 'var(--muted-foreground)' }}
+                        style={{
+                          fontSize: "12px",
+                          fill: "var(--muted-foreground)",
+                        }}
                       />
                       <YAxis
                         tickLine={false}
@@ -595,16 +813,19 @@ export default function BrandProjectPage() {
                         tickMargin={8}
                         domain={[0, 100]}
                         tickFormatter={(value) => `${value}%`}
-                        style={{ fontSize: '12px', fill: 'var(--muted-foreground)' }}
+                        style={{
+                          fontSize: "12px",
+                          fill: "var(--muted-foreground)",
+                        }}
                       />
                       <ChartTooltip
                         contentStyle={{
-                          backgroundColor: 'var(--background)',
-                          border: '1px solid var(--border)',
-                          borderRadius: '6px',
-                          fontSize: '12px',
+                          backgroundColor: "var(--background)",
+                          border: "1px solid var(--border)",
+                          borderRadius: "6px",
+                          fontSize: "12px",
                         }}
-                        formatter={(value) => [`${value}%`, 'Visibility']}
+                        formatter={(value) => [`${value}%`, "Visibility"]}
                       />
                       <Area
                         type="monotone"
@@ -632,23 +853,28 @@ export default function BrandProjectPage() {
               <CardHeader>
                 <CardTitle>Model Mentions Distribution</CardTitle>
                 <CardDescription>
-                  {Object.keys(brandMetrics.uniqueModelMentions).length > 0 
-                    ? 'Number of prompts where brand was mentioned by each model'
-                    : 'No model mentions data available yet'
-                  }
+                  {Object.keys(brandMetrics.uniqueModelMentions).length > 0
+                    ? "Number of prompts where brand was mentioned by each model"
+                    : "No model mentions data available yet"}
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 {Object.keys(brandMetrics.uniqueModelMentions).length > 0 ? (
                   <ChartContainer config={{}} className="h-[300px] w-full">
                     <BarChart
-                      data={Object.entries(brandMetrics.uniqueModelMentions).map(([model, count]) => ({
-                        model: model.replace(/\s*(4\.0|2\.5|4o)\s*/g, ''),
-                        count
+                      data={Object.entries(
+                        brandMetrics.uniqueModelMentions
+                      ).map(([model, count]) => ({
+                        model: model.replace(/\s*(4\.0|2\.5|4o)\s*/g, ""),
+                        count,
                       }))}
                       margin={{ left: 12, right: 12, top: 20, bottom: 20 }}
                     >
-                      <CartesianGrid vertical={false} strokeDasharray="3 3" opacity={0.1} />
+                      <CartesianGrid
+                        vertical={false}
+                        strokeDasharray="3 3"
+                        opacity={0.1}
+                      />
                       <XAxis
                         dataKey="model"
                         tickLine={false}
@@ -657,22 +883,28 @@ export default function BrandProjectPage() {
                         angle={-45}
                         textAnchor="end"
                         height={80}
-                        style={{ fontSize: '10px', fill: 'var(--muted-foreground)' }}
+                        style={{
+                          fontSize: "10px",
+                          fill: "var(--muted-foreground)",
+                        }}
                       />
                       <YAxis
                         tickLine={false}
                         axisLine={false}
                         tickMargin={8}
-                        style={{ fontSize: '12px', fill: 'var(--muted-foreground)' }}
+                        style={{
+                          fontSize: "12px",
+                          fill: "var(--muted-foreground)",
+                        }}
                       />
                       <ChartTooltip
                         contentStyle={{
-                          backgroundColor: 'var(--background)',
-                          border: '1px solid var(--border)',
-                          borderRadius: '6px',
-                          fontSize: '12px',
+                          backgroundColor: "var(--background)",
+                          border: "1px solid var(--border)",
+                          borderRadius: "6px",
+                          fontSize: "12px",
                         }}
-                        formatter={(value) => [`${value}`, 'Mentions']}
+                        formatter={(value) => [`${value}`, "Mentions"]}
                       />
                       <Bar
                         dataKey="count"
@@ -703,18 +935,26 @@ export default function BrandProjectPage() {
           <div>
             <h2 className="text-2xl font-semibold">Analysis Sessions</h2>
             <p className="text-muted-foreground mt-1">
-              {sessions.length + monitoredSessions.length} {sessions.length + monitoredSessions.length === 1 ? "session" : "sessions"} found
+              {sessions.length + monitoredSessions.length}{" "}
+              {sessions.length + monitoredSessions.length === 1
+                ? "session"
+                : "sessions"}{" "}
+              found
             </p>
           </div>
           <Button asChild variant="outline" className="rounded-full">
-            <Link href={`/dashboard/search?attached_brand_id=${brand.id}`}>New Analysis</Link>
+            <Link href={`/dashboard/search?attached_brand_id=${brand.id}`}>
+              New Analysis
+            </Link>
           </Button>
         </div>
 
         {sessions.length + monitoredSessions.length === 0 ? (
           <div className="text-center py-12">
             <Activity className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No Analysis Sessions Yet</h3>
+            <h3 className="text-lg font-semibold mb-2">
+              No Analysis Sessions Yet
+            </h3>
             <p className="text-muted-foreground mb-6">
               This brand hasn&apos;t been used in any analysis sessions yet.
             </p>
@@ -725,89 +965,123 @@ export default function BrandProjectPage() {
         ) : (
           <Tabs defaultValue="monitored">
             <TabsList className="bg-zinc-800/50 border-zinc-700 gap-4">
-              <TabsTrigger value="monitored" className="data-[state=active]:!bg-blue-600 data-[state=active]:!text-white">Monitored Queries ({monitoredSessions.length})</TabsTrigger>
-              <TabsTrigger value="analysis" className="data-[state=active]:!bg-blue-600 data-[state=active]:!text-white">Search Analysis ({sessions.length})</TabsTrigger>
+              <TabsTrigger
+                value="monitored"
+                className="data-[state=active]:!bg-blue-600 data-[state=active]:!text-white"
+              >
+                Monitored Queries ({monitoredSessions.length})
+              </TabsTrigger>
+              <TabsTrigger
+                value="analysis"
+                className="data-[state=active]:!bg-blue-600 data-[state=active]:!text-white"
+              >
+                Search Analysis ({sessions.length})
+              </TabsTrigger>
             </TabsList>
             <TabsContent value="analysis">
-            <div className="grid gap-4">
-            {sessions.map((session) => (
-              <Card key={session.id} className="hover:shadow-lg transition-shadow">
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <Badge
-                          variant="outline"
-                          className={`${getModeColor(session.mode)} flex items-center gap-1`}
-                        >
-                          {session.mode}
-                        </Badge>
-                        <Badge variant="secondary" className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          {formatDate(session.analyzed_at)}
-                        </Badge>
+              <div className="grid gap-4">
+                {sessions.map((session) => (
+                  <Card
+                    key={session.id}
+                    className="hover:shadow-lg transition-shadow"
+                  >
+                    <CardHeader>
+                      <div className="flex items-start justify-between">
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <Badge
+                              variant="outline"
+                              className={`${getModeColor(
+                                session.mode
+                              )} flex items-center gap-1`}
+                            >
+                              {session.mode}
+                            </Badge>
+                            <Badge
+                              variant="secondary"
+                              className="flex items-center gap-1"
+                            >
+                              <Calendar className="h-3 w-3" />
+                              {formatDate(session.analyzed_at)}
+                            </Badge>
+                          </div>
+                          {session.query && (
+                            <CardTitle className="text-lg font-medium">
+                              {session.query}
+                            </CardTitle>
+                          )}
+                        </div>
                       </div>
-                      {session.query && (
-                        <CardTitle className="text-lg font-medium">
-                          {session.query}
-                        </CardTitle>
-                      )}
-                    </div>
-                  </div>
-                </CardHeader>
-                
-                <CardContent>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-blue-600">
-                        {session.query_count}
+                    </CardHeader>
+
+                    <CardContent>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                        <div className="text-center">
+                          <div className="text-2xl font-bold text-blue-600">
+                            {session.query_count}
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            Queries
+                          </div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-2xl font-bold text-blue-600">
+                            {session.total_rankings}
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            Rankings
+                          </div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-2xl font-bold text-blue-600">
+                            {session.top_entities
+                              ? Object.keys(session.top_entities).length
+                              : 0}
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            Entities
+                          </div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-2xl font-bold text-blue-600">
+                            {session.stats?.avg_score}%
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            Avg Score
+                          </div>
+                        </div>
                       </div>
-                      <div className="text-sm text-muted-foreground">Queries</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-blue-600">
-                        {session.total_rankings}
+
+                      <div className="flex justify-between items-center pt-4 border-t">
+                        <div className="text-sm text-muted-foreground">
+                          Session ID: {session.id.slice(0, 8)}...
+                        </div>
+                        <Button variant="outline" size="sm" asChild>
+                          <Link
+                            href={`/dashboard/search/analysis?mode_id=${session.id}`}
+                          >
+                            <Eye className="h-4 w-4 mr-2" />
+                            View Details
+                          </Link>
+                        </Button>
                       </div>
-                      <div className="text-sm text-muted-foreground">Rankings</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-blue-600">
-                        {session.top_entities ? Object.keys(session.top_entities).length : 0}
-                      </div>
-                      <div className="text-sm text-muted-foreground">Entities</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-blue-600">
-                        {session.stats?.avg_score}%
-                      </div>
-                      <div className="text-sm text-muted-foreground">Avg Score</div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex justify-between items-center pt-4 border-t">
-                    <div className="text-sm text-muted-foreground">
-                      Session ID: {session.id.slice(0, 8)}...
-                    </div>
-                    <Button variant="outline" size="sm" asChild>
-                      <Link href={`/dashboard/search/analysis?mode_id=${session.id}`}>
-                        <Eye className="h-4 w-4 mr-2" />
-                        View Details
-                      </Link>
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
             </TabsContent>
             <TabsContent value="monitored">
-              <MonitoredSummary queries={monitoredSessions as unknown as ScheduledQuery[]} />
-              <ScheduledQueriesList queries={monitoredSessions as unknown as ScheduledQuery[]} />
+              <MonitoredSummary
+                queries={monitoredSessions as unknown as ScheduledQuery[]}
+                brandName={brandName}
+              />
+              <ScheduledQueriesList
+                queries={monitoredSessions as unknown as ScheduledQuery[]}
+              />
             </TabsContent>
           </Tabs>
-         
         )}
       </div>
     </div>
   );
-} 
+}

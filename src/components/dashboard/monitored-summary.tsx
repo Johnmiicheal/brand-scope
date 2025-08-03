@@ -38,10 +38,12 @@ interface AnalysisRun {
 
 interface MonitoredSummaryProps {
   queries: ScheduledQuery[];
+  brandName?: string;
 }
 
 interface SummaryMetrics {
   totalRankings: number;
+  averageRank: number;
   averageScore: number;
   queryCount: number;
   modelCount: number;
@@ -49,9 +51,11 @@ interface SummaryMetrics {
   loading: boolean;
 }
 
-export function MonitoredSummary({ queries }: MonitoredSummaryProps) {
+export function 
+MonitoredSummary({ queries, brandName }: MonitoredSummaryProps) {
   const [metrics, setMetrics] = useState<SummaryMetrics>({
     totalRankings: 0,
+    averageRank: 0,
     averageScore: 0,
     queryCount: 0,
     modelCount: 0,
@@ -64,6 +68,7 @@ export function MonitoredSummary({ queries }: MonitoredSummaryProps) {
       if (!queries || queries.length === 0) {
         setMetrics({
           totalRankings: 0,
+          averageRank: 0,
           averageScore: 0,
           queryCount: 0,
           modelCount: 0,
@@ -77,6 +82,8 @@ export function MonitoredSummary({ queries }: MonitoredSummaryProps) {
         let totalRankings = 0;
         let totalScore = 0;
         let scoreCount = 0;
+        let totalRank = 0;
+        let rankCount = 0;
         const modelsSet = new Set<string>();
 
         // Process each scheduled query's results
@@ -100,6 +107,24 @@ export function MonitoredSummary({ queries }: MonitoredSummaryProps) {
                         scoreCount += 1;
                         totalRankings += 1;
                       }
+                      
+                      // Calculate average rank for the specific brand
+                      if (brandName && brand.name && typeof brand.rank === 'number') {
+                        const modelBrandName = brand.name.toLowerCase();
+                        const targetBrandName = brandName.toLowerCase();
+                        
+                        // Check if this brand matches our target brand
+                        if (modelBrandName.includes(targetBrandName) || 
+                            targetBrandName.includes(modelBrandName) ||
+                            modelBrandName.split(/\s+/).some(word => 
+                              targetBrandName.split(/\s+/).some(targetWord => 
+                                word.includes(targetWord) || targetWord.includes(word)
+                              )
+                            )) {
+                          totalRank += brand.rank;
+                          rankCount += 1;
+                        }
+                      }
                     });
                   }
                 });
@@ -119,9 +144,11 @@ export function MonitoredSummary({ queries }: MonitoredSummaryProps) {
 
         const activeQueries = queries.filter(q => q.status === 'active').length;
         const averageScore = scoreCount > 0 ? Math.round((totalScore / scoreCount) * 10) / 10 : 0;
+        const averageRank = rankCount > 0 ? Math.round((totalRank / rankCount) * 10) / 10 : 0;
 
         setMetrics({
           totalRankings,
+          averageRank,
           averageScore,
           queryCount: queries.length,
           modelCount: modelsSet.size,
@@ -133,6 +160,7 @@ export function MonitoredSummary({ queries }: MonitoredSummaryProps) {
         console.error('Error calculating metrics:', error);
         setMetrics({
           totalRankings: 0,
+          averageRank: 0,
           averageScore: 0,
           queryCount: queries.length,
           modelCount: 0,
@@ -201,9 +229,9 @@ export function MonitoredSummary({ queries }: MonitoredSummaryProps) {
       <CardContent>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <MetricCard
-            label="Brand Rankings"
-            value={metrics.totalRankings}
-            description="Total brand analyses generated"
+            label="Average Rank Position"
+            value={metrics.averageRank}
+            description={brandName ? `Average rank of ${brandName} across all analyses` : "Average rank position across all analyses"}
           />
           
           <MetricCard

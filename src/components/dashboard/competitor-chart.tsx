@@ -50,6 +50,10 @@ interface BrandAnalysis {
   gpt_search_mentions: number;
   ai_overview_mentions: number;
   google_ai_mode_mentions: number;
+  deepseek_mentions: number;
+  gpt_4_1_mentions: number;
+  grok_mentions: number;
+  llama_mentions: number;
 }
 
 interface Brand {
@@ -62,6 +66,10 @@ interface Brand {
   total_mentions: number;
   ai_overview_mentions: number;
   google_ai_mode_mentions: number;
+  deepseek_mentions: number;
+  gpt_4_1_mentions: number;
+  grok_mentions: number;
+  llama_mentions: number;
 }
 
 const chartConfig = {
@@ -108,6 +116,10 @@ export function CompetitorChart({
       if (brand.gpt_search_mentions > 0) modelCounts.add("GPT 4o Web Search");
       if (brand.ai_overview_mentions > 0) modelCounts.add("Google AI Overview");
       if (brand.google_ai_mode_mentions > 0) modelCounts.add("Google AI Mode");
+      if (brand.deepseek_mentions > 0) modelCounts.add("DeepSeek R1");
+      if (brand.gpt_4_1_mentions > 0) modelCounts.add("GPT 4.1 Nano");
+      if (brand.grok_mentions > 0) modelCounts.add("Grok");
+      if (brand.llama_mentions > 0) modelCounts.add("Llama");
     });
     
     return modelCounts.size;
@@ -122,7 +134,11 @@ export function CompetitorChart({
       (brand.gemini_mentions > 0 ? 1 : 0) +
       (brand.gpt_search_mentions > 0 ? 1 : 0) +
       (brand.ai_overview_mentions > 0 ? 1 : 0) +
-      (brand.google_ai_mode_mentions > 0 ? 1 : 0);
+      (brand.google_ai_mode_mentions > 0 ? 1 : 0) +
+      (brand.deepseek_mentions > 0 ? 1 : 0) +
+      (brand.gpt_4_1_mentions > 0 ? 1 : 0) +
+      (brand.grok_mentions > 0 ? 1 : 0) +
+      (brand.llama_mentions > 0 ? 1 : 0);
        // Check selected models and add to total mentions count
     let selectedModelTotalMentions = 0;
     
@@ -145,7 +161,19 @@ export function CompetitorChart({
     if (selectedModel.has("Google AI Mode") && brand.google_ai_mode_mentions > 0) {
       selectedModelTotalMentions++;
     }
-    // Use selectedModelTotalMentions when filtering is active
+    if (selectedModel.has("DeepSeek R1") && brand.deepseek_mentions > 0) {
+      selectedModelTotalMentions++;
+    }
+    if (selectedModel.has("GPT 4.1 Nano") && brand.gpt_4_1_mentions > 0) {
+      selectedModelTotalMentions++;
+    }
+    if (selectedModel.has("Grok") && brand.grok_mentions > 0) {
+      selectedModelTotalMentions++;
+    }
+    if (selectedModel.has("Llama") && brand.llama_mentions > 0) {
+      selectedModelTotalMentions++;
+    }
+      // Use selectedModelTotalMentions when filtering is active
     const finalTotalMentions = selectedModel.size > 0 ? selectedModelTotalMentions : totalMentionsPerModel;
     const finalMaxModels = selectedModel.size > 0 ? selectedModel.size : maxModels;
     if (type === "ratio") {

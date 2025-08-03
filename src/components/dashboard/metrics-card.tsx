@@ -10,7 +10,7 @@ import {
   TooltipProvider,
   TooltipContent,
 } from "@/components/ui/tooltip";
-import { AiStudio, Claude, Gemini, OpenAI, Perplexity } from "@lobehub/icons";
+import { AiStudio, Claude, DeepSeek, Gemini, Grok, Meta, OpenAI, Perplexity } from "@lobehub/icons";
 interface MetricCardProps {
   title: string;
   value: string | number;
@@ -104,6 +104,10 @@ interface Brand {
   total_mentions: number;
   ai_overview_mentions: number;
   google_ai_mode_mentions: number;
+  deepseek_mentions: number;
+  gpt_4_1_mentions: number;
+  grok_mentions: number;
+  llama_mentions: number;
 }
 
 interface TemporalBrand {
@@ -117,6 +121,10 @@ interface TemporalBrand {
   total_mentions: number;
   ai_overview_mentions: number;
   google_ai_mode_mentions: number;
+  deepseek_mentions: number;
+  gpt_4_1_mentions: number;
+  grok_mentions: number;
+  llama_mentions: number;
 }
 
 interface MetricsHeaderProps {
@@ -178,6 +186,22 @@ export function MetricsHeader({
         modelCounts["Google AI Mode"] =
           (modelCounts["Google AI Mode"] || 0) + 1;
       }
+      if (brand.deepseek_mentions > 0) {
+        modelCounts["DeepSeek R1"] =
+          (modelCounts["DeepSeek R1"] || 0) + 1;
+      }
+      if (brand.gpt_4_1_mentions > 0) {
+        modelCounts["GPT 4.1 Nano"] =
+          (modelCounts["GPT 4.1 Nano"] || 0) + 1;
+      }
+      if (brand.grok_mentions > 0) {
+        modelCounts["Grok"] =
+          (modelCounts["Grok"] || 0) + 1;
+      }
+      if (brand.llama_mentions > 0) {
+        modelCounts["Llama"] =
+          (modelCounts["Llama"] || 0) + 1;
+      }
     });
 
     return Object.entries(modelCounts).map(([modelName, count]) => ({
@@ -197,6 +221,10 @@ export function MetricsHeader({
     "Gemini 2.5 Flash": Gemini,
     "Google AI Overview": Gemini.Color,
     "Google AI Mode": AiStudio.Color,
+    "DeepSeek R1": DeepSeek.Color,
+    "GPT 4.1 Nano": OpenAI,
+    "Grok": Grok,
+    "Llama": Meta.Color,
   };
 
   const activeModels = getUniqueModelsForSelectedBrands();
@@ -224,6 +252,10 @@ export function MetricsHeader({
       if (brand.gpt_search_mentions > 0) modelCounts.add("GPT 4o Web Search");
       if (brand.ai_overview_mentions > 0) modelCounts.add("Google AI Overview");
       if (brand.google_ai_mode_mentions > 0) modelCounts.add("Google AI Mode");
+      if (brand.deepseek_mentions > 0) modelCounts.add("DeepSeek R1");
+      if (brand.gpt_4_1_mentions > 0) modelCounts.add("GPT 4.1 Nano");
+      if (brand.grok_mentions > 0) modelCounts.add("Grok");
+      if (brand.llama_mentions > 0) modelCounts.add("Llama");
     });
 
     return modelCounts.size;
@@ -240,7 +272,11 @@ export function MetricsHeader({
         (brand.gemini_mentions > 0 ? 1 : 0) +
         (brand.gpt_search_mentions > 0 ? 1 : 0) +
         (brand.ai_overview_mentions > 0 ? 1 : 0) +
-        (brand.google_ai_mode_mentions > 0 ? 1 : 0)
+        (brand.google_ai_mode_mentions > 0 ? 1 : 0) +
+        (brand.deepseek_mentions > 0 ? 1 : 0) +
+        (brand.gpt_4_1_mentions > 0 ? 1 : 0) +
+        (brand.grok_mentions > 0 ? 1 : 0) +
+        (brand.llama_mentions > 0 ? 1 : 0)
       );
     }, 0);
     // When models are selected, only count mentions from those specific models
@@ -283,6 +319,30 @@ export function MetricsHeader({
         if (
           selectedModel.has("Google AI Mode") &&
           brand.google_ai_mode_mentions > 0
+        ) {
+          brandModelCount++;
+        }
+        if (
+          selectedModel.has("DeepSeek R1") &&
+          brand.deepseek_mentions > 0
+        ) {
+          brandModelCount++;
+        }
+        if (
+          selectedModel.has("GPT 4.1 Nano") &&
+          brand.gpt_4_1_mentions > 0
+        ) {
+          brandModelCount++;
+        }
+        if (
+          selectedModel.has("Grok") &&
+          brand.grok_mentions > 0
+        ) {
+          brandModelCount++;
+        }
+        if (
+          selectedModel.has("Llama") &&
+          brand.llama_mentions > 0
         ) {
           brandModelCount++;
         }
@@ -373,6 +433,14 @@ export function MetricsHeader({
             modelCounts.add("Google AI Overview");
           if (brand.google_ai_mode_mentions > 0)
             modelCounts.add("Google AI Mode");
+          if (brand.deepseek_mentions > 0)
+            modelCounts.add("DeepSeek R1");
+          if (brand.gpt_4_1_mentions > 0)
+            modelCounts.add("GPT 4.1 Nano");
+          if (brand.grok_mentions > 0)
+            modelCounts.add("Grok");
+          if (brand.llama_mentions > 0)
+            modelCounts.add("Llama");
         });
 
         return modelCounts.size;
@@ -388,7 +456,11 @@ export function MetricsHeader({
           (brand.gemini_mentions > 0 ? 1 : 0) +
           (brand.gpt_search_mentions > 0 ? 1 : 0) +
           (brand.ai_overview_mentions > 0 ? 1 : 0) +
-          (brand.google_ai_mode_mentions > 0 ? 1 : 0)
+          (brand.google_ai_mode_mentions > 0 ? 1 : 0) +
+          (brand.deepseek_mentions > 0 ? 1 : 0) +
+          (brand.gpt_4_1_mentions > 0 ? 1 : 0) +
+          (brand.grok_mentions > 0 ? 1 : 0) +
+          (brand.llama_mentions > 0 ? 1 : 0)
         );
       }, 0);
 
@@ -436,7 +508,31 @@ export function MetricsHeader({
           ) {
             brandModelCount++;
           }
-          return acc + brandModelCount;
+          if (
+            selectedModel.has("DeepSeek R1") &&
+            brand.deepseek_mentions > 0
+          ) {
+            brandModelCount++;
+          }
+          if (
+            selectedModel.has("GPT 4.1 Nano") &&
+            brand.gpt_4_1_mentions > 0
+          ) {
+            brandModelCount++;
+          }
+          if (
+            selectedModel.has("Grok") &&
+            brand.grok_mentions > 0
+          ) {
+            brandModelCount++;
+          }
+          if (
+            selectedModel.has("Llama") &&
+            brand.llama_mentions > 0
+          ) {
+            brandModelCount++;
+          }
+            return acc + brandModelCount;
         }, 0);
 
         finalMaxModels = selectedModel.size;
@@ -523,6 +619,14 @@ export function MetricsHeader({
             modelCounts.add("Google AI Overview");
           if (brand.google_ai_mode_mentions > 0)
             modelCounts.add("Google AI Mode");
+          if (brand.deepseek_mentions > 0)
+            modelCounts.add("DeepSeek R1");
+          if (brand.gpt_4_1_mentions > 0)
+            modelCounts.add("GPT 4.1 Nano");
+          if (brand.grok_mentions > 0)
+            modelCounts.add("Grok");
+          if (brand.llama_mentions > 0)
+            modelCounts.add("Llama");
         });
 
         return modelCounts.size;
@@ -537,7 +641,10 @@ export function MetricsHeader({
           (brand.gemini_mentions > 0 ? 1 : 0) +
           (brand.gpt_search_mentions > 0 ? 1 : 0) +
           (brand.ai_overview_mentions > 0 ? 1 : 0) +
-          (brand.google_ai_mode_mentions > 0 ? 1 : 0)
+          (brand.google_ai_mode_mentions > 0 ? 1 : 0) +
+          (brand.deepseek_mentions > 0 ? 1 : 0) +
+          (brand.gpt_4_1_mentions > 0 ? 1 : 0) +
+          (brand.grok_mentions > 0 ? 1 : 0)
         );
       }, 0);
 
@@ -584,7 +691,31 @@ export function MetricsHeader({
           ) {
             brandModelCount++;
           }
-          return acc + brandModelCount;
+          if (
+            selectedModel.has("DeepSeek R1") &&
+            brand.deepseek_mentions > 0
+          ) {
+            brandModelCount++;
+          }
+          if (
+            selectedModel.has("GPT 4.1 Nano") &&
+            brand.gpt_4_1_mentions > 0
+          ) {
+            brandModelCount++;
+          }
+          if (
+            selectedModel.has("Grok") &&
+            brand.grok_mentions > 0
+          ) {
+            brandModelCount++;
+          }
+          if (
+            selectedModel.has("Llama") &&
+            brand.llama_mentions > 0
+          ) {
+            brandModelCount++;
+          }
+            return acc + brandModelCount;
         }, 0);
 
         finalMaxModels = selectedModel.size;

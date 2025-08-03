@@ -154,6 +154,11 @@ interface IndustryRankingsTableProps {
     perplexity_mentions: number;
     gemini_mentions: number;
     total_mentions: number;
+    // Voyager mode models
+    deepseek_mentions: number;
+    gpt_4_1_mentions: number;
+    grok_mentions: number;
+    llama_mentions: number;
   }[];
   setSelectedBrand: (brand: Set<string>) => void;
   selectedBrand: Set<string>;
@@ -201,6 +206,11 @@ function IndustryRankingsTable({
       if (brand.gpt_search_mentions > 0) modelCounts.add("GPT 4o Web Search");
       if (brand.ai_overview_mentions > 0) modelCounts.add("Google AI Overview");
       if (brand.google_ai_mode_mentions > 0) modelCounts.add("Google AI Mode");
+      // Voyager mode models
+      if (brand.deepseek_mentions > 0) modelCounts.add("DeepSeek v3");
+      if (brand.gpt_4_1_mentions > 0) modelCounts.add("GPT 4.1 Nano");
+      if (brand.grok_mentions > 0) modelCounts.add("Grok 3 Mini");
+      if (brand.llama_mentions > 0) modelCounts.add("Llama 4 Maverick");
     });
 
     return modelCounts.size;
@@ -214,7 +224,12 @@ function IndustryRankingsTable({
       (brand.gemini_mentions > 0 ? 1 : 0) +
       (brand.gpt_search_mentions > 0 ? 1 : 0) +
       (brand.ai_overview_mentions > 0 ? 1 : 0) +
-      (brand.google_ai_mode_mentions > 0 ? 1 : 0);
+      (brand.google_ai_mode_mentions > 0 ? 1 : 0) +
+      // Voyager mode models
+      (brand.deepseek_mentions > 0 ? 1 : 0) +
+      (brand.gpt_4_1_mentions > 0 ? 1 : 0) +
+      (brand.grok_mentions > 0 ? 1 : 0) +
+      (brand.llama_mentions > 0 ? 1 : 0);
     // Check selected models and add to total mentions count
     let selectedModelTotalMentions = 0;
 
@@ -245,6 +260,31 @@ function IndustryRankingsTable({
     if (
       selectedModel.has("Google AI Mode") &&
       brand.google_ai_mode_mentions > 0
+    ) {
+      selectedModelTotalMentions++;
+    }
+    // Voyager mode models
+    if (
+      selectedModel.has("DeepSeek v3") &&
+      brand.deepseek_mentions > 0
+    ) {
+      selectedModelTotalMentions++;
+    }
+    if (
+      selectedModel.has("GPT 4.1 Nano") &&
+      brand.gpt_4_1_mentions > 0
+    ) {
+      selectedModelTotalMentions++;
+    }
+    if (
+      selectedModel.has("Grok 3 Mini") &&
+      brand.grok_mentions > 0
+    ) {
+      selectedModelTotalMentions++;
+    }
+    if (
+      selectedModel.has("Llama 4 Maverick") &&
+      brand.llama_mentions > 0
     ) {
       selectedModelTotalMentions++;
     }
@@ -817,7 +857,12 @@ function DashboardContent() {
           (brand.gemini_mentions > 0 ? 1 : 0) +
           (brand.gpt_search_mentions > 0 ? 1 : 0) +
           (brand.ai_overview_mentions > 0 ? 1 : 0) +
-          (brand.google_ai_mode_mentions > 0 ? 1 : 0);
+          (brand.google_ai_mode_mentions > 0 ? 1 : 0) +
+          // Voyager mode models
+          (brand.deepseek_mentions > 0 ? 1 : 0) +
+          (brand.gpt_4_1_mentions > 0 ? 1 : 0) +
+          (brand.grok_mentions > 0 ? 1 : 0) +
+          (brand.llama_mentions > 0 ? 1 : 0);
 
         let selectedModelTotalMentions = 0;
 
@@ -850,6 +895,27 @@ function DashboardContent() {
           if (
             selectedModel.has("Google AI Mode") &&
             brand.google_ai_mode_mentions > 0
+          )
+            selectedModelTotalMentions++;
+          // Voyager mode models
+          if (
+            selectedModel.has("DeepSeek v3") &&
+            brand.deepseek_mentions > 0
+          )
+            selectedModelTotalMentions++;
+          if (
+            selectedModel.has("GPT 4.1 Nano") &&
+            brand.gpt_4_1_mentions > 0
+          )
+            selectedModelTotalMentions++;
+          if (
+            selectedModel.has("Grok 3 Mini") &&
+            brand.grok_mentions > 0
+          )
+            selectedModelTotalMentions++;
+          if (
+            selectedModel.has("Llama 4 Maverick") &&
+            brand.llama_mentions > 0
           )
             selectedModelTotalMentions++;
         }
@@ -2527,6 +2593,10 @@ function DashboardContent() {
           gpt_search_mentions: 0,
           ai_overview_mentions: 0,
           google_ai_mode_mentions: 0,
+          deepseek_mentions: 0,
+          gpt_4_1_mentions: 0,
+          grok_mentions: 0,
+          llama_mentions: 0
         };
 
         // Process model results for this date
@@ -2572,6 +2642,14 @@ function DashboardContent() {
                 mentions.ai_overview_mentions += mentionCount;
               } else if (modelName.includes("google ai mode")) {
                 mentions.google_ai_mode_mentions += mentionCount;
+              } else if (modelName.includes("deepseek")) {  
+                mentions.deepseek_mentions += mentionCount;
+              } else if (modelName.includes("nano")) {
+                mentions.gpt_4_1_mentions += mentionCount;
+              } else if (modelName.includes("grok")) {
+                mentions.grok_mentions += mentionCount;
+              } else if (modelName.includes("llama")) {
+                mentions.llama_mentions += mentionCount;
               }
             }
           }
@@ -2648,6 +2726,10 @@ function DashboardContent() {
         gpt_search_mentions: 0,
         ai_overview_mentions: 0,
         google_ai_mode_mentions: 0,
+        deepseek_mentions: 0,
+        gpt_4_1_mentions: 0,
+        grok_mentions: 0,
+        llama_mentions: 0,
       };
 
       // Process each filtered result
@@ -2694,6 +2776,14 @@ function DashboardContent() {
                 mentions.ai_overview_mentions += mentionCount;
               } else if (modelName.includes("google ai mode")) {
                 mentions.google_ai_mode_mentions += mentionCount;
+              } else if (modelName.includes("deepseek")) {
+                mentions.deepseek_mentions += mentionCount;
+              } else if (modelName.includes("nano")) {
+                mentions.gpt_4_1_mentions += mentionCount;
+              } else if (modelName.includes("grok")) {
+                mentions.grok_mentions += mentionCount;
+              } else if (modelName.includes("llama")) {
+                mentions.llama_mentions += mentionCount;
               }
             }
           }
