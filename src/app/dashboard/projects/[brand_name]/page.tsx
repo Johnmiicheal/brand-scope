@@ -3,7 +3,7 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
@@ -24,25 +24,6 @@ import {
   ScheduledQuery,
 } from "@/components/library/scheduled-queries-list";
 import { MonitoredSummary } from "@/components/dashboard/monitored-summary";
-import { motion } from "framer-motion";
-import { Info, TrendingUp, ArrowUpRight, ArrowDownRight } from "lucide-react";
-import {
-  Tooltip,
-  TooltipTrigger,
-  TooltipProvider,
-  TooltipContent,
-} from "@/components/ui/tooltip";
-import { ChartContainer } from "@/components/ui/chart";
-import {
-  Area,
-  AreaChart,
-  CartesianGrid,
-  XAxis,
-  YAxis,
-  Tooltip as ChartTooltip,
-  Bar,
-  BarChart,
-} from "recharts";
 import {
   OpenAI,
   Claude,
@@ -53,6 +34,10 @@ import {
   Grok,
   Meta,
 } from "@lobehub/icons";
+import { GoogleSearch } from "@/types/search";
+import { MetricsHeader } from "@/components/dashboard/metrics-card";
+import { toast } from "sonner";
+import { BrandMetricsHeader } from "@/components/dashboard/brand-metrics-card";
 
 interface Brand {
   id: string;
@@ -106,13 +91,16 @@ export default function BrandProjectPage() {
 
   const [brand, setBrand] = useState<Brand | null>(null);
   const [sessions, setSessions] = useState<AnalysisSession[]>([]);
-  const [monitoredSessions, setMonitoredSessions] = useState<[]>([]);
+  const [monitoredSessions, setMonitoredSessions] = useState<ScheduledQuery[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [brandMetrics, setBrandMetrics] = useState<BrandMetrics | null>(null);
   const [temporalData, setTemporalData] = useState<TemporalBrandData[]>([]);
   const [googleSearchResults, setGoogleSearchResults] = useState<any[]>([]);
-
+  const [selectedDateRange, setSelectedDateRange] = useState<string>("all");
+  const [customDateRange, setCustomDateRange] = useState<{ from: Date | null, to: Date | null }>({ from: null, to: null });
+  const [loadingGoogleResults, setLoadingGoogleResults] = useState(false);
+  
   useEffect(() => {
     if (user?.id && brandName) {
       fetchBrandAndSessions();
@@ -141,65 +129,6 @@ export default function BrandProjectPage() {
 
       setBrand(brandData as unknown as Brand);
 
-      // Then, fetch analysis sessions that have this brand attached
-      const { data: sessionsData, error: sessionsError } = await supabase
-        .from("ai_ranking_sessions")
-        .select("*")
-        .eq("user_id", user.id)
-        .contains("attached_brand_id", [brandData.id])
-        .order("analyzed_at", { ascending: false });
-
-      if (sessionsError) {
-        console.error("Error fetching sessions:", sessionsError);
-        setError("Failed to load analysis sessions");
-        return;
-      }
-
-      setSessions((sessionsData as unknown as AnalysisSession[]) || []);
-
-      // Then, fetch monitored sessions that have this brand attached
-      const { data: monitoredSessionsData, error: monitoredSessionsError } =
-        await supabase
-          .from("scheduled_queries")
-          .select("*")
-          .eq("user_id", user.id)
-          .contains("attached_brand_id", [brandData.id]);
-
-      if (monitoredSessionsError) {
-        console.error(
-          "Error fetching monitored sessions:",
-          monitoredSessionsError
-        );
-        setError("Failed to load monitored sessions");
-        return;
-      }
-
-      // Fetch Google search results for each monitored session
-      const googleResultsPromises = monitoredSessionsData.map(async (session: any) => {
-        const { data: search_results, error: searchError } = await supabase
-          .from('search_results')
-          .select('*')
-          .eq('mode_id', session.id);
-        
-        if (searchError) {
-          console.error(`Error fetching search results for session ${session.id}:`, searchError);
-          return { sessionId: session.id, results: [] };
-        }
-        
-        return { sessionId: session.id, results: search_results || [] };
-      });
-
-      const googleResults = await Promise.all(googleResultsPromises);
-      setGoogleSearchResults(googleResults);
-      console.log('Google search results for all sessions:', googleResults);
-
-
-      setMonitoredSessions((monitoredSessionsData as unknown as []) || []);
-
-      // Calculate brand-specific metrics from monitored sessions
-      if (monitoredSessionsData && monitoredSessionsData.length > 0) {
-        calculateBrandMetrics(monitoredSessionsData, brandData.name as string, googleResults);
-      }
     } catch (error) {
       console.error("Error:", error);
       setError("Failed to load brand data");
@@ -208,174 +137,213 @@ export default function BrandProjectPage() {
     }
   };
 
-  const calculateBrandMetrics = (queries: any[], brandName: string, googleSearchResults: any[] = []) => {
-    // Extract brand data from queries results to match metrics card format
-    const brandData: any[] = [];
-    const temporalDataMap: Record<string, TemporalBrandData> = {};
+   // Fetch Google search results using the monitoring API
+   const fetchGoogleSearchResults = async (
+    mode_id: string,
+    dateRange?: string,
+    customRange?: { from: Date | undefined; to: Date | undefined }
+  ) => {
+    if (!mode_id) return;
 
-    console.log(`Calculating metrics for brand: ${brandName}`);
-    console.log(`Processing ${queries.length} queries`);
+    try {
+      setLoadingGoogleResults(true);
+      const response = await fetch(`/api/monitoring?mode_id=${mode_id}`);
 
-    queries.forEach((query: any) => {
-      if (query.results && Array.isArray(query.results)) {
-        query.results.forEach((analysisRun: any) => {
-          if (
-            analysisRun.model_results &&
-            Array.isArray(analysisRun.model_results)
-          ) {
-            // Create a brand entry for this analysis run
-            const brandEntry = {
-              brand_name: brandName,
-              gpt_mentions: 0,
-              gpt_search_mentions: 0,
-              claude_mentions: 0,
-              perplexity_mentions: 0,
-              gemini_mentions: 0,
-              total_mentions: 0,
-              ai_overview_mentions: 0,
-              google_ai_mode_mentions: 0,
-              deepseek_mentions: 0,
-              gpt_4_1_mentions: 0,
-              grok_mentions: 0,
-              llama_mentions: 0,
-            };
+      if (!response.ok) {
+        throw new Error("Failed to fetch Google search results");
+      }
 
-            // Check for Google search results for this query
-            const queryGoogleResults = googleSearchResults.find(
-              (sessionResults) => sessionResults.sessionId === query.id
-            );
-            
-            // If Google search results exist for this query, analyze them for brand mentions
-            if (queryGoogleResults && queryGoogleResults.results.length > 0) {
-              let googleMentions = 0;
-              
-              // Check each Google search result for brand mentions
-              queryGoogleResults.results.forEach((result: any) => {
-                const contentToCheck = [
-                  result.title || '',
-                  result.snippet || '',
-                  result.content || ''
-                ].join(' ').toLowerCase();
-                
-                // Check for exact brand name mentions
-                if (contentToCheck.includes(brandName)) {
-                  googleMentions += 1;
-                }
-              });
-              
-              // If brand mentions found in Google results, count towards AI overview
-              if (googleMentions > 0) {
-                brandEntry.ai_overview_mentions += googleMentions;
-                brandEntry.total_mentions += googleMentions;
-                console.log(`Added ${googleMentions} Google search result mentions to AI overview for query ${query.id}`);
-              } else {
-                // Still count as AI overview if Google results exist but no specific mentions found
-                brandEntry.ai_overview_mentions += 1;
-                brandEntry.total_mentions += 1;
-                console.log(`Added Google search results presence to AI overview for query ${query.id}`);
-              }
-            }
+      const data = await response.json();
 
-            analysisRun.model_results.forEach((modelResult: any) => {
-              if (
-                modelResult.status === "fulfilled" &&
-                modelResult.data?.brands
-              ) {
-                const brandData = modelResult.data.brands.find((brand: any) => {
-                  return brand.name === brandName;
-                });
-                
-                // Debug: Log all available brand names if no match found
-                if (!brandData && modelResult.data?.brands?.length > 0) {
-                  console.log(`No match found for "${brandName}". Available brands in ${modelResult.llm_name}:`, 
-                    modelResult.data.brands.map((b: any) => b.name)
-                  );
-                }
+      // Filter search results by date range if provided
+      if (dateRange && dateRange !== "all" && data.search_results) {
+        const now = new Date();
+        const today = new Date(
+          now.getFullYear(),
+          now.getMonth(),
+          now.getDate()
+        );
 
-                if (brandData) {
-                  console.log(`Found brand match: "${brandData.name}" for target "${brandName}" in model ${modelResult.llm_name}`);
-                  // Count mentions by model type
-                  const modelName = modelResult.llm_name || "";
-                  if (
-                    modelName.includes("GPT") ||
-                    modelName.includes("OpenAI")
-                  ) {
-                    brandEntry.gpt_search_mentions += 1;
-                  } else if (modelName.includes("Claude")) {
-                    brandEntry.claude_mentions += 1;
-                  } else if (modelName.includes("Perplexity")) {
-                    brandEntry.perplexity_mentions += 1;
-                  } else if (modelName.includes("Gemini")) {
-                    brandEntry.gemini_mentions += 1;
-                  } else if (modelName.includes("AI Mode")) {
-                    brandEntry.google_ai_mode_mentions += 1;
-                  } else if (modelName.includes("DeepSeek")) {
-                    brandEntry.deepseek_mentions += 1;
-                  } else if (modelName.includes("Nano")) {
-                    brandEntry.gpt_4_1_mentions += 1;
-                  } else if (modelName.includes("Grok")) {
-                    brandEntry.grok_mentions += 1;
-                  } else if (modelName.includes("Llama")) {
-                    brandEntry.llama_mentions += 1;
-                  }
+        const filteredResults = data.search_results.filter((result: any) => {
+          if (!result.created_at) return false;
+          const resultDate = new Date(result.created_at);
 
-                  brandEntry.total_mentions += 1;
-                }
-              }
-            });
-
-            brandData.push(brandEntry);
-
-            // Store temporal data
-            if (analysisRun.analysis_date) {
-              const date = analysisRun.analysis_date.split("T")[0];
-              if (!temporalDataMap[date]) {
-                temporalDataMap[date] = {
-                  date,
-                  visibility: 0,
-                  mentions: 0,
-                  coverage: 0,
-                };
-              }
-
-              temporalDataMap[date].mentions += brandEntry.total_mentions;
-            }
+          switch (dateRange) {
+            case "today":
+              const resultDateOnly = new Date(
+                resultDate.getFullYear(),
+                resultDate.getMonth(),
+                resultDate.getDate()
+              );
+              return resultDateOnly.getTime() === today.getTime();
+            case "7days":
+              const sevenDaysAgo = new Date(today);
+              sevenDaysAgo.setDate(today.getDate() - 7);
+              return resultDate >= sevenDaysAgo && resultDate <= now;
+            case "30days":
+              const thirtyDaysAgo = new Date(today);
+              thirtyDaysAgo.setDate(today.getDate() - 30);
+              return resultDate >= thirtyDaysAgo && resultDate <= now;
+            case "custom":
+              if (!customRange?.from || !customRange?.to) return true;
+              return (
+                resultDate >= customRange.from && resultDate <= customRange.to
+              );
+            default:
+              return true;
           }
         });
+
+        data.search_results = filteredResults;
+      }
+
+      setGoogleSearchResults(data);
+    } catch (error) {
+      console.error("Error fetching Google search results:", error);
+      setGoogleSearchResults([]);
+    } finally {
+      setLoadingGoogleResults(false);
+    }
+  };
+
+  // Effect to fetch Google search results when selected query or date changes
+  useEffect(() => {
+    if (monitoredSessions[0]?.mode_id) {
+      fetchGoogleSearchResults(
+        monitoredSessions[0]?.mode_id,
+        selectedDateRange,
+        customDateRange as { from: Date | undefined; to: Date | undefined }
+      );
+    }
+  }, [monitoredSessions, selectedDateRange, customDateRange]);
+
+  useEffect(() => {
+    async function fetchScheduledQueries() {
+      if (!user) return;
+
+      try {
+        setLoading(true);
+        const response = await fetch(`/api/monitoring?user_id=${user?.id}`);
+
+        if (!response.ok) {
+          setError(
+            `We could not fetch your scheduled queries. Please try again later.`
+          );
+          throw new Error(
+            `Error fetching scheduled queries: ${response.statusText}`
+          );
+        }
+
+        const data = await response.json();
+        const filteredDataByMyBrand = data.monitoring.filter((item: any) =>
+          item?.attached_brand_id?.includes(brand?.id)
+        );
+        console.log("filteredDataByMyBrand: ", filteredDataByMyBrand);
+
+        if (data && data.monitoring) {
+          setMonitoredSessions(filteredDataByMyBrand);
+        }
+      } catch (error) {
+        setError(
+          `We could not fetch your scheduled queries. Please try again later.`
+        );
+        setLoading(false);
+        console.error("Failed to fetch scheduled queries:", error);
+        toast.error("Failed to load scheduled queries. Please try again later.");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchScheduledQueries();
+  }, [brand]);
+
+
+  // Utility function to process a single monitored session
+  const processMonitoredSession = (
+    session: ScheduledQuery,
+    googleSearchResults: any,
+    selectedDateRange: string,
+    customDateRange: { from: Date | null; to: Date | null }
+  ) => {
+    const results = session?.results;
+    
+    if (!results || !Array.isArray(results)) {
+      return {
+        sessionId: session.id,
+        allAnalysisBrands: [],
+        temporalBrandMentionsInSummaries: [],
+        getDateFilteredResults: [],
+        brandMentionsInSummaries: [],
+      };
+    }
+
+    // Extract all brands from session results
+    const allBrands = results
+      .flatMap(
+        (result: {
+          model_results: { llm_name: string; data: { brands: any[] } }[];
+        }) =>
+          result.model_results?.flatMap(
+            (r: { llm_name: string; data: { brands: any[] } }) =>
+              r.data?.brands || []
+          )
+      )
+      .filter(Boolean);
+
+    // Safely extract and parse rankings from Google search results
+    const flat_google_overview_brands =
+      googleSearchResults?.search_results
+        ?.flatMap((result: GoogleSearch) => {
+          try {
+            if (!result.rankings) return [];
+            const rankings =
+              typeof result.rankings === "string"
+                ? JSON.parse(result.rankings)
+                : result.rankings;
+            return rankings.brands
+              .map((rank: any) => rank.name)
+              .filter(Boolean);
+          } catch (e) {
+            console.error("Error parsing rankings:", e);
+            return [];
+          }
+        })
+        .filter(Boolean) || [];
+
+    const unique_google_overview_brands = [
+      ...new Set(flat_google_overview_brands),
+    ];
+
+    // Deduplicate based on brand name
+    const uniqueBrands = new Map();
+    allBrands.forEach((brand) => {
+      if (brand.name && !uniqueBrands.has(brand.name)) {
+        uniqueBrands.set(brand.name, brand);
+      }
+    });
+    unique_google_overview_brands.forEach((brand) => {
+      if (brand && !uniqueBrands.has(brand)) {
+        uniqueBrands.set(brand, { name: brand });
       }
     });
 
-    // Use the exact same calculation logic as the main dashboard
-    if (brandData.length > 0) {
-      const totalMentions = brandData.reduce(
-        (acc, brand) => acc + brand.total_mentions,
-        0
-      );
-      
-      // Calculate metrics exactly like the dashboard - process all potential brands
-      const modelCounts = new Set<string>();
-      const allBrandMentions: Record<string, number> = {};
-      
-      // First, collect all unique brands mentioned in the data
-      const allBrandsInData = new Set<string>();
-      queries.forEach((query: any) => {
-        if (query.results && Array.isArray(query.results)) {
-          query.results.forEach((analysisRun: any) => {
-            if (analysisRun.model_results && Array.isArray(analysisRun.model_results)) {
-              analysisRun.model_results.forEach((modelResult: any) => {
-                if (modelResult.status === "fulfilled" && modelResult.data?.brands) {
-                  modelResult.data.brands.forEach((brand: any) => {
-                    allBrandsInData.add(brand.name);
-                  });
-                }
-              });
-            }
-          });
-        }
-      });
-      
-      // Now process each brand like the dashboard does
-      allBrandsInData.forEach((brandName) => {
+    const allAnalysisBrands = Array.from(uniqueBrands.values());
+
+    // Calculate temporal brand mentions
+    const google_overview = googleSearchResults?.search_results?.flatMap(
+      (result: GoogleSearch) => result.ai_overview
+    );
+
+    const brandMentionsArray: any[] = [];
+
+    // Process each result (which represents a different analysis date)
+    results.forEach((result) => {
+      const brandMentionsMap = new Map();
+
+      // Process each brand
+      allAnalysisBrands.forEach((brand) => {
+        const brandName = brand.name;
         const mentions = {
           claude_mentions: 0,
           perplexity_mentions: 0,
@@ -386,515 +354,279 @@ export default function BrandProjectPage() {
           deepseek_mentions: 0,
           gpt_4_1_mentions: 0,
           grok_mentions: 0,
-          llama_mentions: 0,
+          llama_mentions: 0
         };
-        
-        // Process each query result
-        queries.forEach((query: any) => {
-          if (query.results && Array.isArray(query.results)) {
-            query.results.forEach((analysisRun: any) => {
-              if (analysisRun.model_results && Array.isArray(analysisRun.model_results)) {
-                analysisRun.model_results.forEach((modelResult: any) => {
-                  if (modelResult.status === "fulfilled" && modelResult.data?.brands) {
-                    const brandData = modelResult.data.brands.find(
-                      (b: any) => b.name.toLowerCase() === brandName.toLowerCase()
-                    );
-                    
-                    if (brandData) {
-                      let mentionCount = 1;
-                      
-                      // Add mentions from reasoning if available
-                      if (brandData.reasoning) {
-                        const reasoningMatches = brandData.reasoning.match(
-                          new RegExp(`\\b${brandName}\\b`, "gi")
-                        );
-                        if (reasoningMatches) {
-                          mentionCount += reasoningMatches.length;
-                        }
-                      }
-                      
-                      // Assign mentions to the appropriate model
-                      const modelName = modelResult.llm_name?.toLowerCase() || "";
-                      if (modelName.includes("claude")) {
-                        mentions.claude_mentions += mentionCount;
-                      } else if (modelName.includes("perplexity")) {
-                        mentions.perplexity_mentions += mentionCount;
-                      } else if (modelName.includes("gemini")) {
-                        mentions.gemini_mentions += mentionCount;
-                      } else if (modelName.includes("search")) {
-                        mentions.gpt_search_mentions += mentionCount;
-                      } else if (modelName.includes("ai overview")) {
-                        mentions.ai_overview_mentions += mentionCount;
-                      } else if (modelName.includes("google ai mode")) {
-                        mentions.google_ai_mode_mentions += mentionCount;
-                      } else if (modelName.includes("deepseek")) {
-                        mentions.deepseek_mentions += mentionCount;
-                      } else if (modelName.includes("nano")) {
-                        mentions.gpt_4_1_mentions += mentionCount;
-                      } else if (modelName.includes("grok")) {
-                        mentions.grok_mentions += mentionCount;
-                      } else if (modelName.includes("llama")) {
-                        mentions.llama_mentions += mentionCount;
-                      }
-                      
-                      // Track which models were active
-                      if (modelName.includes("gpt") || modelName.includes("openai")) {
-                        modelCounts.add("GPT 4o Web Search");
-                      } else if (modelName.includes("claude")) {
-                        modelCounts.add("Claude 4.0 Sonnet");
-                      } else if (modelName.includes("perplexity")) {
-                        modelCounts.add("Perplexity Sonar");
-                      } else if (modelName.includes("gemini")) {
-                        modelCounts.add("Gemini 2.5 Flash");
-                      } else if (modelName.includes("ai mode")) {
-                        modelCounts.add("Google AI Mode");
-                      } else if (modelName.includes("deepseek")) {
-                        modelCounts.add("DeepSeek R1");
-                      } else if (modelName.includes("nano")) {
-                        modelCounts.add("GPT 4.1 Nano");
-                      } else if (modelName.includes("grok")) {
-                        modelCounts.add("Grok");
-                      } else if (modelName.includes("llama")) {
-                        modelCounts.add("Llama");
-                      }
-                    }
-                  }
-                });
-              }
-            });
-          }
-        });
-        
-        // Add Google search results mentions
-        googleSearchResults.forEach((sessionResults) => {
-          if (sessionResults.results && sessionResults.results.length > 0) {
-            sessionResults.results.forEach((result: any) => {
-              const contentToCheck = [
-                result.title || '',
-                result.snippet || '',
-                result.content || ''
-              ].join(' ').toLowerCase();
-              
-              if (contentToCheck.includes(brandName.toLowerCase())) {
-                mentions.ai_overview_mentions += 1;
-              }
-            });
-            modelCounts.add("Google AI Overview");
-          }
-        });
-        
-        // Calculate total mentions for this brand
-        const totalMentions = Object.values(mentions).reduce(
-          (sum, count) => sum + count,
-          0
-        );
-        
-        if (totalMentions > 0) {
-          allBrandMentions[brandName] = totalMentions;
-        }
-      });
-      
-      // Calculate maxMentions from all brand mentions (same as dashboard)
-      const maxMentions = Math.max(...Object.values(allBrandMentions));
-      const maxModels = modelCounts.size;
-      
-      // Calculate coverage ratio exactly like dashboard
-      const getCoverageRatio = (brand: any) => {
-        const totalMentionsPerModel =
-          (brand.claude_mentions > 0 ? 1 : 0) +
-          (brand.perplexity_mentions > 0 ? 1 : 0) +
-          (brand.gemini_mentions > 0 ? 1 : 0) +
-          (brand.gpt_search_mentions > 0 ? 1 : 0) +
-          (brand.ai_overview_mentions > 0 ? 1 : 0) +
-          (brand.google_ai_mode_mentions > 0 ? 1 : 0) +
-          (brand.deepseek_mentions > 0 ? 1 : 0) +
-          (brand.gpt_4_1_mentions > 0 ? 1 : 0) +
-          (brand.grok_mentions > 0 ? 1 : 0) +
-          (brand.llama_mentions > 0 ? 1 : 0);
-        
-        return maxModels > 0 ? (totalMentionsPerModel / maxModels) * 100 : 0;
-      };
-      
-      // Calculate visibility score exactly like dashboard
-      const getVisibilityScore = (brand: any) => {
-        const coverageRatio = getCoverageRatio(brand) / 100;
-        const mentionsIndex = maxMentions > 0 ? brand.total_mentions / maxMentions : 0;
-        return (100 * (coverageRatio + mentionsIndex)) / 2;
-      };
-      
-      // Calculate visibility scores for each query and average them
-      const queryVisibilityScores: number[] = [];
-      const queryCoverageRatios: number[] = [];
-      
-      // Process each query separately to get individual scores
-      queries.forEach((query: any, queryIndex: number) => {
-        if (query.results && Array.isArray(query.results)) {
-          query.results.forEach((analysisRun: any) => {
-            if (analysisRun.model_results && Array.isArray(analysisRun.model_results)) {
-              // Create a brand entry for this specific query
-              const queryBrandEntry = {
-                brand_name: brandName,
-                gpt_mentions: 0,
-                gpt_search_mentions: 0,
-                claude_mentions: 0,
-                perplexity_mentions: 0,
-                gemini_mentions: 0,
-                total_mentions: 0,
-                ai_overview_mentions: 0,
-                google_ai_mode_mentions: 0,
-                deepseek_mentions: 0,
-                gpt_4_1_mentions: 0,
-                grok_mentions: 0,
-                llama_mentions: 0,
-              };
-              
-              // Check for Google search results for this specific query
-              const queryGoogleResults = googleSearchResults.find(
-                (sessionResults) => sessionResults.sessionId === query.id
-              );
-              
-              if (queryGoogleResults && queryGoogleResults.results.length > 0) {
-                let googleMentions = 0;
-                                 queryGoogleResults.results.forEach((result: any) => {
-                   const contentToCheck = [
-                     result.title || '',
-                     result.snippet || '',
-                     result.content || ''
-                   ].join(' ');
-                   
-                   if (contentToCheck.includes(brandName)) {
-                     googleMentions += 1;
-                   }
-                 });
-                
-                if (googleMentions > 0) {
-                  queryBrandEntry.ai_overview_mentions += googleMentions;
-                  queryBrandEntry.total_mentions += googleMentions;
-                } else {
-                  queryBrandEntry.ai_overview_mentions += 1;
-                  queryBrandEntry.total_mentions += 1;
-                }
-              }
-              
-              // Process model results for this query
-              analysisRun.model_results.forEach((modelResult: any) => {
-                if (modelResult.status === "fulfilled" && modelResult.data?.brands) {
-                                     const brandData = modelResult.data.brands.find((brand: any) => {
-                     return brand.name === brandName;
-                   });
-                  
-                  if (brandData) {
-                    const modelName = modelResult.llm_name || "";
-                    if (modelName.includes("GPT") || modelName.includes("OpenAI")) {
-                      queryBrandEntry.gpt_search_mentions += 1;
-                    } else if (modelName.includes("Claude")) {
-                      queryBrandEntry.claude_mentions += 1;
-                    } else if (modelName.includes("Perplexity")) {
-                      queryBrandEntry.perplexity_mentions += 1;
-                    } else if (modelName.includes("Gemini")) {
-                      queryBrandEntry.gemini_mentions += 1;
-                    } else if (modelName.includes("AI Mode")) {
-                      queryBrandEntry.google_ai_mode_mentions += 1;
-                    } else if (modelName.includes("DeepSeek")) {
-                      queryBrandEntry.deepseek_mentions += 1;
-                    } else if (modelName.includes("Nano")) {
-                      queryBrandEntry.gpt_4_1_mentions += 1;
-                    } else if (modelName.includes("Grok")) {
-                      queryBrandEntry.grok_mentions += 1;
-                    } else if (modelName.includes("Llama")) {
-                      queryBrandEntry.llama_mentions += 1;
-                    }
-                    queryBrandEntry.total_mentions += 1;
-                  }
-                }
-              });
-              
-              // Calculate maxModels for this specific query from fulfilled models
-              const queryModelCounts = new Set<string>();
-              analysisRun.model_results.forEach((modelResult: any) => {
-                if (modelResult.status === "fulfilled") {
-                  const modelName = modelResult.llm_name?.toLowerCase() || "";
-                  if (modelName.includes("gpt") || modelName.includes("openai")) {
-                    queryModelCounts.add("GPT 4o Web Search");
-                  } else if (modelName.includes("claude")) {
-                    queryModelCounts.add("Claude 4.0 Sonnet");
-                  } else if (modelName.includes("perplexity")) {
-                    queryModelCounts.add("Perplexity Sonar");
-                  } else if (modelName.includes("gemini")) {
-                    queryModelCounts.add("Gemini 2.5 Flash");
-                  } else if (modelName.includes("ai mode")) {
-                    queryModelCounts.add("Google AI Mode");
-                  } else if (modelName.includes("deepseek")) {
-                    queryModelCounts.add("DeepSeek R1");
-                  } else if (modelName.includes("nano")) {
-                    queryModelCounts.add("GPT 4.1 Nano");
-                  } else if (modelName.includes("grok")) {
-                    queryModelCounts.add("Grok");
-                  } else if (modelName.includes("llama")) {
-                    queryModelCounts.add("Llama");
-                  }
-                }
-              });
-              
-              // Add Google AI Overview if Google search results exist for this query
-              if (queryGoogleResults && queryGoogleResults.results.length > 0) {
-                queryModelCounts.add("Google AI Overview");
-              }
-              
-              const queryMaxModels = queryModelCounts.size;
-              
-              // Calculate maxMentions for this query like the dashboard does
-              // First collect all unique brands in this query
-              const queryBrandsSet = new Set<string>();
-              analysisRun.model_results.forEach((modelResult: any) => {
-                if (modelResult.status === "fulfilled" && modelResult.data?.brands) {
-                  modelResult.data.brands.forEach((brand: any) => {
-                    queryBrandsSet.add(brand.name);
-                  });
-                }
-              });
-              
-              // Now calculate mentions for each brand in this query (like dashboard)
-              const queryBrandMentions: Record<string, number> = {};
-              queryBrandsSet.forEach((queryBrandName) => {
-                const mentions = {
-                  claude_mentions: 0,
-                  perplexity_mentions: 0,
-                  gemini_mentions: 0,
-                  gpt_search_mentions: 0,
-                  ai_overview_mentions: 0,
-                  google_ai_mode_mentions: 0,
-                  deepseek_mentions: 0,
-                  gpt_4_1_mentions: 0,
-                  grok_mentions: 0,
-                  llama_mentions: 0,
-                };
-                
-                analysisRun.model_results.forEach((modelResult: any) => {
-                  if (modelResult.status === "fulfilled" && modelResult.data?.brands) {
-                    const brandData = modelResult.data.brands.find(
-                      (b: any) => b.name === queryBrandName
-                    );
-                    
-                    if (brandData) {
-                      let mentionCount = 1;
-                      
-                      // Add mentions from reasoning if available
-                      if (brandData.reasoning) {
-                        const reasoningMatches = brandData.reasoning.match(
-                          new RegExp(`\\b${queryBrandName}\\b`, "gi")
-                        );
-                        if (reasoningMatches) {
-                          mentionCount += reasoningMatches.length;
-                        }
-                      }
-                      
-                      // Assign mentions to the appropriate model
-                      const modelName = modelResult.llm_name?.toLowerCase() || "";
-                      if (modelName.includes("claude")) {
-                        mentions.claude_mentions += mentionCount;
-                      } else if (modelName.includes("perplexity")) {
-                        mentions.perplexity_mentions += mentionCount;
-                      } else if (modelName.includes("gemini")) {
-                        mentions.gemini_mentions += mentionCount;
-                      } else if (modelName.includes("search")) {
-                        mentions.gpt_search_mentions += mentionCount;
-                      } else if (modelName.includes("ai overview")) {
-                        mentions.ai_overview_mentions += mentionCount;
-                      } else if (modelName.includes("google ai mode")) {
-                        mentions.google_ai_mode_mentions += mentionCount;
-                      } else if (modelName.includes("deepseek")) {
-                        mentions.deepseek_mentions += mentionCount;
-                      } else if (modelName.includes("nano")) {
-                        mentions.gpt_4_1_mentions += mentionCount;
-                      } else if (modelName.includes("grok")) {
-                        mentions.grok_mentions += mentionCount;
-                      } else if (modelName.includes("llama")) {
-                        mentions.llama_mentions += mentionCount;
-                      }
-                    }
-                  }
-                });
-                
-                // Add Google search results mentions for this brand in this query
-                if (queryGoogleResults && queryGoogleResults.results.length > 0) {
-                  queryGoogleResults.results.forEach((result: any) => {
-                    const contentToCheck = [
-                      result.title || '',
-                      result.snippet || '',
-                      result.content || ''
-                    ].join(' ');
-                    
-                    if (contentToCheck.includes(queryBrandName)) {
-                      mentions.ai_overview_mentions += 1;
-                    }
-                  });
-                }
-                
-                // Calculate total mentions for this brand in this query
-                const totalMentions = Object.values(mentions).reduce(
-                  (sum, count) => sum + count,
-                  0
+
+        // Process model results for this date
+        result.model_results?.forEach(
+          (modelResult: { llm_name: string; data: { brands: any[] } }) => {
+            const modelName = modelResult.llm_name.toLowerCase();
+
+            const brandData = modelResult.data?.brands?.find(
+              (b) => b.name === brandName
+            );
+            if (brandData) {
+              let mentionCount = 1;
+
+              if (brandData.reasoning) {
+                const reasoningMatches = brandData.reasoning.match(
+                  new RegExp(`\\b${brandName}\\b`, "gi")
                 );
-                
-                if (totalMentions > 0) {
-                  queryBrandMentions[queryBrandName] = totalMentions;
+                if (reasoningMatches) {
+                  mentionCount += reasoningMatches.length;
                 }
-              });
-              
-              // Get the maximum mentions for any brand in this query
-              const queryMaxMentions = Math.max(...Object.values(queryBrandMentions));
-              
-              // Calculate coverage ratio for this specific query
-              const queryCoverageCount = 
-                (queryBrandEntry.claude_mentions > 0 ? 1 : 0) +
-                (queryBrandEntry.perplexity_mentions > 0 ? 1 : 0) +
-                (queryBrandEntry.gemini_mentions > 0 ? 1 : 0) +
-                (queryBrandEntry.gpt_search_mentions > 0 ? 1 : 0) +
-                (queryBrandEntry.ai_overview_mentions > 0 ? 1 : 0) +
-                (queryBrandEntry.google_ai_mode_mentions > 0 ? 1 : 0) +
-                (queryBrandEntry.deepseek_mentions > 0 ? 1 : 0) +
-                (queryBrandEntry.gpt_4_1_mentions > 0 ? 1 : 0) +
-                (queryBrandEntry.grok_mentions > 0 ? 1 : 0) +
-                (queryBrandEntry.llama_mentions > 0 ? 1 : 0);
-              
-              const queryCoverageRatio = queryMaxModels > 0 ? (queryCoverageCount / queryMaxModels) * 100 : 0;
-              
-              // Calculate visibility score for this specific query
-              const queryCoverageRatioDecimal = queryCoverageRatio / 100;
-              const queryMentionsIndex = queryMaxMentions > 0 ? queryBrandEntry.total_mentions / queryMaxMentions : 0;
-              const queryVisibilityScore = Math.min((100 * (queryCoverageRatioDecimal + queryMentionsIndex)) / 2, 100);
-              
-              queryCoverageRatios.push(queryCoverageRatio);
-              queryVisibilityScores.push(queryVisibilityScore);
-              
-              console.log(`Query ${queryIndex + 1} - Coverage: ${queryCoverageRatio}%, Visibility: ${queryVisibilityScore}%, MaxModels: ${queryMaxModels}, Mentions: ${queryBrandEntry.total_mentions}, MaxMentions: ${queryMaxMentions}`);
+              }
+
+              // Assign mentions to the appropriate model
+              if (modelName.includes("claude")) {
+                mentions.claude_mentions += mentionCount;
+              } else if (modelName.includes("perplexity")) {
+                mentions.perplexity_mentions += mentionCount;
+              } else if (modelName.includes("gemini")) {
+                mentions.gemini_mentions += mentionCount;
+              } else if (modelName.includes("search")) {
+                mentions.gpt_search_mentions += mentionCount;
+              } else if (modelName.includes("ai overview")) {
+                mentions.ai_overview_mentions += mentionCount;
+              } else if (modelName.includes("google ai mode")) {
+                mentions.google_ai_mode_mentions += mentionCount;
+              } else if (modelName.includes("deepseek")) {
+                mentions.deepseek_mentions += mentionCount;
+              } else if (modelName.includes("nano")) {
+                mentions.gpt_4_1_mentions += mentionCount;
+              } else if (modelName.includes("grok")) {
+                mentions.grok_mentions += mentionCount;
+              } else if (modelName.includes("llama")) {
+                mentions.llama_mentions += mentionCount;
+              }
+            }
+          }
+        );
+
+        if (google_overview) {
+          google_overview.forEach((overview: any) => {
+            if (overview.includes(brandName)) {
+              mentions.ai_overview_mentions += 1;
             }
           });
         }
-      });
-      
-      // Calculate averages
-      const avgCoverageRatio = queryCoverageRatios.length > 0 
-        ? queryCoverageRatios.reduce((sum, ratio) => sum + ratio, 0) / queryCoverageRatios.length 
-        : 0;
-      const avgVisibilityScore = queryVisibilityScores.length > 0 
-        ? queryVisibilityScores.reduce((sum, score) => sum + score, 0) / queryVisibilityScores.length 
-        : 0;
-      
-      // Use the accumulated data for total mentions and model mentions
-      const coverageRatio = avgCoverageRatio; // Use averaged coverage ratio
-      const visibilityScore = avgVisibilityScore; // Use averaged visibility score
-      
-      // Debug logging
-      console.log('Brand Project Metrics Calculation:');
-      console.log('Brand total mentions:', brandData[0].total_mentions);
-      console.log('Max mentions across all data:', maxMentions);
-      console.log('Max models active:', maxModels);
-      console.log('Coverage ratio:', coverageRatio);
-      console.log('Average visibility score:', visibilityScore);
-      console.log('Individual query visibility scores:', queryVisibilityScores);
-      
-      // Calculate temporal data using the same logic as main metrics
-      Object.keys(temporalDataMap).forEach((date) => {
-        const temporalEntry = temporalDataMap[date];
-        
-        // Calculate coverage for this date using the same logic
-        const dateCoverageCount = 
-          (brandData[0].claude_mentions > 0 ? 1 : 0) +
-          (brandData[0].perplexity_mentions > 0 ? 1 : 0) +
-          (brandData[0].gemini_mentions > 0 ? 1 : 0) +
-          (brandData[0].gpt_search_mentions > 0 ? 1 : 0) +
-          (brandData[0].ai_overview_mentions > 0 ? 1 : 0) +
-          (brandData[0].google_ai_mode_mentions > 0 ? 1 : 0) +
-          (brandData[0].deepseek_mentions > 0 ? 1 : 0) +
-          (brandData[0].gpt_4_1_mentions > 0 ? 1 : 0) +
-          (brandData[0].grok_mentions > 0 ? 1 : 0) +
-          (brandData[0].llama_mentions > 0 ? 1 : 0);
-        
-        temporalEntry.coverage = maxModels > 0 ? (dateCoverageCount / maxModels) * 100 : 0;
-        
-        // Calculate visibility for this date using the same logic
-        const dateCoverageRatio = temporalEntry.coverage / 100;
-        const dateMentionsIndex = maxMentions > 0 ? temporalEntry.mentions / maxMentions : 0;
-        temporalEntry.visibility = (100 * (dateCoverageRatio + dateMentionsIndex)) / 2;
+
+        const total_mentions = Object.values(mentions).reduce(
+          (sum, count) => sum + count,
+          0
+        );
+
+        if (total_mentions > 0) {
+          brandMentionsMap.set(brandName, {
+            brand_name: brandName,
+            analysis_date: result.analysis_date,
+            session_id: session.id,
+            ...mentions,
+            total_mentions,
+          });
+        }
       });
 
-      // Calculate model mentions
-      const uniqueModelMentions: Record<string, number> = {};
-      brandData.forEach((brand) => {
-        if (brand.claude_mentions > 0)
-          uniqueModelMentions["Claude 4.0 Sonnet"] =
-            (uniqueModelMentions["Claude 4.0 Sonnet"] || 0) + 1;
-        if (brand.perplexity_mentions > 0)
-          uniqueModelMentions["Perplexity Sonar"] =
-            (uniqueModelMentions["Perplexity Sonar"] || 0) + 1;
-        if (brand.gemini_mentions > 0)
-          uniqueModelMentions["Gemini 2.5 Flash"] =
-            (uniqueModelMentions["Gemini 2.5 Flash"] || 0) + 1;
-        if (brand.gpt_search_mentions > 0)
-          uniqueModelMentions["GPT 4o Web Search"] =
-            (uniqueModelMentions["GPT 4o Web Search"] || 0) + 1;
-        if (brand.ai_overview_mentions > 0)
-          uniqueModelMentions["Google AI Overview"] =
-            (uniqueModelMentions["Google AI Overview"] || 0) + 1;
-        if (brand.google_ai_mode_mentions > 0)
-          uniqueModelMentions["Google AI Mode"] =
-            (uniqueModelMentions["Google AI Mode"] || 0) + 1;
-        if (brand.deepseek_mentions > 0)
-          uniqueModelMentions["DeepSeek R1"] =
-            (uniqueModelMentions["DeepSeek R1"] || 0) + 1;
-        if (brand.gpt_4_1_mentions > 0)
-          uniqueModelMentions["GPT 4.1 Nano"] =
-            (uniqueModelMentions["GPT 4.1 Nano"] || 0) + 1;
-        if (brand.grok_mentions > 0)
-          uniqueModelMentions["Grok"] = (uniqueModelMentions["Grok"] || 0) + 1;
-        if (brand.llama_mentions > 0)
-          uniqueModelMentions["Llama"] =
-            (uniqueModelMentions["Llama"] || 0) + 1;
+      brandMentionsArray.push(...Array.from(brandMentionsMap.values()));
+    });
+
+    const temporalBrandMentionsInSummaries = brandMentionsArray.sort((a, b) => {
+      const dateCompare =
+        new Date(a.analysis_date).getTime() -
+        new Date(b.analysis_date).getTime();
+      if (dateCompare === 0) {
+        return b.total_mentions - a.total_mentions;
+      }
+      return dateCompare;
+    });
+
+    // Filter results by date range
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    let dateFilteredResults = results;
+    switch (selectedDateRange) {
+      case "today":
+        dateFilteredResults = results.filter((result) => {
+          const resultDate = new Date(result.analysis_date);
+          const resultDateOnly = new Date(
+            resultDate.getFullYear(),
+            resultDate.getMonth(),
+            resultDate.getDate()
+          );
+          return resultDateOnly.getTime() === today.getTime();
+        });
+        break;
+      case "7days":
+        const sevenDaysAgo = new Date(today);
+        sevenDaysAgo.setDate(today.getDate() - 7);
+        dateFilteredResults = results.filter((result) => {
+          const resultDate = new Date(result.analysis_date);
+          return resultDate >= sevenDaysAgo && resultDate <= now;
+        });
+        break;
+      case "30days":
+        const thirtyDaysAgo = new Date(today);
+        thirtyDaysAgo.setDate(today.getDate() - 30);
+        dateFilteredResults = results.filter((result) => {
+          const resultDate = new Date(result.analysis_date);
+          return resultDate >= thirtyDaysAgo && resultDate <= now;
+        });
+        break;
+      case "custom":
+        if (customDateRange.from && customDateRange.to) {
+          dateFilteredResults = results.filter((result) => {
+            const resultDate = new Date(result.analysis_date);
+            return (
+              resultDate >= customDateRange.from! &&
+              resultDate <= customDateRange.to!
+            );
+          });
+        }
+        break;
+    }
+
+    // Calculate current brand mentions based on filtered results
+    const brandMentionsMap = new Map();
+
+    allAnalysisBrands.forEach((brand) => {
+      const brandName = brand.name;
+      const mentions = {
+        claude_mentions: 0,
+        perplexity_mentions: 0,
+        gemini_mentions: 0,
+        gpt_search_mentions: 0,
+        ai_overview_mentions: 0,
+        google_ai_mode_mentions: 0,
+        deepseek_mentions: 0,
+        gpt_4_1_mentions: 0,
+        grok_mentions: 0,
+        llama_mentions: 0,
+      };
+
+      dateFilteredResults.forEach((result) => {
+        result?.model_results?.forEach(
+          (modelResult: { llm_name: string; data: { brands: any[] } }) => {
+            const modelName = modelResult.llm_name.toLowerCase();
+
+            const brandData = modelResult.data?.brands?.find(
+              (b) => b.name === brandName
+            );
+            if (brandData) {
+              let mentionCount = 1;
+
+              if (brandData.reasoning) {
+                const reasoningMatches = brandData.reasoning.match(
+                  new RegExp(`\\b${brandName}\\b`, "gi")
+                );
+                if (reasoningMatches) {
+                  mentionCount += reasoningMatches.length;
+                }
+              }
+
+              if (modelName.includes("claude")) {
+                mentions.claude_mentions += mentionCount;
+              } else if (modelName.includes("perplexity")) {
+                mentions.perplexity_mentions += mentionCount;
+              } else if (modelName.includes("gemini")) {
+                mentions.gemini_mentions += mentionCount;
+              } else if (modelName.includes("search")) {
+                mentions.gpt_search_mentions += mentionCount;
+              } else if (modelName.includes("ai overview")) {
+                mentions.ai_overview_mentions += mentionCount;
+              } else if (modelName.includes("google ai mode")) {
+                mentions.google_ai_mode_mentions += mentionCount;
+              } else if (modelName.includes("deepseek")) {
+                mentions.deepseek_mentions += mentionCount;
+              } else if (modelName.includes("nano")) {
+                mentions.gpt_4_1_mentions += mentionCount;
+              } else if (modelName.includes("grok")) {
+                mentions.grok_mentions += mentionCount;
+              } else if (modelName.includes("llama")) {
+                mentions.llama_mentions += mentionCount;
+              }
+            }
+          }
+        );
       });
 
-      // Calculate trends
-      const temporalArray = Object.values(temporalDataMap).sort(
-        (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-      );
-
-      let visibilityTrend: number | undefined;
-      let coverageTrend: number | undefined;
-      let mentionsTrend: number | undefined;
-
-      if (temporalArray.length >= 2) {
-        const latest = temporalArray[temporalArray.length - 1];
-        const previous = temporalArray[temporalArray.length - 2];
-
-        if (previous.visibility > 0) {
-          visibilityTrend =
-            (latest.visibility - previous.visibility) / previous.visibility;
-        }
-        if (previous.coverage > 0) {
-          coverageTrend =
-            (latest.coverage - previous.coverage) / previous.coverage;
-        }
-        if (previous.mentions > 0) {
-          mentionsTrend =
-            (latest.mentions - previous.mentions) / previous.mentions;
-        }
+      if (google_overview) {
+        google_overview.forEach((overview: any) => {
+          if (overview.includes(brandName)) {
+            mentions.ai_overview_mentions += 1;
+          }
+        });
       }
 
-      setBrandMetrics({
-        avgBrandVisibility: visibilityScore,
-        coverageRatio: coverageRatio,
-        totalMentions: totalMentions,
-        maxMentions: maxMentions,
-        uniqueModelMentions: uniqueModelMentions,
-        visibilityTrend,
-        coverageTrend,
-        mentionsTrend,
-      });
+      const total_mentions = Object.values(mentions).reduce(
+        (sum, count) => sum + count,
+        0
+      );
 
-      setTemporalData(temporalArray);
-    }
+      if (total_mentions > 0) {
+        brandMentionsMap.set(brandName, {
+          brand_name: brandName,
+          session_id: session.id,
+          ...mentions,
+          total_mentions,
+        });
+      }
+    });
+
+    const brandMentionsInSummaries = Array.from(brandMentionsMap.values()).sort(
+      (a, b) => b.total_mentions - a.total_mentions
+    );
+
+    return {
+      sessionId: session.id,
+      allAnalysisBrands,
+      temporalBrandMentionsInSummaries,
+      getDateFilteredResults: dateFilteredResults,
+      brandMentionsInSummaries,
+    };
   };
+
+  // Process all monitored sessions - returns arrays of arrays
+  const processedSessionsData = useMemo(() => {
+    const sessionsData = monitoredSessions.map(session => 
+      processMonitoredSession(session, googleSearchResults, selectedDateRange, customDateRange)
+    );
+
+    return {
+      // Array of brandMentionsInSummaries arrays (one per session)
+      brandMentionsSummariesBySession: sessionsData.map(session => session.brandMentionsInSummaries),
+      
+      // Array of temporalBrandMentionsInSummaries arrays (one per session)  
+      temporalBrandMentionsBySession: sessionsData.map(session => session.temporalBrandMentionsInSummaries),
+      
+      // Array of allAnalysisBrands arrays (one per session)
+      allAnalysisBrandsBySession: sessionsData.map(session => session.allAnalysisBrands),
+      
+      // Session IDs for reference
+      sessionIds: sessionsData.map(session => session.sessionId)
+    };
+  }, [monitoredSessions, googleSearchResults, selectedDateRange, customDateRange]);
+
+  // Extract the arrays
+  const brandMentionsSummariesBySession = processedSessionsData.brandMentionsSummariesBySession;
+  const temporalBrandMentionsBySession = processedSessionsData.temporalBrandMentionsBySession;
+  const allAnalysisBrandsBySession = processedSessionsData.allAnalysisBrandsBySession;
+  const sessionIds = processedSessionsData.sessionIds;
+
+  // For backward compatibility with existing UI components, use data from first session if available
+  const allAnalysisBrands = allAnalysisBrandsBySession[0] || [];
+  const temportalBrandMentionsInSummaries = temporalBrandMentionsBySession[0] || [];
+  const brandMentionsInSummaries = brandMentionsSummariesBySession[0] || [];
+
+  console.log('Brand mentions by session:', brandMentionsSummariesBySession);
+  console.log('Temporal brand mentions by session:', temporalBrandMentionsBySession);
+  console.log('Session IDs:', sessionIds);
+
+    console.log(googleSearchResults);
+
+  
+
+
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -1025,351 +757,13 @@ export default function BrandProjectPage() {
         )}
       </div>
 
-      {/* Brand Metrics Dashboard */}
-      {brandMetrics && monitoredSessions.length > 0 && (
-        <div className="mb-8 space-y-6">
-          <h2 className="text-2xl font-semibold">
-            Brand Performance Analytics
-          </h2>
-
-          {/* KPI Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Average Brand Visibility */}
-            <motion.div
-              className="p-6 bg-card/5 border border-[#e2e2e2]/70 dark:border-accent rounded-lg"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4 }}
-            >
-              <div className="text-sm text-muted-foreground mb-1 flex items-center gap-2">
-                Average Brand Visibility
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <Info className="w-4 h-4" />
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-sm w-full">
-                      <p>
-                        Average visibility score across all prompts for this
-                        brand
-                      </p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
-              <div className="text-2xl font-bold mb-1">
-                {brandMetrics.avgBrandVisibility.toFixed(1)}%
-              </div>
-              {brandMetrics.visibilityTrend !== undefined && (
-                <div
-                  className={`text-sm flex items-center gap-1 ${
-                    brandMetrics.visibilityTrend > 0
-                      ? "text-green-600"
-                      : "text-red-600"
-                  }`}
-                >
-                  {brandMetrics.visibilityTrend > 0 ? (
-                    <ArrowUpRight className="w-3 h-3" />
-                  ) : (
-                    <ArrowDownRight className="w-3 h-3" />
-                  )}
-                  {Math.abs(brandMetrics.visibilityTrend * 100).toFixed(1)}% vs
-                  previous
-                </div>
-              )}
-            </motion.div>
-
-            {/* Coverage Ratio */}
-            <motion.div
-              className="p-6 bg-card/5 border border-[#e2e2e2]/70 dark:border-accent rounded-lg"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.1 }}
-            >
-              <div className="text-sm text-muted-foreground mb-1 flex items-center gap-2">
-                Coverage Ratio
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <Info className="w-4 h-4" />
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-sm w-full">
-                      <p>
-                        Average ratio of models that mentioned this brand across
-                        all prompts
-                      </p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
-              <div className="text-2xl font-bold mb-1">
-                {brandMetrics.coverageRatio.toFixed(1)}%
-              </div>
-              {brandMetrics.coverageTrend !== undefined && (
-                <div
-                  className={`text-sm flex items-center gap-1 ${
-                    brandMetrics.coverageTrend > 0
-                      ? "text-green-600"
-                      : "text-red-600"
-                  }`}
-                >
-                  {brandMetrics.coverageTrend > 0 ? (
-                    <ArrowUpRight className="w-3 h-3" />
-                  ) : (
-                    <ArrowDownRight className="w-3 h-3" />
-                  )}
-                  {Math.abs(brandMetrics.coverageTrend * 100).toFixed(1)}% vs
-                  previous
-                </div>
-              )}
-            </motion.div>
-
-            {/* Total Mentions */}
-            <motion.div
-              className="p-6 bg-card/5 border border-[#e2e2e2]/70 dark:border-accent rounded-lg"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.2 }}
-            >
-              <div className="text-sm text-muted-foreground mb-1 flex items-center gap-2">
-                Total Mentions
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <Info className="w-4 h-4" />
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-sm w-full">
-                      <p>
-                        Total number of mentions across all prompts for this
-                        brand
-                      </p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
-              <div className="text-2xl font-bold mb-1">
-                {brandMetrics.maxMentions}
-              </div>
-              {brandMetrics.mentionsTrend !== undefined && (
-                <div
-                  className={`text-sm flex items-center gap-1 ${
-                    brandMetrics.mentionsTrend > 0
-                      ? "text-green-600"
-                      : "text-red-600"
-                  }`}
-                >
-                  {brandMetrics.mentionsTrend > 0 ? (
-                    <ArrowUpRight className="w-3 h-3" />
-                  ) : (
-                    <ArrowDownRight className="w-3 h-3" />
-                  )}
-                  {Math.abs(brandMetrics.mentionsTrend * 100).toFixed(1)}% vs
-                  previous
-                </div>
-              )}
-            </motion.div>
-
-            {/* Listed in Models */}
-            <motion.div
-              className="p-6 bg-card/5 border border-[#e2e2e2]/70 dark:border-accent rounded-lg"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.3 }}
-            >
-              <div className="text-sm text-muted-foreground mb-1">
-                Listed in Models
-              </div>
-              <div className="space-y-2 mt-2">
-                {Object.entries(brandMetrics.uniqueModelMentions).map(
-                  ([model, count]) => {
-                    const IconComponent = modelIcons[model];
-                    return (
-                      <div key={model} className="flex justify-between text-xs">
-                        <span className="truncate flex items-center gap-1">
-                          <IconComponent className="w-4 h-4" />
-                          {model}
-                        </span>
-                        <span className="text-blue-500 font-semibold">
-                          {count}
-                        </span>
-                      </div>
-                    );
-                  }
-                )}
-                {Object.keys(brandMetrics.uniqueModelMentions).length > 3 && (
-                  <div className="text-xs text-muted-foreground">
-                    +{Object.keys(brandMetrics.uniqueModelMentions).length - 3}{" "}
-                    more
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          </div>
-
-          {/* Charts */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Visibility Over Time Chart */}
-            <Card className="bg-background border-[#e2e2e2]/70 dark:border-accent">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <TrendingUp className="w-5 h-5" />
-                  Brand Visibility Over Time
-                </CardTitle>
-                <CardDescription>
-                  {temporalData.length > 0
-                    ? "Average visibility trend across all prompts"
-                    : "No temporal data available yet"}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {temporalData.length > 0 ? (
-                  <ChartContainer config={{}} className="h-[300px] w-full">
-                    <AreaChart
-                      data={temporalData.map((d) => ({
-                        date: new Date(d.date).toLocaleDateString("en-US", {
-                          day: "2-digit",
-                          month: "short",
-                        }),
-                        visibility: Number(d.visibility.toFixed(1)),
-                      }))}
-                      margin={{ left: 12, right: 12, top: 20, bottom: 20 }}
-                    >
-                      <CartesianGrid
-                        vertical={false}
-                        strokeDasharray="3 3"
-                        opacity={0.1}
-                      />
-                      <XAxis
-                        dataKey="date"
-                        tickLine={false}
-                        axisLine={false}
-                        tickMargin={8}
-                        style={{
-                          fontSize: "12px",
-                          fill: "var(--muted-foreground)",
-                        }}
-                      />
-                      <YAxis
-                        tickLine={false}
-                        axisLine={false}
-                        tickMargin={8}
-                        domain={[0, 100]}
-                        tickFormatter={(value) => `${value}%`}
-                        style={{
-                          fontSize: "12px",
-                          fill: "var(--muted-foreground)",
-                        }}
-                      />
-                      <ChartTooltip
-                        contentStyle={{
-                          backgroundColor: "var(--background)",
-                          border: "1px solid var(--border)",
-                          borderRadius: "6px",
-                          fontSize: "12px",
-                        }}
-                        formatter={(value) => [`${value}%`, "Visibility"]}
-                      />
-                      <Area
-                        type="monotone"
-                        dataKey="visibility"
-                        stroke="#3B82F6"
-                        fill="#3B82F6"
-                        fillOpacity={0.2}
-                        strokeWidth={2}
-                      />
-                    </AreaChart>
-                  </ChartContainer>
-                ) : (
-                  <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-                    <div className="text-center">
-                      <TrendingUp className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                      <p>Run more analyses to see trend data</p>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Model Mentions Chart */}
-            <Card className="bg-background border-[#e2e2e2]/70 dark:border-accent">
-              <CardHeader>
-                <CardTitle>Model Mentions Distribution</CardTitle>
-                <CardDescription>
-                  {Object.keys(brandMetrics.uniqueModelMentions).length > 0
-                    ? "Number of prompts where brand was mentioned by each model"
-                    : "No model mentions data available yet"}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {Object.keys(brandMetrics.uniqueModelMentions).length > 0 ? (
-                  <ChartContainer config={{}} className="h-[300px] w-full">
-                    <BarChart
-                      data={Object.entries(
-                        brandMetrics.uniqueModelMentions
-                      ).map(([model, count]) => ({
-                        model: model.replace(/\s*(4\.0|2\.5|4o)\s*/g, ""),
-                        count,
-                      }))}
-                      margin={{ left: 12, right: 12, top: 20, bottom: 20 }}
-                    >
-                      <CartesianGrid
-                        vertical={false}
-                        strokeDasharray="3 3"
-                        opacity={0.1}
-                      />
-                      <XAxis
-                        dataKey="model"
-                        tickLine={false}
-                        axisLine={false}
-                        tickMargin={8}
-                        angle={-45}
-                        textAnchor="end"
-                        height={80}
-                        style={{
-                          fontSize: "10px",
-                          fill: "var(--muted-foreground)",
-                        }}
-                      />
-                      <YAxis
-                        tickLine={false}
-                        axisLine={false}
-                        tickMargin={8}
-                        style={{
-                          fontSize: "12px",
-                          fill: "var(--muted-foreground)",
-                        }}
-                      />
-                      <ChartTooltip
-                        contentStyle={{
-                          backgroundColor: "var(--background)",
-                          border: "1px solid var(--border)",
-                          borderRadius: "6px",
-                          fontSize: "12px",
-                        }}
-                        formatter={(value) => [`${value}`, "Mentions"]}
-                      />
-                      <Bar
-                        dataKey="count"
-                        fill="#3B82F6"
-                        radius={[4, 4, 0, 0]}
-                      />
-                    </BarChart>
-                  </ChartContainer>
-                ) : (
-                  <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-                    <div className="text-center">
-                      <div className="w-12 h-12 mx-auto mb-4 opacity-50 bg-muted rounded flex items-center justify-center">
-                        📊
-                      </div>
-                      <p>No model mentions available yet</p>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      )}
+        <BrandMetricsHeader 
+          className="!w-full mb-8"
+          brands={brandMentionsSummariesBySession}
+          temporalBrands={temporalBrandMentionsBySession}
+          selectedBrand={new Set([brand?.name || ""])}
+          selectedModel={new Set()}
+        />
 
       {/* Analysis Sessions */}
       <div className="space-y-6">

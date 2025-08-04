@@ -2694,8 +2694,6 @@ function DashboardContent() {
     });
   }, [results, analysis_brands, selectedModel]);
 
-  // console.log("Temp Data: ", temportalBrandMentionsInSummaries)
-
   // Calculate brand mentions in model summaries
   const brandMentionsInSummaries = useMemo(() => {
     if (
@@ -4447,6 +4445,7 @@ function DashboardContent() {
 
                       <div className="flex md:flex-row flex-col gap-4 w-full h-full">
                         <MetricsHeader
+                        className="md:max-w-2/3"
                           brands={brandMentionsInSummaries}
                           temporalBrands={temportalBrandMentionsInSummaries}
                           selectedBrand={selectedBrands}
