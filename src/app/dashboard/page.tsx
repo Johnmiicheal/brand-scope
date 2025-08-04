@@ -2851,7 +2851,7 @@ function DashboardContent() {
         const firstSelectedBrand = Array.from(selectedBrands)[0];
         // Check if the selected brand exists in the current brand mentions
         const brandExists = brandMentionsInSummaries.some(
-          (brand) => brand.brand_name === firstSelectedBrand
+          (brand) => brand.brand_name.toLowerCase() === firstSelectedBrand.toLowerCase()
         );
         if (!brandExists) {
           setSelectedBrands(new Set([firstBrandName]));

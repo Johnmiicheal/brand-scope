@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @next/next/no-img-element */
 "use client";
@@ -83,6 +84,7 @@ interface BrandMetrics {
   avgBrandVisibility: number;
   coverageRatio: number;
   totalMentions: number;
+  maxMentions: number;
   uniqueModelMentions: Record<string, number>;
   visibilityTrend: number | undefined;
   coverageTrend: number | undefined;
@@ -255,31 +257,9 @@ export default function BrandProjectPage() {
                   result.content || ''
                 ].join(' ').toLowerCase();
                 
-                const brandNameLower = brandName.toLowerCase();
-                
                 // Check for exact brand name mentions
-                if (contentToCheck.includes(brandNameLower)) {
+                if (contentToCheck.includes(brandName)) {
                   googleMentions += 1;
-                }
-                
-                // Check for partial matches (brand name contains target or vice versa)
-                if (brandNameLower.includes(contentToCheck) || contentToCheck.includes(brandNameLower)) {
-                  googleMentions += 1;
-                }
-                
-                // Check for word-by-word matches
-                const brandWords = brandNameLower.split(/\s+/);
-                const contentWords = contentToCheck.split(/\s+/);
-                
-                for (const brandWord of brandWords) {
-                  if (brandWord.length > 2) { // Only check words longer than 2 chars
-                    for (const contentWord of contentWords) {
-                      if (contentWord.includes(brandWord) || brandWord.includes(contentWord)) {
-                        googleMentions += 1;
-                        break;
-                      }
-                    }
-                  }
                 }
               });
               
@@ -302,35 +282,7 @@ export default function BrandProjectPage() {
                 modelResult.data?.brands
               ) {
                 const brandData = modelResult.data.brands.find((brand: any) => {
-                  const modelBrandName = brand.name.toLowerCase();
-                  const targetBrandName = brandName.toLowerCase();
-                  
-                  // Check if the model's brand name contains our target brand name
-                  if (modelBrandName.includes(targetBrandName)) {
-                    return true;
-                  }
-                  
-                  // Check if our target brand name contains the model's brand name
-                  if (targetBrandName.includes(modelBrandName)) {
-                    return true;
-                  }
-                  
-                  // Check for common variations and abbreviations
-                  const targetWords = targetBrandName.split(/\s+/);
-                  const modelWords = modelBrandName.split(/\s+/);
-                  
-                  // Check if any word from target brand matches any word from model brand
-                  for (const targetWord of targetWords) {
-                    if (targetWord.length > 2) { // Only check words longer than 2 chars
-                      for (const modelWord of modelWords) {
-                        if (modelWord.includes(targetWord) || targetWord.includes(modelWord)) {
-                          return true;
-                        }
-                      }
-                    }
-                  }
-                  
-                  return false;
+                  return brand.name === brandName;
                 });
                 
                 // Debug: Log all available brand names if no match found
@@ -387,34 +339,168 @@ export default function BrandProjectPage() {
               }
 
               temporalDataMap[date].mentions += brandEntry.total_mentions;
-              // Calculate visibility and coverage similar to metrics card
-              const maxMentions = Math.max(
-                ...brandData.map((b) => b.total_mentions)
-              );
-              temporalDataMap[date].visibility =
-                maxMentions > 0
-                  ? Math.min((brandEntry.total_mentions / maxMentions) * 100, 100)
-                  : 0;
-              temporalDataMap[date].coverage =
-                brandEntry.total_mentions > 0 ? 100 : 0;
             }
           }
         });
       }
     });
 
-    // Use the same calculation logic as metrics card
+    // Use the exact same calculation logic as the main dashboard
     if (brandData.length > 0) {
       const totalMentions = brandData.reduce(
         (acc, brand) => acc + brand.total_mentions,
         0
       );
-      const maxMentions = Math.max(...brandData.map((b) => b.total_mentions));
-
-      // Calculate coverage ratio like metrics card
-      const totalMentionsPerModel = brandData.reduce((acc, brand) => {
-        return (
-          acc +
+      
+      // Calculate metrics exactly like the dashboard - process all potential brands
+      const modelCounts = new Set<string>();
+      const allBrandMentions: Record<string, number> = {};
+      
+      // First, collect all unique brands mentioned in the data
+      const allBrandsInData = new Set<string>();
+      queries.forEach((query: any) => {
+        if (query.results && Array.isArray(query.results)) {
+          query.results.forEach((analysisRun: any) => {
+            if (analysisRun.model_results && Array.isArray(analysisRun.model_results)) {
+              analysisRun.model_results.forEach((modelResult: any) => {
+                if (modelResult.status === "fulfilled" && modelResult.data?.brands) {
+                  modelResult.data.brands.forEach((brand: any) => {
+                    allBrandsInData.add(brand.name);
+                  });
+                }
+              });
+            }
+          });
+        }
+      });
+      
+      // Now process each brand like the dashboard does
+      allBrandsInData.forEach((brandName) => {
+        const mentions = {
+          claude_mentions: 0,
+          perplexity_mentions: 0,
+          gemini_mentions: 0,
+          gpt_search_mentions: 0,
+          ai_overview_mentions: 0,
+          google_ai_mode_mentions: 0,
+          deepseek_mentions: 0,
+          gpt_4_1_mentions: 0,
+          grok_mentions: 0,
+          llama_mentions: 0,
+        };
+        
+        // Process each query result
+        queries.forEach((query: any) => {
+          if (query.results && Array.isArray(query.results)) {
+            query.results.forEach((analysisRun: any) => {
+              if (analysisRun.model_results && Array.isArray(analysisRun.model_results)) {
+                analysisRun.model_results.forEach((modelResult: any) => {
+                  if (modelResult.status === "fulfilled" && modelResult.data?.brands) {
+                    const brandData = modelResult.data.brands.find(
+                      (b: any) => b.name.toLowerCase() === brandName.toLowerCase()
+                    );
+                    
+                    if (brandData) {
+                      let mentionCount = 1;
+                      
+                      // Add mentions from reasoning if available
+                      if (brandData.reasoning) {
+                        const reasoningMatches = brandData.reasoning.match(
+                          new RegExp(`\\b${brandName}\\b`, "gi")
+                        );
+                        if (reasoningMatches) {
+                          mentionCount += reasoningMatches.length;
+                        }
+                      }
+                      
+                      // Assign mentions to the appropriate model
+                      const modelName = modelResult.llm_name?.toLowerCase() || "";
+                      if (modelName.includes("claude")) {
+                        mentions.claude_mentions += mentionCount;
+                      } else if (modelName.includes("perplexity")) {
+                        mentions.perplexity_mentions += mentionCount;
+                      } else if (modelName.includes("gemini")) {
+                        mentions.gemini_mentions += mentionCount;
+                      } else if (modelName.includes("search")) {
+                        mentions.gpt_search_mentions += mentionCount;
+                      } else if (modelName.includes("ai overview")) {
+                        mentions.ai_overview_mentions += mentionCount;
+                      } else if (modelName.includes("google ai mode")) {
+                        mentions.google_ai_mode_mentions += mentionCount;
+                      } else if (modelName.includes("deepseek")) {
+                        mentions.deepseek_mentions += mentionCount;
+                      } else if (modelName.includes("nano")) {
+                        mentions.gpt_4_1_mentions += mentionCount;
+                      } else if (modelName.includes("grok")) {
+                        mentions.grok_mentions += mentionCount;
+                      } else if (modelName.includes("llama")) {
+                        mentions.llama_mentions += mentionCount;
+                      }
+                      
+                      // Track which models were active
+                      if (modelName.includes("gpt") || modelName.includes("openai")) {
+                        modelCounts.add("GPT 4o Web Search");
+                      } else if (modelName.includes("claude")) {
+                        modelCounts.add("Claude 4.0 Sonnet");
+                      } else if (modelName.includes("perplexity")) {
+                        modelCounts.add("Perplexity Sonar");
+                      } else if (modelName.includes("gemini")) {
+                        modelCounts.add("Gemini 2.5 Flash");
+                      } else if (modelName.includes("ai mode")) {
+                        modelCounts.add("Google AI Mode");
+                      } else if (modelName.includes("deepseek")) {
+                        modelCounts.add("DeepSeek R1");
+                      } else if (modelName.includes("nano")) {
+                        modelCounts.add("GPT 4.1 Nano");
+                      } else if (modelName.includes("grok")) {
+                        modelCounts.add("Grok");
+                      } else if (modelName.includes("llama")) {
+                        modelCounts.add("Llama");
+                      }
+                    }
+                  }
+                });
+              }
+            });
+          }
+        });
+        
+        // Add Google search results mentions
+        googleSearchResults.forEach((sessionResults) => {
+          if (sessionResults.results && sessionResults.results.length > 0) {
+            sessionResults.results.forEach((result: any) => {
+              const contentToCheck = [
+                result.title || '',
+                result.snippet || '',
+                result.content || ''
+              ].join(' ').toLowerCase();
+              
+              if (contentToCheck.includes(brandName.toLowerCase())) {
+                mentions.ai_overview_mentions += 1;
+              }
+            });
+            modelCounts.add("Google AI Overview");
+          }
+        });
+        
+        // Calculate total mentions for this brand
+        const totalMentions = Object.values(mentions).reduce(
+          (sum, count) => sum + count,
+          0
+        );
+        
+        if (totalMentions > 0) {
+          allBrandMentions[brandName] = totalMentions;
+        }
+      });
+      
+      // Calculate maxMentions from all brand mentions (same as dashboard)
+      const maxMentions = Math.max(...Object.values(allBrandMentions));
+      const maxModels = modelCounts.size;
+      
+      // Calculate coverage ratio exactly like dashboard
+      const getCoverageRatio = (brand: any) => {
+        const totalMentionsPerModel =
           (brand.claude_mentions > 0 ? 1 : 0) +
           (brand.perplexity_mentions > 0 ? 1 : 0) +
           (brand.gemini_mentions > 0 ? 1 : 0) +
@@ -424,37 +510,315 @@ export default function BrandProjectPage() {
           (brand.deepseek_mentions > 0 ? 1 : 0) +
           (brand.gpt_4_1_mentions > 0 ? 1 : 0) +
           (brand.grok_mentions > 0 ? 1 : 0) +
-          (brand.llama_mentions > 0 ? 1 : 0)
-        );
-      }, 0);
-
-      const getMaxActiveModels = () => {
-        // Find the maximum number of models that successfully analyzed across all brands
-        const modelCounts = new Set<string>();
-    
-        brandData.forEach((brand) => {
-          if (brand.claude_mentions > 0) modelCounts.add("Claude 4.0 Sonnet");
-          if (brand.perplexity_mentions > 0) modelCounts.add("Perplexity Sonar");
-          if (brand.gemini_mentions > 0) modelCounts.add("Gemini 2.5 Flash");
-          if (brand.gpt_search_mentions > 0) modelCounts.add("GPT 4o Web Search");
-          if (brand.ai_overview_mentions > 0) modelCounts.add("Google AI Overview");
-          if (brand.google_ai_mode_mentions > 0) modelCounts.add("Google AI Mode");
-          if (brand.deepseek_mentions > 0) modelCounts.add("DeepSeek R1");
-          if (brand.gpt_4_1_mentions > 0) modelCounts.add("GPT 4.1 Nano");
-          if (brand.grok_mentions > 0) modelCounts.add("Grok");
-          if (brand.llama_mentions > 0) modelCounts.add("Llama");
-        });
-    
-        return modelCounts.size;
+          (brand.llama_mentions > 0 ? 1 : 0);
+        
+        return maxModels > 0 ? (totalMentionsPerModel / maxModels) * 100 : 0;
       };
-    
-      const maxModels = getMaxActiveModels();
-      const coverageRatio = Math.min(
-        (totalMentionsPerModel / (maxModels * brandData.length)) * 100,
-        100
-      );
-      const mentionsIndex = maxMentions > 0 ? Math.min(totalMentions / maxMentions, 1) : 0;
-      const visibilityScore = Math.min((100 * (coverageRatio / 100 + mentionsIndex)) / 2, 100);
+      
+      // Calculate visibility score exactly like dashboard
+      const getVisibilityScore = (brand: any) => {
+        const coverageRatio = getCoverageRatio(brand) / 100;
+        const mentionsIndex = maxMentions > 0 ? brand.total_mentions / maxMentions : 0;
+        return (100 * (coverageRatio + mentionsIndex)) / 2;
+      };
+      
+      // Calculate visibility scores for each query and average them
+      const queryVisibilityScores: number[] = [];
+      const queryCoverageRatios: number[] = [];
+      
+      // Process each query separately to get individual scores
+      queries.forEach((query: any, queryIndex: number) => {
+        if (query.results && Array.isArray(query.results)) {
+          query.results.forEach((analysisRun: any) => {
+            if (analysisRun.model_results && Array.isArray(analysisRun.model_results)) {
+              // Create a brand entry for this specific query
+              const queryBrandEntry = {
+                brand_name: brandName,
+                gpt_mentions: 0,
+                gpt_search_mentions: 0,
+                claude_mentions: 0,
+                perplexity_mentions: 0,
+                gemini_mentions: 0,
+                total_mentions: 0,
+                ai_overview_mentions: 0,
+                google_ai_mode_mentions: 0,
+                deepseek_mentions: 0,
+                gpt_4_1_mentions: 0,
+                grok_mentions: 0,
+                llama_mentions: 0,
+              };
+              
+              // Check for Google search results for this specific query
+              const queryGoogleResults = googleSearchResults.find(
+                (sessionResults) => sessionResults.sessionId === query.id
+              );
+              
+              if (queryGoogleResults && queryGoogleResults.results.length > 0) {
+                let googleMentions = 0;
+                                 queryGoogleResults.results.forEach((result: any) => {
+                   const contentToCheck = [
+                     result.title || '',
+                     result.snippet || '',
+                     result.content || ''
+                   ].join(' ');
+                   
+                   if (contentToCheck.includes(brandName)) {
+                     googleMentions += 1;
+                   }
+                 });
+                
+                if (googleMentions > 0) {
+                  queryBrandEntry.ai_overview_mentions += googleMentions;
+                  queryBrandEntry.total_mentions += googleMentions;
+                } else {
+                  queryBrandEntry.ai_overview_mentions += 1;
+                  queryBrandEntry.total_mentions += 1;
+                }
+              }
+              
+              // Process model results for this query
+              analysisRun.model_results.forEach((modelResult: any) => {
+                if (modelResult.status === "fulfilled" && modelResult.data?.brands) {
+                                     const brandData = modelResult.data.brands.find((brand: any) => {
+                     return brand.name === brandName;
+                   });
+                  
+                  if (brandData) {
+                    const modelName = modelResult.llm_name || "";
+                    if (modelName.includes("GPT") || modelName.includes("OpenAI")) {
+                      queryBrandEntry.gpt_search_mentions += 1;
+                    } else if (modelName.includes("Claude")) {
+                      queryBrandEntry.claude_mentions += 1;
+                    } else if (modelName.includes("Perplexity")) {
+                      queryBrandEntry.perplexity_mentions += 1;
+                    } else if (modelName.includes("Gemini")) {
+                      queryBrandEntry.gemini_mentions += 1;
+                    } else if (modelName.includes("AI Mode")) {
+                      queryBrandEntry.google_ai_mode_mentions += 1;
+                    } else if (modelName.includes("DeepSeek")) {
+                      queryBrandEntry.deepseek_mentions += 1;
+                    } else if (modelName.includes("Nano")) {
+                      queryBrandEntry.gpt_4_1_mentions += 1;
+                    } else if (modelName.includes("Grok")) {
+                      queryBrandEntry.grok_mentions += 1;
+                    } else if (modelName.includes("Llama")) {
+                      queryBrandEntry.llama_mentions += 1;
+                    }
+                    queryBrandEntry.total_mentions += 1;
+                  }
+                }
+              });
+              
+              // Calculate maxModels for this specific query from fulfilled models
+              const queryModelCounts = new Set<string>();
+              analysisRun.model_results.forEach((modelResult: any) => {
+                if (modelResult.status === "fulfilled") {
+                  const modelName = modelResult.llm_name?.toLowerCase() || "";
+                  if (modelName.includes("gpt") || modelName.includes("openai")) {
+                    queryModelCounts.add("GPT 4o Web Search");
+                  } else if (modelName.includes("claude")) {
+                    queryModelCounts.add("Claude 4.0 Sonnet");
+                  } else if (modelName.includes("perplexity")) {
+                    queryModelCounts.add("Perplexity Sonar");
+                  } else if (modelName.includes("gemini")) {
+                    queryModelCounts.add("Gemini 2.5 Flash");
+                  } else if (modelName.includes("ai mode")) {
+                    queryModelCounts.add("Google AI Mode");
+                  } else if (modelName.includes("deepseek")) {
+                    queryModelCounts.add("DeepSeek R1");
+                  } else if (modelName.includes("nano")) {
+                    queryModelCounts.add("GPT 4.1 Nano");
+                  } else if (modelName.includes("grok")) {
+                    queryModelCounts.add("Grok");
+                  } else if (modelName.includes("llama")) {
+                    queryModelCounts.add("Llama");
+                  }
+                }
+              });
+              
+              // Add Google AI Overview if Google search results exist for this query
+              if (queryGoogleResults && queryGoogleResults.results.length > 0) {
+                queryModelCounts.add("Google AI Overview");
+              }
+              
+              const queryMaxModels = queryModelCounts.size;
+              
+              // Calculate maxMentions for this query like the dashboard does
+              // First collect all unique brands in this query
+              const queryBrandsSet = new Set<string>();
+              analysisRun.model_results.forEach((modelResult: any) => {
+                if (modelResult.status === "fulfilled" && modelResult.data?.brands) {
+                  modelResult.data.brands.forEach((brand: any) => {
+                    queryBrandsSet.add(brand.name);
+                  });
+                }
+              });
+              
+              // Now calculate mentions for each brand in this query (like dashboard)
+              const queryBrandMentions: Record<string, number> = {};
+              queryBrandsSet.forEach((queryBrandName) => {
+                const mentions = {
+                  claude_mentions: 0,
+                  perplexity_mentions: 0,
+                  gemini_mentions: 0,
+                  gpt_search_mentions: 0,
+                  ai_overview_mentions: 0,
+                  google_ai_mode_mentions: 0,
+                  deepseek_mentions: 0,
+                  gpt_4_1_mentions: 0,
+                  grok_mentions: 0,
+                  llama_mentions: 0,
+                };
+                
+                analysisRun.model_results.forEach((modelResult: any) => {
+                  if (modelResult.status === "fulfilled" && modelResult.data?.brands) {
+                    const brandData = modelResult.data.brands.find(
+                      (b: any) => b.name === queryBrandName
+                    );
+                    
+                    if (brandData) {
+                      let mentionCount = 1;
+                      
+                      // Add mentions from reasoning if available
+                      if (brandData.reasoning) {
+                        const reasoningMatches = brandData.reasoning.match(
+                          new RegExp(`\\b${queryBrandName}\\b`, "gi")
+                        );
+                        if (reasoningMatches) {
+                          mentionCount += reasoningMatches.length;
+                        }
+                      }
+                      
+                      // Assign mentions to the appropriate model
+                      const modelName = modelResult.llm_name?.toLowerCase() || "";
+                      if (modelName.includes("claude")) {
+                        mentions.claude_mentions += mentionCount;
+                      } else if (modelName.includes("perplexity")) {
+                        mentions.perplexity_mentions += mentionCount;
+                      } else if (modelName.includes("gemini")) {
+                        mentions.gemini_mentions += mentionCount;
+                      } else if (modelName.includes("search")) {
+                        mentions.gpt_search_mentions += mentionCount;
+                      } else if (modelName.includes("ai overview")) {
+                        mentions.ai_overview_mentions += mentionCount;
+                      } else if (modelName.includes("google ai mode")) {
+                        mentions.google_ai_mode_mentions += mentionCount;
+                      } else if (modelName.includes("deepseek")) {
+                        mentions.deepseek_mentions += mentionCount;
+                      } else if (modelName.includes("nano")) {
+                        mentions.gpt_4_1_mentions += mentionCount;
+                      } else if (modelName.includes("grok")) {
+                        mentions.grok_mentions += mentionCount;
+                      } else if (modelName.includes("llama")) {
+                        mentions.llama_mentions += mentionCount;
+                      }
+                    }
+                  }
+                });
+                
+                // Add Google search results mentions for this brand in this query
+                if (queryGoogleResults && queryGoogleResults.results.length > 0) {
+                  queryGoogleResults.results.forEach((result: any) => {
+                    const contentToCheck = [
+                      result.title || '',
+                      result.snippet || '',
+                      result.content || ''
+                    ].join(' ');
+                    
+                    if (contentToCheck.includes(queryBrandName)) {
+                      mentions.ai_overview_mentions += 1;
+                    }
+                  });
+                }
+                
+                // Calculate total mentions for this brand in this query
+                const totalMentions = Object.values(mentions).reduce(
+                  (sum, count) => sum + count,
+                  0
+                );
+                
+                if (totalMentions > 0) {
+                  queryBrandMentions[queryBrandName] = totalMentions;
+                }
+              });
+              
+              // Get the maximum mentions for any brand in this query
+              const queryMaxMentions = Math.max(...Object.values(queryBrandMentions));
+              
+              // Calculate coverage ratio for this specific query
+              const queryCoverageCount = 
+                (queryBrandEntry.claude_mentions > 0 ? 1 : 0) +
+                (queryBrandEntry.perplexity_mentions > 0 ? 1 : 0) +
+                (queryBrandEntry.gemini_mentions > 0 ? 1 : 0) +
+                (queryBrandEntry.gpt_search_mentions > 0 ? 1 : 0) +
+                (queryBrandEntry.ai_overview_mentions > 0 ? 1 : 0) +
+                (queryBrandEntry.google_ai_mode_mentions > 0 ? 1 : 0) +
+                (queryBrandEntry.deepseek_mentions > 0 ? 1 : 0) +
+                (queryBrandEntry.gpt_4_1_mentions > 0 ? 1 : 0) +
+                (queryBrandEntry.grok_mentions > 0 ? 1 : 0) +
+                (queryBrandEntry.llama_mentions > 0 ? 1 : 0);
+              
+              const queryCoverageRatio = queryMaxModels > 0 ? (queryCoverageCount / queryMaxModels) * 100 : 0;
+              
+              // Calculate visibility score for this specific query
+              const queryCoverageRatioDecimal = queryCoverageRatio / 100;
+              const queryMentionsIndex = queryMaxMentions > 0 ? queryBrandEntry.total_mentions / queryMaxMentions : 0;
+              const queryVisibilityScore = Math.min((100 * (queryCoverageRatioDecimal + queryMentionsIndex)) / 2, 100);
+              
+              queryCoverageRatios.push(queryCoverageRatio);
+              queryVisibilityScores.push(queryVisibilityScore);
+              
+              console.log(`Query ${queryIndex + 1} - Coverage: ${queryCoverageRatio}%, Visibility: ${queryVisibilityScore}%, MaxModels: ${queryMaxModels}, Mentions: ${queryBrandEntry.total_mentions}, MaxMentions: ${queryMaxMentions}`);
+            }
+          });
+        }
+      });
+      
+      // Calculate averages
+      const avgCoverageRatio = queryCoverageRatios.length > 0 
+        ? queryCoverageRatios.reduce((sum, ratio) => sum + ratio, 0) / queryCoverageRatios.length 
+        : 0;
+      const avgVisibilityScore = queryVisibilityScores.length > 0 
+        ? queryVisibilityScores.reduce((sum, score) => sum + score, 0) / queryVisibilityScores.length 
+        : 0;
+      
+      // Use the accumulated data for total mentions and model mentions
+      const coverageRatio = avgCoverageRatio; // Use averaged coverage ratio
+      const visibilityScore = avgVisibilityScore; // Use averaged visibility score
+      
+      // Debug logging
+      console.log('Brand Project Metrics Calculation:');
+      console.log('Brand total mentions:', brandData[0].total_mentions);
+      console.log('Max mentions across all data:', maxMentions);
+      console.log('Max models active:', maxModels);
+      console.log('Coverage ratio:', coverageRatio);
+      console.log('Average visibility score:', visibilityScore);
+      console.log('Individual query visibility scores:', queryVisibilityScores);
+      
+      // Calculate temporal data using the same logic as main metrics
+      Object.keys(temporalDataMap).forEach((date) => {
+        const temporalEntry = temporalDataMap[date];
+        
+        // Calculate coverage for this date using the same logic
+        const dateCoverageCount = 
+          (brandData[0].claude_mentions > 0 ? 1 : 0) +
+          (brandData[0].perplexity_mentions > 0 ? 1 : 0) +
+          (brandData[0].gemini_mentions > 0 ? 1 : 0) +
+          (brandData[0].gpt_search_mentions > 0 ? 1 : 0) +
+          (brandData[0].ai_overview_mentions > 0 ? 1 : 0) +
+          (brandData[0].google_ai_mode_mentions > 0 ? 1 : 0) +
+          (brandData[0].deepseek_mentions > 0 ? 1 : 0) +
+          (brandData[0].gpt_4_1_mentions > 0 ? 1 : 0) +
+          (brandData[0].grok_mentions > 0 ? 1 : 0) +
+          (brandData[0].llama_mentions > 0 ? 1 : 0);
+        
+        temporalEntry.coverage = maxModels > 0 ? (dateCoverageCount / maxModels) * 100 : 0;
+        
+        // Calculate visibility for this date using the same logic
+        const dateCoverageRatio = temporalEntry.coverage / 100;
+        const dateMentionsIndex = maxMentions > 0 ? temporalEntry.mentions / maxMentions : 0;
+        temporalEntry.visibility = (100 * (dateCoverageRatio + dateMentionsIndex)) / 2;
+      });
 
       // Calculate model mentions
       const uniqueModelMentions: Record<string, number> = {};
@@ -521,6 +885,7 @@ export default function BrandProjectPage() {
         avgBrandVisibility: visibilityScore,
         coverageRatio: coverageRatio,
         totalMentions: totalMentions,
+        maxMentions: maxMentions,
         uniqueModelMentions: uniqueModelMentions,
         visibilityTrend,
         coverageTrend,
@@ -783,7 +1148,7 @@ export default function BrandProjectPage() {
                 </TooltipProvider>
               </div>
               <div className="text-2xl font-bold mb-1">
-                {brandMetrics.totalMentions}
+                {brandMetrics.maxMentions}
               </div>
               {brandMetrics.mentionsTrend !== undefined && (
                 <div
