@@ -19,7 +19,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { TbAt, TbBookmarks, TbLayoutGridAdd, TbListSearch, TbSquareLetterA, TbTrendingUp, TbTriangleSquareCircle } from "react-icons/tb";
+import { TbBookmarks, TbLayoutGridAdd, TbListSearch, TbSquareLetterA, TbTriangleSquareCircle } from "react-icons/tb";
 import { RankiaIcon } from "./icon-rankia"
 import { CreditUsageProgress } from "./dashboard/credit-usage-progress"
 
@@ -57,35 +57,36 @@ const data = {
     //   group: "analytics"
     // },
     {
-      title: "Keywords",
-      url: "/dashboard/keywords",
-      icon: TbSquareLetterA,
-      group: "analytics"
-    },
-    {
       title: "Projects",
       url: "/dashboard/projects",
       icon: TbTriangleSquareCircle,
       group: "analytics"
     },
     {
-      title: "Brand Mentions",
-      url: "/dashboard/brand-mentions",
-      icon: TbAt,
+      title: "Keywords",
+      url: "/dashboard/keywords",
+      icon: TbSquareLetterA,
       group: "analytics"
     },
+   
+    // {
+    //   title: "Brand Mentions",
+    //   url: "/dashboard/brand-mentions",
+    //   icon: TbAt,
+    //   group: "analytics"
+    // },
     // {
     //   title: "Social Analysis",
     //   url: "/dashboard/social",
     //   icon: TbGrid,
     //   group: "analytics"
     // },
-    {
-      title: "Improve",
-      url: "/dashboard/improvement",
-      icon: TbTrendingUp,
-      group: "analytics"
-    },
+    // {
+    //   title: "Improve",
+    //   url: "/dashboard/improvement",
+    //   icon: TbTrendingUp,
+    //   group: "analytics"
+    // },
   ],
   navSecondary: [
     {

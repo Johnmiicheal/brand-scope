@@ -2,7 +2,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { ExternalLink, Quote, BookOpen } from "lucide-react";
+import { ExternalLink, Quote, BookOpen, Download } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -285,6 +285,65 @@ export function CitationsCard({
 
   const citationsByModel = getCitationsByModel();
 
+  // Function to export citations to CSV
+  const exportToCSV = () => {
+    if (citationsByModel.length === 0) {
+      return;
+    }
+
+    // Create CSV headers
+    const headers = ['Model', 'Title', 'URL', 'Snippet', 'Domain', 'Date'];
+    
+    // Create CSV rows
+    const rows: string[] = [];
+    
+    citationsByModel.forEach((modelData) => {
+      modelData.citations.forEach((citation) => {
+        const title = citation.url_citation?.title || citation.title || '';
+        const url = citation.url_citation?.url || citation.url || '';
+        const snippet = citation.url_citation?.snippet || citation.text || '';
+        const domain = safeGetHostname(url);
+        const date = new Date().toISOString().split('T')[0]; // Use current date as export date
+        
+        // Escape quotes and commas in CSV values
+        const escapeCSVValue = (value: string) => {
+          if (value.includes('"') || value.includes(',') || value.includes('\n')) {
+            return `"${value.replace(/"/g, '""')}"`;
+          }
+          return value;
+        };
+        
+        const row = [
+          escapeCSVValue(modelData.model),
+          escapeCSVValue(title),
+          escapeCSVValue(url),
+          escapeCSVValue(snippet),
+          escapeCSVValue(domain),
+          escapeCSVValue(date)
+        ].join(',');
+        
+        rows.push(row);
+      });
+    });
+    
+    // Combine headers and rows
+    const csvContent = [headers.join(','), ...rows].join('\n');
+    
+    // Create and download the file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    
+    if (link.download !== undefined) {
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `citations-export-${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
+
   if (citationsByModel.length === 0) {
     return (
       <Card className="bg-background shadow-none border-[#e2e2e2]/70 dark:border-accent">
@@ -310,13 +369,26 @@ export function CitationsCard({
   return (
     <Card className="bg-background shadow-none border-[#e2e2e2]/70 dark:border-accent">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Quote className="w-5 h-5" />
-          Citations by Model
-        </CardTitle>
-        <CardDescription>
-          Source citations used by AI models in their analysis
-        </CardDescription>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Quote className="w-5 h-5" />
+              Citations by Model
+            </CardTitle>
+            <CardDescription>
+              Source citations used by AI models in their analysis
+            </CardDescription>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={exportToCSV}
+            className="flex items-center gap-2"
+          >
+            <Download className="w-4 h-4" />
+            Export CSV
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
         <ScrollArea className="min-h-[500px]">

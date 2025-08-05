@@ -27,8 +27,8 @@ export async function POST(req: NextRequest) {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Extract request data (including user from request body)
-    const { businessBrief, keyword, website, user, language } = await req.json();
-    console.log("Request Body Parsed:", { businessBrief, keyword, website, user: user?.id, language });
+    const { businessBrief, keyword, website, user, language, location } = await req.json();
+    console.log("Request Body Parsed:", { businessBrief, keyword, website, user: user?.id, language, location });
 
     // Validate user authentication
     if (!user || !user.id) {
@@ -101,7 +101,8 @@ export async function POST(req: NextRequest) {
     const chatInputData = {
       url: website || "",
       "business_brief or main keyword": businessBrief || keyword || "",
-      language: language || "en"
+      language: language || "en",
+      location: location || "Global"
     };
     
     const chatInputParam = encodeURIComponent(JSON.stringify(chatInputData));
@@ -244,7 +245,9 @@ export async function POST(req: NextRequest) {
         analysis_summary: outputData.summary || '',
         keywords_data: keywordsArray,
         top_keywords: topKeywords,
-        stats: stats
+        stats: stats,
+        language: language,
+        location: location,
       });
 
     if (sessionError) {

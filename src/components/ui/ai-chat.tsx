@@ -278,6 +278,7 @@ export function AIChatInterface({
         console.error("Error fetching brand:", error);
       } else {
         setAttachedBrand(data as unknown as Brand);
+        setLocation(data.location as string || "Global");
       }
     };
     fetchBrand();
@@ -1216,6 +1217,7 @@ export function AIChatInterface({
         showBrandModal={openModal}
         setShowBrandModal={setOpenModal}
         setAttachedBrand={setAttachedBrand}
+        setLocation={setLocation}
       />
     </div>
   );

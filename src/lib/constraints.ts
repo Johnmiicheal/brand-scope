@@ -16,6 +16,43 @@ export const constraints = {
       max_scheduled_queries: 500,
     },
   },
+  payg: {
+    packages: [
+      {
+        id: 'payg_small',
+        name: 'Small Credit Pack',
+        credits: 150,
+        price: 1780, // $17.80 in cents
+        price_id: 'price_payg_small_150', // Create these in Stripe Dashboard
+        description: '150 credits for immediate use',
+      },
+      {
+        id: 'payg_medium', 
+        name: 'Medium Credit Pack',
+        credits: 350,
+        price: 3900, // $39.00 in cents
+        price_id: 'price_payg_medium_350',
+        description: '350 credits - best value',
+        badge: 'Best Value',
+      },
+      {
+        id: 'payg_large',
+        name: 'Large Credit Pack', 
+        credits: 750,
+        price: 7900, // $79.00 in cents
+        price_id: 'price_payg_large_750',
+        description: '750 credits - maximum savings',
+        badge: 'Maximum Credits',
+      },
+    ],
+    per_credit_cost: 0.12, // $0.12 per credit for pay-as-you-go
+    custom: {
+      enabled: false,
+      min_credits: 50,
+      max_credits: 2000,
+      price_per_credit: 0.13, // $0.13 per credit for custom orders
+    },
+  },
   keyword_analysis: {
     credit_cost: 3,
   },
@@ -90,4 +127,28 @@ export const getModelCost = (mode: 'explorer' | 'voyager', modelKey: string): nu
   const modeConfig = constraints.models[mode];
   const model = modeConfig.models.find(m => m.key === modelKey);
   return model ? model.credit_cost : 1;
+};
+
+// Get pay-as-you-go packages
+export const getPaygPackages = () => {
+  return constraints.payg.packages;
+};
+
+// Get package by ID
+export const getPaygPackage = (packageId: string) => {
+  return constraints.payg.packages.find(pkg => pkg.id === packageId);
+};
+
+// Get custom credit pricing
+export const getCustomCreditPricing = () => {
+  return constraints.payg.custom;
+};
+
+// Calculate price for custom credit amount
+export const calculateCustomCreditPrice = (credits: number): number => {
+  const pricing = constraints.payg.custom;
+  if (!pricing.enabled || credits < pricing.min_credits || credits > pricing.max_credits) {
+    return 0;
+  }
+  return Math.round(credits * pricing.price_per_credit * 100); // Return in cents
 };

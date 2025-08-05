@@ -20,6 +20,11 @@ export function CreditUsageProgress({ className }: CreditUsageProgressProps) {
   const constraints = getConstraints(product.name)
   const usedCredits = user_subscriptions.query_count || 0
   const maxCredits = constraints.max_credits
+  const paygCredits = user_subscriptions.payg_credits || 0
+  const subscriptionCreditsRemaining = Math.max(0, maxCredits - usedCredits)
+  const totalAvailableCredits = subscriptionCreditsRemaining + paygCredits
+  
+  // Calculate percentage based on subscription usage
   const percentage = Math.min((usedCredits / maxCredits) * 100, 100)
   const circumference = 2 * Math.PI * 45 // radius of 45
   const strokeDasharray = circumference
@@ -76,13 +81,25 @@ export function CreditUsageProgress({ className }: CreditUsageProgressProps) {
       <div className="flex items-center justify-between w-full ml-2">
         <div className="flex flex-col items-center">
           <span className="text-xs font-medium">Credits</span>
-            <div className="text-[10px] text-muted-foreground mt-0.5">
+          <div className="text-[10px] text-muted-foreground mt-0.5">
             {usedCredits.toLocaleString()} / {maxCredits.toLocaleString()}
+          </div>
+          {paygCredits > 0 && (
+            <div className="text-[9px] text-blue-600 font-medium">
+              +{paygCredits.toLocaleString()} PAYG
             </div>
+          )}
         </div>
-        <span className={cn("text-xs font-semibold", getColor())}>
+        <div className="flex flex-col items-end">
+          <span className={cn("text-xs font-semibold", getColor())}>
             {Math.round(percentage)}%
           </span>
+          {totalAvailableCredits !== subscriptionCreditsRemaining && (
+            <span className="text-[9px] text-blue-600 font-medium">
+              {totalAvailableCredits.toLocaleString()} total
+            </span>
+          )}
+        </div>
       </div>
     </div>
   )

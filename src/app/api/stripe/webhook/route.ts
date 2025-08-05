@@ -60,35 +60,98 @@ export async function POST(request: Request) {
     case 'checkout.session.completed': {
       const session = event.data.object as Stripe.Checkout.Session;
       const userId = session.metadata?.userId;
-      const priceId = session.metadata?.priceId;
-
+      
       console.log('Checkout session completed:', session.id);
       console.log('User ID:', userId);
-      console.log('Price ID:', priceId);
-      console.log('Subscription:', session.subscription);
+      console.log('Session metadata:', session.metadata);
 
-      if (userId && session.subscription) {
-        // Store the subscription in your database
-        const { error } = await supabase
-          .from('user_subscriptions')
-          .insert({
-            user_id: userId,
-            stripe_subscription_id: session.subscription as string,
-            stripe_customer_id: session.customer as string,
-            status: 'active',
-            price_id: priceId,
-            current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now
-          });
-
-        if (error) {
-          console.error('Error inserting subscription:', error);
-          return NextResponse.json(
-            { error: 'Error saving subscription' },
-            { status: 500 }
-          );
-        }
+      // Check if this is a pay-as-you-go credit purchase
+      if (session.metadata?.type === 'payg_credits') {
+        const credits = parseInt(session.metadata?.credits || '0');
+        const packageId = session.metadata?.packageId;
         
-        console.log('Subscription saved to database');
+        console.log('Pay-as-you-go credit purchase completed:', session.id);
+        console.log('Credits:', credits);
+        console.log('Package ID:', packageId);
+
+        if (userId && credits > 0) {
+          try {
+            // Add pay-as-you-go credits to user account
+            const { addPaygCredits } = await import('@/lib/paygCredits');
+            const result = await addPaygCredits(userId, credits);
+            
+            if (result.success) {
+              console.log(`Successfully added ${credits} pay-as-you-go credits to user ${userId}`);
+              
+              // Update transaction status to completed
+              const { error: transactionError } = await supabase
+                .from('payg_transactions')
+                .update({ status: 'completed' })
+                .eq('stripe_session_id', session.id);
+
+              if (transactionError) {
+                console.error('Error updating transaction status:', transactionError);
+              }
+            } else {
+              console.error('Error adding pay-as-you-go credits:', result.error);
+              
+              // Update transaction status to failed
+              await supabase
+                .from('payg_transactions')
+                .update({ status: 'failed' })
+                .eq('stripe_session_id', session.id);
+
+              return NextResponse.json(
+                { error: 'Error adding credits' },
+                { status: 500 }
+              );
+            }
+          } catch (error) {
+            console.error('Exception processing pay-as-you-go credit purchase:', error);
+            
+            // Update transaction status to failed
+            await supabase
+              .from('payg_transactions')
+              .update({ status: 'failed' })
+              .eq('stripe_session_id', session.id);
+
+            return NextResponse.json(
+              { error: 'Error processing credit purchase' },
+              { status: 500 }
+            );
+          }
+        }
+      } else {
+        // Regular subscription checkout
+        const priceId = session.metadata?.priceId;
+        
+        console.log('Subscription checkout completed');
+        console.log('Price ID:', priceId);
+        console.log('Subscription:', session.subscription);
+
+        if (userId && session.subscription) {
+          // Store the subscription in your database
+          const { error } = await supabase
+            .from('user_subscriptions')
+            .insert({
+              user_id: userId,
+              stripe_subscription_id: session.subscription as string,
+              stripe_customer_id: session.customer as string,
+              status: 'active',
+              price_id: priceId,
+              current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now
+            });
+
+          if (error) {
+            console.error('Error inserting subscription:', error);
+            return NextResponse.json(
+              { error: 'Error saving subscription' },
+              { status: 500 }
+            );
+          }
+          
+          console.log('Subscription saved to database');
+        }
       }
       break;
     }

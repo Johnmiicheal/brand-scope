@@ -38,6 +38,8 @@ type KeywordAnalysis = {
   }>;
   top_keywords?: Array<unknown>;
   stats?: Record<string, unknown>;
+  language?: string;
+  location?: string;
 };
 
 const fadeIn = {
@@ -262,7 +264,7 @@ export default function KeywordAnalysisDetailPage() {
               trend_6m: string;
               relevance_score: number;
             }>)}
-            metadata={[{ language: 'en', country: 'global' }]}
+            metadata={[{ language: analysis.language || 'en', country: analysis.location || 'Global' }]}
             onScheduleKeyword={handleScheduleKeyword}
           />
         </motion.div>

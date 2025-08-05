@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Bot, Loader2, Search, AlertCircle, Zap, Sparkles, History } from "lucide-react";
+import { Loader2, Search, AlertCircle, Zap, Sparkles, History } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -15,12 +15,14 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 
 import { Select, SelectItem, SelectContent, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { domains } from "@/types/domains";
 
 type FormData = {
   businessBrief: string;
   keyword: string;
   website: string;
   language: string;
+  location: string;
 };
 
 
@@ -42,6 +44,7 @@ export default function KeywordAnalysisPage() {
     keyword: "",
     website: "",
     language: "en",
+    location: "Global",
   });
   const [isLoading, setIsLoading] = useState(false);
 
@@ -116,6 +119,7 @@ export default function KeywordAnalysisPage() {
           website: formData.website.trim(),
           language: formData.language,
           user: user,
+          location: formData.location,
         }),
       });
 
@@ -168,7 +172,6 @@ export default function KeywordAnalysisPage() {
       <motion.div className="flex flex-col gap-2" variants={slideUp}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Bot className="w-8 h-8 text-primary" />
             <div>
               <h1 className="text-3xl font-bold tracking-tight">Keyword Analysis</h1>
               <p className="text-muted-foreground">
@@ -199,8 +202,8 @@ export default function KeywordAnalysisPage() {
       </motion.div>
 
       <motion.div variants={slideUp}>
-        <Card>
-          <CardHeader>
+        <Card className="border-none px-0">
+          <CardHeader className="px-0">
             <CardTitle className="flex items-center gap-2">
               <Sparkles className="w-5 h-5" />
               Business Information
@@ -210,7 +213,7 @@ export default function KeywordAnalysisPage() {
               At least one field is required.
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-0">
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="flex flex-col gap-6">
                 {/* Left Column */}
@@ -267,7 +270,28 @@ export default function KeywordAnalysisPage() {
                       Your business website (optional if other fields are provided)
                     </p>
                   </div>
-                  <div className="space-y-2 md:w-[300px]">
+                  <div className="space-y-2 w-full">
+                    <Label htmlFor="location" className="text-base font-medium">
+                      Location
+                    </Label>
+                    <Select value={formData.location} onValueChange={(value) => setFormData(prev => ({ ...prev, location: value }))}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select a location" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Global">Global</SelectItem>
+                        {domains.map((domain) => (
+                          <SelectItem key={domain.domain} value={domain.country_name}>
+                            {domain.country_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-sm text-muted-foreground">
+                      Your business location (optional)
+                    </p>
+                  </div>
+                  <div className="space-y-2 w-full">
                     <Label htmlFor="language" className="text-base font-medium">
                       Language
                     </Label>
@@ -285,6 +309,9 @@ export default function KeywordAnalysisPage() {
                         <SelectItem value="ru">Russian</SelectItem>
                       </SelectContent>
                     </Select> 
+                    <p className="text-sm text-muted-foreground">
+                      Your local language (optional)
+                    </p>
                   </div>
 
                 </div>

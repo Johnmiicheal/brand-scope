@@ -15,6 +15,7 @@ export interface UserSubscription {
   status: string;
   query_count: number;
   monitoring_count: number;
+  payg_credits: number;
   created_at: string;
   updated_at: string;
 }

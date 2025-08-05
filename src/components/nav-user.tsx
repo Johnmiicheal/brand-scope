@@ -7,6 +7,7 @@ import {
   ChevronsUpDown,
   CreditCard,
   HelpCircle,
+  Zap,
 } from "lucide-react"
 
 import {
@@ -31,11 +32,12 @@ import {
 } from "@/components/ui/sidebar"
 import { useAuth } from "@/contexts/AuthContext"
 import { SignOutButton } from "@/components/auth/SignOutButton"
+import { useRouter } from "next/navigation"
 
 export function NavUser() {
   const { isMobile } = useSidebar()
   const { user, user_subscriptions, isLoading } = useAuth()
-
+  const router = useRouter()
   
   // If loading or no user, show loading or login state
   if (isLoading) {
@@ -154,6 +156,12 @@ export function NavUser() {
                   Profile
                 </div>
               </DropdownMenuItem> */}
+              <DropdownMenuItem asChild className="cursor-pointer" onClick={() => router.push('/dashboard/credits')}>
+                <div className="flex items-center">
+                  <Zap className="mr-2 h-4 w-4" />
+                  Usage
+                </div>
+              </DropdownMenuItem>
               <DropdownMenuItem asChild className="cursor-pointer" onClick={handleOpenBillingPortal}>
                 <div className="flex items-center">
                   <CreditCard className="mr-2 h-4 w-4" />

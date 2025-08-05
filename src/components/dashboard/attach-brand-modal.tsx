@@ -30,12 +30,14 @@ interface AttachBrandModalProps {
   showBrandModal: boolean;
   setShowBrandModal: (show: boolean) => void;
   setAttachedBrand: (brand: Brand) => void;
+  setLocation: (location: string) => void;
 }
 
 export const AttachBrandModal = ({
   showBrandModal,
   setShowBrandModal,
   setAttachedBrand,
+  setLocation,
 }: AttachBrandModalProps) => {
   const [sessionKey, setSessionKey] = useState("");
 
@@ -110,6 +112,7 @@ export const AttachBrandModal = ({
   const handleAttachBrand = async () => {
     if(selectedBrand) {
       setAttachedBrand(selectedBrand as Brand);
+      setLocation(selectedBrand.location as string || "Global");
       setShowBrandModal(false);
     } else {
       handleCreateBrand();
@@ -160,6 +163,8 @@ export const AttachBrandModal = ({
           },
         ])
         .select();
+
+      setLocation(brandLocation);
 
       if (error) {
         console.error("Error creating brand:", error);
@@ -287,14 +292,14 @@ export const AttachBrandModal = ({
         <DialogHeader className="flex-shrink-0">
           <DialogTitle>Attach Brand to Analysis</DialogTitle>
           <DialogDescription>
-            Tell us about your brand to personalize your search analysis
+            Attach an existing brand to your analysis or create a new one. This will allow you to analyze the brand&apos;s performance and visibility across different AI search engines.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-6 py-4 overflow-y-auto flex-1 min-h-0">
           {/* Brand Select */}
           {brands.length > 0 && (
           <div className="grid gap-2 w-full bg-blue-500/10 border border-blue-500/20 border-dashed p-4 rounded-md">
-            <Label htmlFor="brand">Select your brand</Label>
+            <Label htmlFor="brand">Select your existing brand</Label>
             <Select
               value={selectedBrand?.id}
               onValueChange={(value) =>
