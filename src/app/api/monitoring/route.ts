@@ -46,13 +46,27 @@ async function getSearchResultsByModeId(mode_id: string) {
     };
   }
 
+  async function getSearchResultsByBrandId(brand_id: string) {
+    // Get all monitoring searches for a brand
+    const { data: monitoringData, error: monitoringError } = await supabase
+      .from('scheduled_queries')
+      .select('*')
+      .contains('attached_brand_id', [brand_id]);
+
+    if (monitoringError || !monitoringData || monitoringData.length === 0) return null;
+    
+    return {
+      monitoring: monitoringData,
+    };
+  }
+
 // Endpoint to fetch search results
 export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const mode_id = searchParams.get('mode_id');
     const user_id = searchParams.get('user_id');
-    
-    if (!mode_id && !user_id) {
+    const brand_id = searchParams.get('brand_id');
+    if (!mode_id && !user_id && !brand_id) {
       return NextResponse.json({ error: 'Missing mode_id, or user_id parameter' }, { status: 400 });
     }
     
@@ -62,6 +76,8 @@ export async function GET(req: Request) {
         results = await getSearchResultsByModeId(mode_id);
       } else if (user_id) {
         results = await getSearchResultsByUserId(user_id);
+      } else if (brand_id) {
+        results = await getSearchResultsByBrandId(brand_id);
       }
       
       if (!results) {

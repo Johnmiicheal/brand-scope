@@ -144,7 +144,9 @@ export function MetricsHeader({
 }: MetricsHeaderProps) {
   // Get all selected brands data
   const selectedBrandsData = brands.filter((b) =>
-    selectedBrand.has(b.brand_name)
+    Array.from(selectedBrand).some(brandName => 
+      b.brand_name.toLowerCase().includes(brandName.toLowerCase())
+    )
   );
 
   if (selectedBrand.has("all") || selectedBrand.size === 0) return null;

@@ -91,16 +91,21 @@ export default function BrandProjectPage() {
 
   const [brand, setBrand] = useState<Brand | null>(null);
   const [sessions, setSessions] = useState<AnalysisSession[]>([]);
-  const [monitoredSessions, setMonitoredSessions] = useState<ScheduledQuery[]>([]);
+  const [monitoredSessions, setMonitoredSessions] = useState<ScheduledQuery[]>(
+    []
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [brandMetrics, setBrandMetrics] = useState<BrandMetrics | null>(null);
   const [temporalData, setTemporalData] = useState<TemporalBrandData[]>([]);
   const [googleSearchResults, setGoogleSearchResults] = useState<any[]>([]);
   const [selectedDateRange, setSelectedDateRange] = useState<string>("all");
-  const [customDateRange, setCustomDateRange] = useState<{ from: Date | null, to: Date | null }>({ from: null, to: null });
+  const [customDateRange, setCustomDateRange] = useState<{
+    from: Date | null;
+    to: Date | null;
+  }>({ from: null, to: null });
   const [loadingGoogleResults, setLoadingGoogleResults] = useState(false);
-  
+
   useEffect(() => {
     if (user?.id && brandName) {
       fetchBrandAndSessions();
@@ -118,7 +123,7 @@ export default function BrandProjectPage() {
       const { data: brandData, error: brandError } = await supabase
         .from("brand_project")
         .select("*")
-        .eq("user_id", user.id)
+        // .eq("user_id", user.id)
         .eq("name", brandName)
         .single();
 
@@ -128,7 +133,6 @@ export default function BrandProjectPage() {
       }
 
       setBrand(brandData as unknown as Brand);
-
     } catch (error) {
       console.error("Error:", error);
       setError("Failed to load brand data");
@@ -137,8 +141,8 @@ export default function BrandProjectPage() {
     }
   };
 
-   // Fetch Google search results using the monitoring API
-   const fetchGoogleSearchResults = async (
+  // Fetch Google search results using the monitoring API
+  const fetchGoogleSearchResults = async (
     mode_id: string,
     dateRange?: string,
     customRange?: { from: Date | undefined; to: Date | undefined }
@@ -223,7 +227,7 @@ export default function BrandProjectPage() {
 
       try {
         setLoading(true);
-        const response = await fetch(`/api/monitoring?user_id=${user?.id}`);
+          const response = await fetch(`/api/monitoring?brand_id=${brand?.id}`);
 
         if (!response.ok) {
           setError(
@@ -235,6 +239,7 @@ export default function BrandProjectPage() {
         }
 
         const data = await response.json();
+        console.log("data: ", data);
         const filteredDataByMyBrand = data.monitoring.filter((item: any) =>
           item?.attached_brand_id?.includes(brand?.id)
         );
@@ -249,7 +254,9 @@ export default function BrandProjectPage() {
         );
         setLoading(false);
         console.error("Failed to fetch scheduled queries:", error);
-        toast.error("Failed to load scheduled queries. Please try again later.");
+        toast.error(
+          "Failed to load scheduled queries. Please try again later."
+        );
       } finally {
         setLoading(false);
       }
@@ -257,7 +264,6 @@ export default function BrandProjectPage() {
 
     fetchScheduledQueries();
   }, [brand]);
-
 
   // Utility function to process a single monitored session
   const processMonitoredSession = (
@@ -267,7 +273,7 @@ export default function BrandProjectPage() {
     customDateRange: { from: Date | null; to: Date | null }
   ) => {
     const results = session?.results;
-    
+
     if (!results || !Array.isArray(results)) {
       return {
         sessionId: session.id,
@@ -354,7 +360,7 @@ export default function BrandProjectPage() {
           deepseek_mentions: 0,
           gpt_4_1_mentions: 0,
           grok_mentions: 0,
-          llama_mentions: 0
+          llama_mentions: 0,
         };
 
         // Process model results for this date
@@ -588,45 +594,64 @@ export default function BrandProjectPage() {
 
   // Process all monitored sessions - returns arrays of arrays
   const processedSessionsData = useMemo(() => {
-    const sessionsData = monitoredSessions.map(session => 
-      processMonitoredSession(session, googleSearchResults, selectedDateRange, customDateRange)
+    const sessionsData = monitoredSessions.map((session) =>
+      processMonitoredSession(
+        session,
+        googleSearchResults,
+        selectedDateRange,
+        customDateRange
+      )
     );
 
     return {
       // Array of brandMentionsInSummaries arrays (one per session)
-      brandMentionsSummariesBySession: sessionsData.map(session => session.brandMentionsInSummaries),
-      
-      // Array of temporalBrandMentionsInSummaries arrays (one per session)  
-      temporalBrandMentionsBySession: sessionsData.map(session => session.temporalBrandMentionsInSummaries),
-      
+      brandMentionsSummariesBySession: sessionsData.map(
+        (session) => session.brandMentionsInSummaries
+      ),
+
+      // Array of temporalBrandMentionsInSummaries arrays (one per session)
+      temporalBrandMentionsBySession: sessionsData.map(
+        (session) => session.temporalBrandMentionsInSummaries
+      ),
+
       // Array of allAnalysisBrands arrays (one per session)
-      allAnalysisBrandsBySession: sessionsData.map(session => session.allAnalysisBrands),
-      
+      allAnalysisBrandsBySession: sessionsData.map(
+        (session) => session.allAnalysisBrands
+      ),
+
       // Session IDs for reference
-      sessionIds: sessionsData.map(session => session.sessionId)
+      sessionIds: sessionsData.map((session) => session.sessionId),
     };
-  }, [monitoredSessions, googleSearchResults, selectedDateRange, customDateRange]);
+  }, [
+    monitoredSessions,
+    googleSearchResults,
+    selectedDateRange,
+    customDateRange,
+  ]);
 
   // Extract the arrays
-  const brandMentionsSummariesBySession = processedSessionsData.brandMentionsSummariesBySession;
-  const temporalBrandMentionsBySession = processedSessionsData.temporalBrandMentionsBySession;
-  const allAnalysisBrandsBySession = processedSessionsData.allAnalysisBrandsBySession;
+  const brandMentionsSummariesBySession =
+    processedSessionsData.brandMentionsSummariesBySession;
+  const temporalBrandMentionsBySession =
+    processedSessionsData.temporalBrandMentionsBySession;
+  const allAnalysisBrandsBySession =
+    processedSessionsData.allAnalysisBrandsBySession;
   const sessionIds = processedSessionsData.sessionIds;
 
   // For backward compatibility with existing UI components, use data from first session if available
   const allAnalysisBrands = allAnalysisBrandsBySession[0] || [];
-  const temportalBrandMentionsInSummaries = temporalBrandMentionsBySession[0] || [];
+  const temportalBrandMentionsInSummaries =
+    temporalBrandMentionsBySession[0] || [];
   const brandMentionsInSummaries = brandMentionsSummariesBySession[0] || [];
 
-  console.log('Brand mentions by session:', brandMentionsSummariesBySession);
-  console.log('Temporal brand mentions by session:', temporalBrandMentionsBySession);
-  console.log('Session IDs:', sessionIds);
+  console.log("Brand mentions by session:", brandMentionsSummariesBySession);
+  console.log(
+    "Temporal brand mentions by session:",
+    temporalBrandMentionsBySession
+  );
+  console.log("Session IDs:", sessionIds);
 
-    console.log(googleSearchResults);
-
-  
-
-
+  console.log(googleSearchResults);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -757,14 +782,15 @@ export default function BrandProjectPage() {
         )}
       </div>
 
-        <BrandMetricsHeader 
-          className="!w-full mb-8"
-          brands={brandMentionsSummariesBySession}
-          temporalBrands={temporalBrandMentionsBySession}
-          selectedBrand={new Set([brand?.name || ""])}
-          selectedModel={new Set()}
-        />
-
+      <BrandMetricsHeader
+        className="!w-full mb-8"
+        brands={brandMentionsSummariesBySession}
+        temporalBrands={temporalBrandMentionsBySession}
+        selectedBrand={new Set([brand?.name || ""])}
+        selectedModel={new Set()}
+        queries={monitoredSessions as unknown as ScheduledQuery[]}
+        brandName={brandName}
+      />
       {/* Analysis Sessions */}
       <div className="space-y-6">
         <div className="flex items-center justify-between">
@@ -907,21 +933,22 @@ export default function BrandProjectPage() {
               </div>
             </TabsContent>
             <TabsContent value="monitored">
-              <MonitoredSummary
-                queries={monitoredSessions as unknown as ScheduledQuery[]}
-                brandName={brandName}
-              />
               <ScheduledQueriesList
                 queries={monitoredSessions as unknown as ScheduledQuery[]}
               />
-              
+
               {/* Google Search Results Display */}
               {googleSearchResults.length > 0 && (
                 <div className="mt-8">
-                  <h3 className="text-lg font-semibold mb-4">Google Search Results</h3>
+                  <h3 className="text-lg font-semibold mb-4">
+                    Google Search Results
+                  </h3>
                   <div className="space-y-4">
                     {googleSearchResults.map((sessionResults) => (
-                      <Card key={sessionResults.sessionId} className="bg-background border-[#e2e2e2]/70 dark:border-accent">
+                      <Card
+                        key={sessionResults.sessionId}
+                        className="bg-background border-[#e2e2e2]/70 dark:border-accent"
+                      >
                         <CardHeader>
                           <CardTitle className="text-sm">
                             Session: {sessionResults.sessionId.slice(0, 8)}...
@@ -933,24 +960,30 @@ export default function BrandProjectPage() {
                         <CardContent>
                           {sessionResults.results.length > 0 ? (
                             <div className="space-y-2">
-                              {sessionResults.results.slice(0, 5).map((result: any, index: number) => (
-                                <div key={index} className="p-3 bg-muted/50 rounded-lg">
-                                  <div className="text-sm font-medium text-blue-600">
-                                    {result.title || `Result ${index + 1}`}
-                                  </div>
-                                  <div className="text-xs text-muted-foreground mt-1">
-                                    {result.snippet || 'No snippet available'}
-                                  </div>
-                                  {result.url && (
-                                    <div className="text-xs text-green-600 mt-1 truncate">
-                                      {result.url}
+                              {sessionResults.results
+                                .slice(0, 5)
+                                .map((result: any, index: number) => (
+                                  <div
+                                    key={index}
+                                    className="p-3 bg-muted/50 rounded-lg"
+                                  >
+                                    <div className="text-sm font-medium text-blue-600">
+                                      {result.title || `Result ${index + 1}`}
                                     </div>
-                                  )}
-                                </div>
-                              ))}
+                                    <div className="text-xs text-muted-foreground mt-1">
+                                      {result.snippet || "No snippet available"}
+                                    </div>
+                                    {result.url && (
+                                      <div className="text-xs text-green-600 mt-1 truncate">
+                                        {result.url}
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
                               {sessionResults.results.length > 5 && (
                                 <div className="text-xs text-muted-foreground text-center">
-                                  +{sessionResults.results.length - 5} more results
+                                  +{sessionResults.results.length - 5} more
+                                  results
                                 </div>
                               )}
                             </div>

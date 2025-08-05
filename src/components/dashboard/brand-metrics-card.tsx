@@ -16,6 +16,10 @@ import {
   TooltipContent,
 } from "@/components/ui/tooltip";
 import { AiStudio, Claude, DeepSeek, Gemini, Grok, Meta, OpenAI, Perplexity } from "@lobehub/icons";
+import { useEffect, useState } from "react";
+import { ScheduledQuery } from "@/types/scheduled-query";
+import { AnalysisRun } from "@/types/analysis-run";
+
 interface MetricCardProps {
   title: string;
   value: string | number;
@@ -138,7 +142,19 @@ interface BrandMetricsHeaderProps {
   temporalBrands: Array<TemporalBrand[]>;
   selectedBrand: Set<string>;
   selectedModel: Set<string>;
+  queries: ScheduledQuery[];
+  brandName: string;
 }
+
+interface SummaryMetrics {
+    totalRankings: number;
+    averageRank: number;
+    averageScore: number;
+    queryCount: number;
+    modelCount: number;
+    activeQueries: number;
+    loading: boolean;
+  }
 
 export function BrandMetricsHeader({
   className,
@@ -146,11 +162,188 @@ export function BrandMetricsHeader({
   temporalBrands,
   selectedBrand,
   selectedModel,
+  queries,
+  brandName,
 }: BrandMetricsHeaderProps) {
+
+    const [metrics, setMetrics] = useState<SummaryMetrics>({
+        totalRankings: 0,
+        averageRank: 0,
+        averageScore: 0,
+        queryCount: 0,
+        modelCount: 0,
+        activeQueries: 0,
+        loading: true,
+      });
+    
+      useEffect(() => {
+        const calculateMetrics = () => {
+          console.log('Calculating metrics with queries:', queries);
+          
+          if (!queries || queries.length === 0) {
+            console.log('No queries found');
+            setMetrics({
+              totalRankings: 0,
+              averageRank: 0,
+              averageScore: 0,
+              queryCount: 0,
+              modelCount: 0,
+              activeQueries: 0,
+              loading: false,
+            });
+            return;
+          }
+    
+          try {
+            let totalRankings = 0;
+            let totalScore = 0;
+            let scoreCount = 0;
+            let totalRank = 0;
+            let rankCount = 0;
+            const modelsSet = new Set<string>();
+    
+            console.log(`Processing ${queries.length} queries...`);
+    
+            // Process each scheduled query's results
+            queries.forEach((query, queryIndex) => {
+              console.log(`Query ${queryIndex}:`, query);
+              
+              if (query.results && Array.isArray(query.results)) {
+                console.log(`Query ${queryIndex} has ${query.results.length} results`);
+                
+                // Each query.results is an array of analysis runs
+                (query.results as AnalysisRun[]).forEach((analysisRun, runIndex) => {
+                  console.log(`Analysis run ${runIndex}:`, analysisRun);
+                  
+                  if (analysisRun.model_results && Array.isArray(analysisRun.model_results)) {
+                    console.log(`Analysis run ${runIndex} has ${analysisRun.model_results.length} model results`);
+                    
+                    // Process each model result in this analysis run
+                    analysisRun.model_results.forEach((modelResult, modelIndex) => {
+                      console.log(`Model result ${modelIndex}:`, modelResult);
+                      
+                      // Add model to the set
+                      if (modelResult.llm_name) {
+                        modelsSet.add(modelResult.llm_name);
+                      }
+    
+                      // Process brand rankings if the model result was successful
+                      if (modelResult.status === 'fulfilled' && modelResult.data?.brands) {
+                        console.log(`Model result ${modelIndex} has ${modelResult.data.brands.length} brands`);
+                        
+                        modelResult.data.brands.forEach((brand, brandIndex) => {
+                          console.log(`Brand ${brandIndex}:`, brand);
+                          
+                          // Check for valid score
+                          if (typeof brand.score === 'number' && !isNaN(brand.score) && isFinite(brand.score)) {
+                            totalScore += brand.score;
+                            scoreCount += 1;
+                            totalRankings += 1;
+                            console.log(`Added score: ${brand.score}, totalScore: ${totalScore}, scoreCount: ${scoreCount}`);
+                          } else {
+                            console.log(`Invalid score for brand ${brandIndex}:`, brand.score);
+                          }
+                          
+                          // Calculate average rank for the specific brand
+                          if (brandName && brand.name && typeof brand.rank === 'number' && !isNaN(brand.rank) && isFinite(brand.rank)) {
+                            const modelBrandName = brand.name.toLowerCase();
+                            const targetBrandName = brandName.toLowerCase();
+                            
+                            console.log(`Checking brand match: "${modelBrandName}" vs "${targetBrandName}"`);
+                            
+                            // Check if this brand matches our target brand
+                            if (modelBrandName.includes(targetBrandName) || 
+                                targetBrandName.includes(modelBrandName) ||
+                                modelBrandName.split(/\s+/).some(word => 
+                                  targetBrandName.split(/\s+/).some(targetWord => 
+                                    word.includes(targetWord) || targetWord.includes(word)
+                                  )
+                                )) {
+                              totalRank += brand.rank;
+                              rankCount += 1;
+                              console.log(`Brand match found! Added rank: ${brand.rank}, totalRank: ${totalRank}, rankCount: ${rankCount}`);
+                            }
+                          } else {
+                            console.log(`Invalid rank for brand ${brandIndex}:`, brand.rank);
+                          }
+                        });
+                      } else {
+                        console.log(`Model result ${modelIndex} not fulfilled or no brands data`);
+                      }
+                    });
+                  } else {
+                    console.log(`Analysis run ${runIndex} has no model_results`);
+                  }
+                  
+                  // Also count models from model_summary
+                  if (analysisRun.model_summary && Array.isArray(analysisRun.model_summary)) {
+                    analysisRun.model_summary.forEach((summary) => {
+                      if (summary.model) {
+                        modelsSet.add(summary.model);
+                      }
+                    });
+                  }
+                });
+              } else {
+                console.log(`Query ${queryIndex} has no results or results is not an array`);
+              }
+            });
+    
+            console.log('Final calculations:', {
+              totalScore,
+              scoreCount,
+              totalRank,
+              rankCount,
+              modelsSet: Array.from(modelsSet)
+            });
+    
+            const activeQueries = queries.filter(q => q.status === 'active').length;
+            const averageScore = scoreCount > 0 ? Math.round((totalScore / scoreCount) * 10) / 10 : 0;
+            const averageRank = rankCount > 0 ? Math.round((totalRank / rankCount) * 10) / 10 : 0;
+    
+            console.log('Calculated metrics:', {
+              totalRankings,
+              averageRank,
+              averageScore,
+              queryCount: queries.length,
+              modelCount: modelsSet.size,
+              activeQueries
+            });
+    
+            // Final NaN check
+            const finalMetrics = {
+              totalRankings: isNaN(totalRankings) ? 0 : totalRankings,
+              averageRank: isNaN(averageRank) ? 0 : averageRank,
+              averageScore: isNaN(averageScore) ? 0 : averageScore,
+              queryCount: queries.length,
+              modelCount: modelsSet.size,
+              activeQueries,
+              loading: false,
+            };
+    
+            console.log('Final metrics (after NaN check):', finalMetrics);
+            setMetrics(finalMetrics);
+    
+          } catch (error) {
+            console.error('Error calculating metrics:', error);
+            setMetrics({
+              totalRankings: 0,
+              averageRank: 0,
+              averageScore: 0,
+              queryCount: queries.length,
+              modelCount: 0,
+              activeQueries: queries.filter(q => q.status === 'active').length,
+              loading: false,
+            });
+          }
+        };
+    
+        calculateMetrics();
+      }, [queries, brandName]);
   // Calculate metrics for each session and then average them
   const calculateSessionMetrics = (sessionBrands: Brand[], sessionTemporalBrands: TemporalBrand[]) => {
     const selectedBrandsData = sessionBrands.filter((b) =>
-      selectedBrand.has(b.brand_name)
+      b.brand_name.toLowerCase().includes(brandName.toLowerCase())
     );
 
     if (selectedBrandsData.length === 0) return null;
@@ -219,7 +412,7 @@ export function BrandMetricsHeader({
 
   if (selectedBrand.has("all") || selectedBrand.size === 0) return null;
   
-  if (sessionMetrics.length === 0) {
+  if (brands.length === 0) {
     return (
       <div className="rounded-lg border p-5 ">
         <p className="text-muted-foreground">
@@ -771,9 +964,20 @@ export function BrandMetricsHeader({
   const coverageRatioTrend = getCoverageRatioTrend();
   const mentionsTrend = getMentionsTrend();
 
+
+  
+
   return (
       <div className={`${className}  w-full`}>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 border rounded-t-lg overflow-hidden dark:border-accent border-[#e2e2e2]/70">
+      <MetricCard
+          title="Average Position"
+          value={`${metrics.averageRank.toFixed(1)}`}
+          trend={metrics.averageRank}
+          trendLabel="vs previous analysis"
+          className="border-b-4 !border-b-blue-500"
+          tooltipLabel="The average position rank is a measure of the position of the brand in the prompt analysis. The position is determined by the model response"
+        />
         <MetricCard
           title="Visibility Score"
           value={`${avgVisibilityScore.toFixed(1)}%`}
