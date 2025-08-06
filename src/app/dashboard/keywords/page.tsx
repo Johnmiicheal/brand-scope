@@ -13,9 +13,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-
 import { Select, SelectItem, SelectContent, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { domains } from "@/types/domains";
+
 
 type FormData = {
   businessBrief: string;
@@ -44,7 +43,7 @@ export default function KeywordAnalysisPage() {
     keyword: "",
     website: "",
     language: "en",
-    location: "Global",
+    location: "",
   });
   const [isLoading, setIsLoading] = useState(false);
 
@@ -119,7 +118,7 @@ export default function KeywordAnalysisPage() {
           website: formData.website.trim(),
           language: formData.language,
           user: user,
-          location: formData.location,
+          location: formData.location.trim(),
         }),
       });
 
@@ -274,21 +273,16 @@ export default function KeywordAnalysisPage() {
                     <Label htmlFor="location" className="text-base font-medium">
                       Location
                     </Label>
-                    <Select value={formData.location} onValueChange={(value) => setFormData(prev => ({ ...prev, location: value }))}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select a location" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Global">Global</SelectItem>
-                        {domains.map((domain) => (
-                          <SelectItem key={domain.domain} value={domain.country_name}>
-                            {domain.country_name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Input
+                      id="location"
+                      type="text"
+                      placeholder="e.g., New York, USA"
+                      value={formData.location}
+                      onChange={handleInputChange}
+                      disabled={isLoading}
+                    />
                     <p className="text-sm text-muted-foreground">
-                      Your business location (optional)
+                      City or Country (optional)
                     </p>
                   </div>
                   <div className="space-y-2 w-full">
