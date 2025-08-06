@@ -16,7 +16,6 @@ import {
   MapPin,
   Paperclip,
   Zap,
-  AlertTriangle,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "@/components/ui/use-toast";
@@ -861,15 +860,6 @@ export function AIChatInterface({
                   </div>
 
                   <Separator />
-
-                  {/* AI Mode English Notice */}
-                  {mode === "Explorer" && selectedModels.includes("google-ai-mode") && (
-                    <div className="bg-amber-500/10 border border-dashed border-amber-500 rounded-lg p-3 mb-4">
-                      <p className="text-xs text-amber-500 font-medium flex items-center">
-                        <AlertTriangle className="w-4 h-4 mr-2" /> AI Mode currently works with only English Language
-                      </p>
-                    </div>
-                  )}
 
                   {/* Model Selection */}
                   <div className="space-y-4 mt-4">
