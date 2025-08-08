@@ -35,6 +35,7 @@ import { motion as m, AnimatePresence } from "framer-motion";
 import {
   AiStudio,
   Claude,
+  DeepMind,
   DeepSeek,
   Gemini,
   Grok,
@@ -69,7 +70,7 @@ export default function Home() {
     "claude-search": Claude.Color,
     "perplexity-sonar": Perplexity,
     "gemini-search": Gemini.Color,
-    "google-ai-mode": AiStudio.Color,
+    "google-ai-mode": DeepMind.Color,
     "google-ai-overview": Gemini.Color,
     "deepseek-v3": DeepSeek.Color,
     "gpt-4.1-nano": OpenAI,

@@ -10,7 +10,7 @@ import {
   TooltipProvider,
   TooltipContent,
 } from "@/components/ui/tooltip";
-import { AiStudio, Claude, DeepSeek, Gemini, Grok, Meta, OpenAI, Perplexity } from "@lobehub/icons";
+import { Claude, DeepMind, DeepSeek, Gemini, Grok, Meta, OpenAI, Perplexity } from "@lobehub/icons";
 interface MetricCardProps {
   title: string;
   value: string | number;
@@ -224,7 +224,7 @@ export function MetricsHeader({
     "Perplexity Sonar": Perplexity,
     "Gemini 2.5 Flash": Gemini,
     "Google AI Overview": Gemini.Color,
-    "Google AI Mode": AiStudio.Color,
+    "Google AI Mode": DeepMind.Color,
     "DeepSeek R1": DeepSeek.Color,
     "GPT 4.1 Nano": OpenAI,
     "Grok": Grok,

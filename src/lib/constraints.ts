@@ -72,9 +72,19 @@ export const constraints = {
     voyager: {
       models: [
         { key: 'deepseek-v3', name: 'DeepSeek v3', credit_cost: 1 },
-        { key: 'gpt-4.1-nano', name: 'GPT-4.1 Nano', credit_cost: 1 },
-        { key: 'grok-3-mini', name: 'Grok 3 Mini', credit_cost: 1 },
-        { key: 'llama-4-maverick', name: 'Llama 4 Maverick', credit_cost: 1 }
+        { key: 'claude-sonnet-4', name: 'Claude Sonnet 4', credit_cost: 1 },
+        { key: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', credit_cost: 1 },
+        { key: 'gemini-pro-2.5', name: 'Gemini Pro 2.5', credit_cost: 1 },
+        { key: 'deepseek-r1', name: 'DeepSeek R1', credit_cost: 1 },
+        { key: 'kimi-k2', name: 'Kimi K2', credit_cost: 1 },
+        { key: 'gpt-4.1', name: 'GPT-4.1', credit_cost: 1 },
+        { key: 'gpt-4o', name: 'GPT-4o', credit_cost: 1 },
+        { key: 'gpt-5', name: 'GPT-5', credit_cost: 2 },
+        { key: 'llama-4-maverick', name: 'Llama 4 Maverick', credit_cost: 1 },
+        { key: 'grok-4', name: 'Grok 4', credit_cost: 1 },
+        { key: 'mistral-medium', name: 'Mistral Medium', credit_cost: 1 },
+        { key: 'ernie-4.5', name: 'Ernie 4.5', credit_cost: 1 },
+        { key: 'qwen-3-235b', name: 'Qwen 3 235b', credit_cost: 1 },
       ],
       credit_cost_per_model: 1, // Keep for backward compatibility
       max_credits_per_analysis: 4,
@@ -82,6 +92,8 @@ export const constraints = {
     }
   }
 };
+
+
 
 export const getConstraints = (plan: string) => {
   if (!plan) return constraints.plan.pro; // Default to pro plan

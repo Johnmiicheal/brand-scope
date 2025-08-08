@@ -53,8 +53,21 @@ import { supabase } from "@/lib/supabase";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { AiStudio, Claude, DeepSeek, Gemini, Google, Grok, Meta, OpenAI, Perplexity } from "@lobehub/icons";
-
+import {
+  Claude,
+  DeepSeek,
+  Gemini,
+  Google,
+  Grok,
+  Meta,
+  OpenAI,
+  Perplexity,
+  Qwen,
+  Baidu,
+  Mistral,
+  DeepMind,
+  Kimi,
+} from "@lobehub/icons";
 
 interface UseAutoResizeTextareaProps {
   minHeight: number;
@@ -176,24 +189,49 @@ export function AIChatInterface({
   const [openModal, setOpenModal] = useState(false);
   const [location, setLocation] = useState("");
 
-
-    // Model to icon mapping
-    const modelIcons: Record<
+  // Model to icon mapping
+  const modelIcons: Record<
     string,
     React.ComponentType<{ className?: string }>
   > = {
     "gpt-4o-search": OpenAI,
+    "gpt-5": OpenAI,
     "claude-search": Claude.Color,
     "perplexity-sonar": Perplexity,
     "gemini-search": Gemini.Color,
-    "google-ai-mode": AiStudio.Color,
+    "google-ai-mode": DeepMind.Color,
     "google-ai-overview": Gemini.Color,
     "deepseek-v3": DeepSeek.Color,
     "gpt-4.1-nano": OpenAI,
     "grok-3-mini": Grok,
+    "grok-4": Grok,
     "llama-4-maverick": Meta.Color,
+    "claude-sonnet-4": Claude.Color,
+    "gemini-2.5-flash": Gemini.Color,
+    "gemini-pro-2.5": Gemini.Color,
+    "deepseek-r1": DeepSeek.Color,
+    "kimi-k2": Kimi.Color,
+    "gpt-4.1": OpenAI,
+    "gpt-4o": OpenAI,
+    "ernie-4.5": Baidu.Color,
+    "qwen-3-235b": Qwen.Color,
+    "mistral-medium": Mistral.Color,
   };
 
+  // models: [
+  //   { key: 'deepseek-v3', name: 'DeepSeek v3', credit_cost: 1 },
+  //   { key: 'claude-sonnet-4', name: 'Claude Sonnet 4', credit_cost: 1 },
+  //   { key: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', credit_cost: 1 },
+  //   { key: 'gemini-pro-2.5', name: 'Gemini Pro 2.5', credit_cost: 1 },
+  //   { key: 'deepseek-r1', name: 'DeepSeek R1', credit_cost: 1 },
+  //   { key: 'kimi-k2', name: 'Kimi K2', credit_cost: 1 },
+  //   { key: 'gpt-4.1', name: 'GPT-4.1', credit_cost: 1 },
+  //   { key: 'gpt-4o', name: 'GPT-4o', credit_cost: 1 },
+  //   { key: 'llama-4-maverick', name: 'Llama 4 Maverick', credit_cost: 1 },
+  //   { key: 'grok-4', name: 'Grok 4', credit_cost: 1 },
+  //   { key: 'mistral-medium', name: 'Mistral Medium', credit_cost: 1 },
+  //   { key: 'ernie-4.5', name: 'Ernie 4.5', credit_cost: 1 },
+  // ],
 
   // New state for credit-based model selection
   const [selectedModels, setSelectedModels] = useState<string[]>([]);
@@ -247,20 +285,22 @@ export function AIChatInterface({
       const currentModeData =
         modelsData[mode.toLowerCase() as "explorer" | "voyager"];
       let totalCredits = 0;
-      
+
       // Calculate credits for selected models based on their individual costs
-      selectedModels.forEach(modelKey => {
-        const model = currentModeData.models.find((m: ModelInfo) => m.key === modelKey);
+      selectedModels.forEach((modelKey) => {
+        const model = currentModeData.models.find(
+          (m: ModelInfo) => m.key === modelKey
+        );
         if (model) {
           totalCredits += model.credit_cost;
         }
       });
-      
+
       // Add Google AI Overview cost if included
       if (includeGoogleSearch) {
         totalCredits += currentModeData.google_ai_overview_cost || 1;
       }
-      
+
       setCreditsRequired(totalCredits);
     }
   }, [selectedModels, mode, modelsData, includeGoogleSearch]);
@@ -277,7 +317,7 @@ export function AIChatInterface({
         console.error("Error fetching brand:", error);
       } else {
         setAttachedBrand(data as unknown as Brand);
-        setLocation(data.location as string || "Global");
+        setLocation((data.location as string) || "Global");
       }
     };
     fetchBrand();
@@ -903,68 +943,74 @@ export function AIChatInterface({
 
                     <div className="space-y-3 max-h-[200px] overflow-y-auto">
                       {currentModeData?.models.map((model) => {
-                        const IconComponent = modelIcons[model.key];
+                        const ModelIcon = modelIcons[model.key];
                         return (
-                        <div
-                          key={model.key}
-                          className="flex items-center space-x-2 md:space-x-3"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <Checkbox
-                            id={`${model.key}-dropdown`}
-                            checked={selectedModels.includes(model.key)}
-                            onCheckedChange={(checked) =>
-                              handleModelToggle(model.key, checked as boolean)
-                            }
-                          />
-                          <div className="flex-1 min-w-0">
-                            <label
-                              htmlFor={`${model.key}-dropdown`}
-                              className="text-sm flex items-center gap-1.5 md:gap-2 font-medium cursor-pointer block text-neutral-600 dark:text-white"
+                          <div
+                            key={model.key}
+                            className="flex items-center space-x-2 md:space-x-3"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <Checkbox
+                              id={`${model.key}-dropdown`}
+                              checked={selectedModels.includes(model.key)}
+                              onCheckedChange={(checked) =>
+                                handleModelToggle(model.key, checked as boolean)
+                              }
+                            />
+                            <div className="flex-1 min-w-0">
+                              <label
+                                htmlFor={`${model.key}-dropdown`}
+                                className="text-sm flex items-center gap-1.5 md:gap-2 font-medium cursor-pointer block text-neutral-600 dark:text-white"
+                              >
+                                <ModelIcon className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                                <span className="truncate">{model.name}</span>
+                              </label>
+                            </div>
+                            <Badge
+                              variant="outline"
+                              className="text-xs shrink-0"
                             >
-                              <IconComponent className="w-3.5 h-3.5 md:w-4 md:h-4" />
-                              <span className="truncate">{model.name}</span>
-                            </label>
+                              {model.credit_cost}{" "}
+                              {model.credit_cost === 1 ? "credit" : "credits"}
+                            </Badge>
                           </div>
-                          <Badge variant="outline" className="text-xs shrink-0">
-                            {model.credit_cost} {model.credit_cost === 1 ? 'credit' : 'credits'}
-                          </Badge>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
                     </div>
 
-                    <div
-                      className="flex items-center space-x-2 md:space-x-3"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <Checkbox
-                        id="google-search-dropdown"
-                        checked={includeGoogleSearch}
-                        onCheckedChange={(checked) =>
-                          setIncludeGoogleSearch(checked as boolean)
-                        }
-                      />
-                      <div className="flex-1 min-w-0">
-                        <label
-                          htmlFor="google-search-dropdown"
-                          className="text-sm font-medium cursor-pointer flex items-center gap-1.5 md:gap-2 text-neutral-600 dark:text-white"
-                        >
-                          <Google.Color className="w-3.5 h-3.5 md:w-4 md:h-4" />
-                          <span className="truncate">Google AI Overview</span>
-                        </label>
-                      </div>
-                        <Badge variant="outline" className="text-xs shrink-0">
-                            {1} credit
-                          </Badge>
-                    </div>
                     {mode === "Explorer" && (
-                    <div className="pt-2 bg-muted/50 rounded p-3">
-                      <p className="text-xs text-muted-foreground">
-                        💡 <strong>Credit Calculation:</strong> Each AI model
-                        has web search available and returns URL analysis.
-                      </p>
-                    </div>
+                      <div
+                        className="flex items-center space-x-2 md:space-x-3"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Checkbox
+                          id="google-search-dropdown"
+                          checked={includeGoogleSearch}
+                          onCheckedChange={(checked) =>
+                            setIncludeGoogleSearch(checked as boolean)
+                          }
+                        />
+                        <div className="flex-1 min-w-0">
+                          <label
+                            htmlFor="google-search-dropdown"
+                            className="text-sm font-medium cursor-pointer flex items-center gap-1.5 md:gap-2 text-neutral-600 dark:text-white"
+                          >
+                            <Google.Color className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                            <span className="truncate">Google AI Overview</span>
+                          </label>
+                        </div>
+                        <Badge variant="outline" className="text-xs shrink-0">
+                          {1} credit
+                        </Badge>
+                      </div>
+                    )}
+                    {mode === "Explorer" && (
+                      <div className="pt-2 bg-muted/50 rounded p-3">
+                        <p className="text-xs text-muted-foreground">
+                          💡 <strong>Credit Calculation:</strong> Each AI model
+                          has web search available and returns URL analysis.
+                        </p>
+                      </div>
                     )}
                   </div>
                 </DropdownMenuContent>

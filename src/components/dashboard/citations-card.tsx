@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
-import { AiStudio, Claude, Gemini, OpenAI, Perplexity } from "@lobehub/icons";
+import { Claude, DeepMind, Gemini, OpenAI, Perplexity } from "@lobehub/icons";
 import { safeGetHostname } from "@/lib/utils";
 
 interface Citation {
@@ -62,7 +62,7 @@ const modelIcons: Record<
   "Perplexity Sonar": Perplexity,
   "Gemini 2.0 Flash": Gemini,
   "Google AI Overview": Gemini.Color,
-  "Google AI Mode": AiStudio.Color,
+  "Google AI Mode": DeepMind.Color,
 };
 
 const containerVariants = {

@@ -15,7 +15,7 @@ import {
   TooltipProvider,
   TooltipContent,
 } from "@/components/ui/tooltip";
-import { AiStudio, Claude, DeepSeek, Gemini, Grok, Meta, OpenAI, Perplexity } from "@lobehub/icons";
+import { AiStudio, Claude, DeepMind, DeepSeek, Gemini, Grok, Meta, OpenAI, Perplexity } from "@lobehub/icons";
 import { useEffect, useState } from "react";
 import { ScheduledQuery } from "@/types/scheduled-query";
 import { AnalysisRun } from "@/types/analysis-run";
@@ -494,7 +494,7 @@ export function BrandMetricsHeader({
     "Perplexity Sonar": Perplexity,
     "Gemini 2.5 Flash": Gemini,
     "Google AI Overview": Gemini.Color,
-    "Google AI Mode": AiStudio.Color,
+    "Google AI Mode": DeepMind.Color,
     "DeepSeek R1": DeepSeek.Color,
     "GPT 4.1 Nano": OpenAI,
     "Grok": Grok,

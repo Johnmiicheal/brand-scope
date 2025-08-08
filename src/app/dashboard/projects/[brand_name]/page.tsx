@@ -33,6 +33,7 @@ import {
   DeepSeek,
   Grok,
   Meta,
+  DeepMind,
 } from "@lobehub/icons";
 import { GoogleSearch } from "@/types/search";
 import { MetricsHeader } from "@/components/dashboard/metrics-card";
@@ -684,7 +685,7 @@ export default function BrandProjectPage() {
     "Perplexity Sonar": Perplexity,
     "Gemini 2.5 Flash": Gemini,
     "Google AI Overview": Gemini.Color,
-    "Google AI Mode": AiStudio.Color,
+    "Google AI Mode": DeepMind.Color,
     "DeepSeek R1": DeepSeek.Color,
     "GPT 4.1 Nano": OpenAI,
     Grok: Grok,

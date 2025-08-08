@@ -1023,7 +1023,7 @@ async function voyagerAnalysis(
   mode_id: string,
   location?: string,
   selectedModels: string[] = [],
-  includeGoogleSearch: boolean = true
+  includeGoogleSearch: boolean = false
 ): Promise<SearchResults> {
   console.log(`🚀 [VOYAGER] Starting analysis for query: "${query}", user: ${user_id}, mode_id: ${mode_id}, location: ${location || 'Global'}`);
   
@@ -1045,10 +1045,10 @@ async function voyagerAnalysis(
   console.log(`📊 [VOYAGER] Using ${modelsToUse.length} models, requiring ${creditsRequired} credits${includeGoogleSearch ? ' (including Google AI Overview)' : ''}`);
   
   // Call the search-google endpoint only if included
-  if (includeGoogleSearch) {
-    console.log(`🔍 [VOYAGER] Calling search-google endpoint...`);
-    await callSearchGoogleEndpoint(query, mode_id, user_id, location);
-  }
+  // if (includeGoogleSearch) {
+  //   console.log(`🔍 [VOYAGER] Calling search-google endpoint...`);
+  //   await callSearchGoogleEndpoint(query, mode_id, user_id, location);
+  // }
   
   console.log(`📋 [VOYAGER] Defining available AI models for analysis`);
   const allModels = [
@@ -1058,20 +1058,57 @@ async function voyagerAnalysis(
       key: "deepseek-v3",
     },
     {
-      model: openrouter("openai/gpt-4.1-nano"),
-      name: "GPT 4.1 Nano",
-      key: "gpt-4.1-nano",
+      model: openrouter("openai/gpt-4.1"),
+      name: "GPT 4.1",
+      key: "gpt-4.1",
     },
     {
-      model: openrouter("x-ai/grok-3-mini"),
-      name: "Grok 3 Mini",
-      key: "grok-3-mini",
+      model: openrouter("openai/gpt-5"),
+      name: "GPT 5",
+      key: "gpt-5",
     },
     {
-      model: openrouter("meta-llama/llama-4-maverick:free"),
+      model: openrouter("x-ai/grok-4"),
+      name: "Grok 4",
+      key: "grok-4",
+    },
+    {
+      model: openrouter("meta-llama/llama-4-maverick"),
       name: "Llama 4 Maverick",
       key: "llama-4-maverick",
     },
+    {
+      model: openrouter("baidu/ernie-4.5-300b-a47b"),
+      name: "Ernie 4.5",
+      key: "ernie-4.5",
+    },
+    {
+      model: openrouter("qwen/qwen-3-235b:free"),
+      name: "Qwen 3 235b",
+      key: "qwen-3-235b",
+    },
+    {
+      model: openrouter("deepseek/deepseek-r1-0528"),
+      name: "DeepSeek R1",
+      key: "deepseek-r1",
+    },
+    {
+      model: openrouter("qwen/qwen3-235b-a22b-thinking-2507"),
+      name: "Qwen 3 235b",
+      key: "qwen-3-235b",
+    },
+    {
+      model: openrouter("mistralai/mistral-medium-3"),
+      name: "Mistral Medium",
+      key: "mistral-medium",
+    },
+    {
+      model: openrouter("moonshotai/kimi-k2"),
+      name: "Kimi K2",
+      key: "kimi-k2",
+    }
+  
+    
   ];
 
   // Filter models based on user selection

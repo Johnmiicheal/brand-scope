@@ -60,7 +60,7 @@ import {
 } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { AiStudio, Claude, Gemini, Google, OpenAI, Perplexity } from "@lobehub/icons";
+import { Claude, DeepMind, DeepSeek, Gemini, Google, Kimi, OpenAI, Perplexity, Qwen } from "@lobehub/icons";
 import { GoogleResults } from "@/components/ui/google-results";
 import remarkGfm from 'remark-gfm';
 
@@ -682,7 +682,16 @@ function SummaryTabContent({ item }: { item: Summary | null }) {
                   <Perplexity.Combine className="h-5 w-5" />
                 )}
                 {item.model?.toLowerCase().includes("google") && (
-                  <AiStudio.Combine className="h-5 w-5" />
+                  <DeepMind.Combine className="h-5 w-5" />
+                )}
+                {item.model?.toLowerCase().includes("kimi") && (
+                  <Kimi.Combine className="h-5 w-5" />
+                )}
+                {item.model?.toLowerCase().includes("qwen") && (
+                  <Qwen.Combine className="h-5 w-5" />
+                )}
+                {item.model?.toLowerCase().includes("deepseek") && (
+                  <DeepSeek.Combine className="h-5 w-5" />
                 )}
               </div>
             </div>
