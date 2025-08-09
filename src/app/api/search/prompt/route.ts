@@ -1083,11 +1083,6 @@ async function voyagerAnalysis(
       key: "ernie-4.5",
     },
     {
-      model: openrouter("qwen/qwen-3-235b:free"),
-      name: "Qwen 3 235b",
-      key: "qwen-3-235b",
-    },
-    {
       model: openrouter("deepseek/deepseek-r1-0528"),
       name: "DeepSeek R1",
       key: "deepseek-r1",
