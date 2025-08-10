@@ -776,7 +776,7 @@ async function processQuery(
     { modelId: "deepseek/deepseek-chat-v3-0324:free", name: "DeepSeek v3", key: "deepseek-v3" },
     { modelId: "openai/gpt-4.1-nano", name: "GPT 4.1 Nano", key: "gpt-4.1-nano" },
     { modelId: "x-ai/grok-3-mini", name: "Grok 3 Mini", key: "grok-3-mini" },
-    { modelId: "meta-llama/llama-4-maverick:free", name: "Llama 4 Maverick", key: "llama-4-maverick" },
+    { modelId: "meta-llama/llama-4-maverick", name: "Llama 4 Maverick", key: "llama-4-maverick" },
     {
       modelId: "openai/gpt-4.1",
       name: "GPT 4.1",
@@ -828,7 +828,7 @@ async function processQuery(
     { model: openrouter("deepseek/deepseek-chat-v3-0324:free"), name: "DeepSeek v3", key: "deepseek-v3" },
     { model: openrouter("openai/gpt-4.1-nano"), name: "GPT 4.1 Nano", key: "gpt-4.1-nano" },
     { model: openrouter("x-ai/grok-3-mini"), name: "Grok 3 Mini", key: "grok-3-mini" },
-    { model: openrouter("meta-llama/llama-4-maverick:free"), name: "Llama 4 Maverick", key: "llama-4-maverick" },
+    { model: openrouter("meta-llama/llama-4-maverick"), name: "Llama 4 Maverick", key: "llama-4-maverick" },
     {
       model: openrouter("openai/gpt-4.1"),
       name: "GPT 4.1",
@@ -1163,8 +1163,12 @@ async function processQuery(
           "{text}",
           text
         );
-        if (name.toLowerCase().includes("perplexity")) {
-          console.log(`      Using generateText for Perplexity (${name})...`);
+        const lowerName = name.toLowerCase();
+        // Models that should use generateText + JSON parsing
+        const textModelTriggers = ["perplexity", "kimi", "llama", "ernie"];
+        const shouldUseGenerateText = textModelTriggers.some((m) => lowerName.includes(m));
+        if (shouldUseGenerateText) {
+          console.log(`      Using generateText for ${name}...`);
           const { text: jsonTextResponse } = await generateText({
             model: modelConfig.model,
             prompt: formattedExtractionPrompt,

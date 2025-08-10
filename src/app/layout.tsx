@@ -62,7 +62,7 @@ export default function RootLayout({
         <meta name="twitter:image" content="/air-seo.png" />
       </head>
       <body
-        className={`${inter.variable} antialiased bg-background text-foreground`}
+        className={`${inter.variable} antialiased bg-background text-foreground dark`}
       >
         <ThemeProvider attribute="class" defaultTheme="dark">
         <NextTopLoader color="#7EBDF1" showSpinner={false} height={3} />

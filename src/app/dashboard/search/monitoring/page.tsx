@@ -5,6 +5,7 @@
 
 "use client";
 import { useState, useEffect, useMemo, Suspense } from "react";
+import type { ComponentType } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   Card,
@@ -35,7 +36,20 @@ import {
   TbTableSpark,
 } from "react-icons/tb";
 import ReactMarkdown from "react-markdown";
-import { Claude, Gemini, OpenAI, Perplexity } from "@lobehub/icons";
+import {
+  Claude,
+  Gemini,
+  OpenAI,
+  Perplexity,
+  Meta,
+  DeepSeek,
+  Grok,
+  DeepMind,
+  Kimi,
+  Baidu,
+  Qwen,
+  Mistral,
+} from "@lobehub/icons";
 import { GoogleSearchResult, Search } from "@/types/search";
 import { GoogleSearch } from "@/types/search";
 import { GoogleResults } from "@/components/ui/google-results";
@@ -45,6 +59,111 @@ import type { ReactElement } from "react";
 import remarkGfm from "remark-gfm";
 import { supabase } from "@/lib/supabase";
 import { safeGetHostname } from "@/lib/utils";
+
+// --- Model Icon Map & Helpers ---
+const modelIcons: Record<string, ComponentType<{ className?: string }>> = {
+  // OpenAI
+  "gpt-4o-search": OpenAI.Combine,
+  "gpt-5": OpenAI.Combine,
+  "gpt-4.1": OpenAI.Combine,
+  "gpt-4o": OpenAI.Combine,
+  "gpt-4.1-nano": OpenAI.Combine,
+
+  // Anthropic
+  "claude-search": Claude.Combine,
+  "claude-sonnet-4": Claude.Combine,
+
+  // Perplexity
+  "perplexity-sonar": Perplexity.Combine,
+
+  // Google / DeepMind
+  "gemini-search": Gemini.Combine,
+  "gemini-2.5-flash": Gemini.Combine,
+  "gemini-pro-2.5": Gemini.Combine,
+  "google-ai-mode": DeepMind.Combine,
+  "google-ai-overview": Gemini.Combine,
+
+  // DeepSeek
+  "deepseek-v3": DeepSeek.Combine,
+  "deepseek-r1": DeepSeek.Combine,
+
+  // xAI
+  "grok-3-mini": Grok.Combine,
+  "grok-4": Grok.Combine,
+
+  // Meta
+  "llama-4-maverick": Meta.Combine,
+
+  // Moonshot (Kimi)
+  "kimi-k2": Kimi.Combine,
+
+  // Baidu
+  "ernie-4.5": Baidu,
+
+  // Qwen
+  "qwen-3-235b": Qwen.Combine,
+
+  // Mistral
+  "mistral-medium": Mistral.Combine,
+};
+
+function normalizeModelToKey(model?: string | null): string | null {
+  if (!model) return null;
+  const m = model.toLowerCase();
+
+  // Exact-ish name patterns first
+  if (m.includes("google ai mode")) return "google-ai-mode";
+  if (m.includes("ai overview")) return "google-ai-overview";
+
+  // OpenAI
+  if (m.includes("gpt") && m.includes("4o") && m.includes("search")) return "gpt-4o-search";
+  if (m.includes("gpt") && m.includes("4.1") && m.includes("nano")) return "gpt-4.1-nano";
+  if (m.includes("gpt") && m.includes("4.1")) return "gpt-4.1";
+  if (m.includes("gpt") && m.includes("4o")) return "gpt-4o";
+  if (m.includes("gpt") && m.includes("5")) return "gpt-5";
+
+  // Anthropic
+  if (m.includes("claude") && m.includes("search")) return "claude-search";
+  if (m.includes("claude") || m.includes("sonnet")) return "claude-sonnet-4";
+
+  // Perplexity
+  if (m.includes("perplexity") || m.includes("sonar")) return "perplexity-sonar";
+
+  // Google / Gemini
+  if (m.includes("gemini") && m.includes("flash")) return "gemini-2.5-flash";
+  if (m.includes("gemini") && m.includes("pro")) return "gemini-pro-2.5";
+  if (m.includes("gemini")) return "gemini-search";
+
+  // DeepSeek
+  if (m.includes("deepseek") && m.includes("r1")) return "deepseek-r1";
+  if (m.includes("deepseek")) return "deepseek-v3";
+
+  // xAI
+  if (m.includes("grok") && m.includes("4")) return "grok-4";
+  if (m.includes("grok")) return "grok-3-mini";
+
+  // Meta
+  if (m.includes("llama")) return "llama-4-maverick";
+
+  // Kimi
+  if (m.includes("kimi")) return "kimi-k2";
+
+  // Baidu
+  if (m.includes("ernie")) return "ernie-4.5";
+
+  // Qwen
+  if (m.includes("qwen")) return "qwen-3-235b";
+
+  // Mistral
+  if (m.includes("mistral")) return "mistral-medium";
+
+  return null;
+}
+
+function getModelIconFor(model?: string | null) {
+  const key = normalizeModelToKey(model);
+  return key ? modelIcons[key] : null;
+}
 
 // --- Zod Schemas ---
 const BrandResultSchema = z.object({
@@ -910,20 +1029,12 @@ function SummaryTabContent({
           <div className="p-4">
             <div className="flex md:flex-row flex-col md:items-center mb-14 gap-3">
               <p className="text-xl font-semibold">&quot;{item.query}&quot;</p>
-              <div className="flex">
-                {item.model?.toLowerCase().includes("gpt") && (
-                  <OpenAI.Combine className="h-5 w-5" />
-                )}
-                {item.model?.toLowerCase().includes("claude") && (
-                  <Claude.Combine className="h-5 w-5" />
-                )}
-                {item.model?.toLowerCase().includes("gemini") && (
-                  <Gemini.Combine className="h-5 w-5" />
-                )}
-                {item.model?.toLowerCase().includes("perplexity") && (
-                  <Perplexity.Combine className="h-5 w-5" />
-                )}
-              </div>
+                <div className="flex">
+                  {(() => {
+                    const Icon = getModelIconFor(item.model);
+                    return Icon ? <Icon className="h-5 w-5" /> : null;
+                  })()}
+                </div>
             </div>
 
             <div

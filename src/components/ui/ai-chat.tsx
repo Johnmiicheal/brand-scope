@@ -157,7 +157,6 @@ export function AIChatInterface({
   session,
   product,
   subscription,
-  monitoring,
   attachedBrandId,
 }: AIChatInterfaceProps) {
   const router = useRouter();
@@ -166,7 +165,7 @@ export function AIChatInterface({
   const [loading, setLoading] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isMonitoringMode, setIsMonitoringMode] = useState(
-    monitoring === "true" ? true : false
+    true
   );
   const [attachedBrand, setAttachedBrand] = useState<Brand | null>(
     attachedBrandId
@@ -523,7 +522,7 @@ export function AIChatInterface({
               ? attachedBrand?.location
               : "",
             selected_models: selectedModels,
-            include_google_search: includeGoogleSearch,
+            include_google_search: mode === "Explorer" ? true : false,
           }),
         });
 
@@ -562,7 +561,7 @@ export function AIChatInterface({
             location: location,
             attached_brand_id: attachedBrand?.id ? [attachedBrand.id] : null,
             selected_models: selectedModels,
-            include_google_search: includeGoogleSearch,
+            include_google_search: mode === "Explorer" ? true : false,
           }),
         });
 
@@ -629,12 +628,12 @@ export function AIChatInterface({
     {
       key: "Explorer",
       caption:
-        "Enhanced brand analysis and insights from top AI search engines",
+        "Enhanced brand analysis and insights from top AI search engines (Includes native search support)",
     },
     {
       key: "Voyager",
       caption:
-        "Comprehensive analysis with social sentiment tracking & market perception insights",
+        "Analyse prompts and get insights from top LLMs (No native search support)",
     },
   ];
 
@@ -1075,7 +1074,7 @@ export function AIChatInterface({
                   }`}
                 >
                   <Search className="w-3 h-3 mr-1" />
-                  Search
+                  Single
                 </Button>
                 <Button
                   variant={isMonitoringMode ? "secondary" : "ghost"}
@@ -1200,10 +1199,9 @@ export function AIChatInterface({
                     Voyager Mode
                   </h4>
                   <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
-                    Leverages Llama 4 Maverick, DeepSeek v3, Grok 3 Mini, and
-                    GPT 4.1 Nano to create in-depth brand ranking and analysis
-                    with social sentiment insights. Each model costs 1 credit
-                    per analysis.
+                    Leverages Llama 4 Maverick, DeepSeek v3, Grok 4, and many more top LLMs
+                    to create in-depth brand ranking and keyword analysis. 
+                    No native search support.
                   </p>
                 </div>
               </div>
@@ -1218,8 +1216,7 @@ export function AIChatInterface({
                   <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
                     Our most comprehensive analysis using GPT 4o Web Search,
                     Perplexity Sonar, Google AI Overview, Google AI Mode, Gemini
-                    2.5 Flash, and Claude 4.0 Sonnet. Each model costs 1 credit
-                    per analysis.
+                    2.5 Flash, and Claude 4.0 Sonnet.
                   </p>
                 </div>
               </div>
