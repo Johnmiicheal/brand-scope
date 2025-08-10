@@ -54,6 +54,14 @@ interface BrandAnalysis {
   gpt_4_1_mentions: number;
   grok_mentions: number;
   llama_mentions: number;
+  gemini_pro_mentions: number;
+  deepseek_r1_mentions: number;
+  kimi_k2_mentions: number;
+  gpt_5_mentions: number;
+  grok_4_mentions: number;
+  mistral_medium_mentions: number;
+  ernie_mentions: number;
+  qwen_mentions: number;
 }
 
 interface Brand {
@@ -70,6 +78,14 @@ interface Brand {
   gpt_4_1_mentions: number;
   grok_mentions: number;
   llama_mentions: number;
+  gemini_pro_mentions: number;
+  deepseek_r1_mentions: number;
+  kimi_k2_mentions: number;
+  gpt_5_mentions: number;
+  grok_4_mentions: number;
+  mistral_medium_mentions: number;
+  ernie_mentions: number;
+  qwen_mentions: number;
 }
 
 const chartConfig = {
@@ -93,10 +109,13 @@ export function CompetitorChart({
   selectedModel,
   fullBrandAnalytics
 }: CompetitorChartProps) {
-  // Filter to get only selected brands
-  const selectedBrandData = brandAnalytics?.filter((b) =>
-    selectedBrands.has(b.brand_name)
-  );
+    // Get all selected brands data
+    const normalizedSelected = new Set(
+      Array.from(selectedBrands).map((n) => n.toLowerCase())
+    );
+    const selectedBrandData = brandAnalytics.filter(
+      (b) => normalizedSelected.has(b.brand_name.toLowerCase())
+    );
 
 
   // Calculate the maximum number of models that successfully analyzed across all brands
@@ -116,10 +135,18 @@ export function CompetitorChart({
       if (brand.gpt_search_mentions > 0) modelCounts.add("GPT 4o Web Search");
       if (brand.ai_overview_mentions > 0) modelCounts.add("Google AI Overview");
       if (brand.google_ai_mode_mentions > 0) modelCounts.add("Google AI Mode");
-      if (brand.deepseek_mentions > 0) modelCounts.add("DeepSeek R1");
+      if (brand.deepseek_mentions > 0) modelCounts.add("DeepSeek v3");
       if (brand.gpt_4_1_mentions > 0) modelCounts.add("GPT 4.1 Nano");
-      if (brand.grok_mentions > 0) modelCounts.add("Grok");
-      if (brand.llama_mentions > 0) modelCounts.add("Llama");
+      if (brand.grok_mentions > 0) modelCounts.add("Grok 3 Mini");
+      if (brand.llama_mentions > 0) modelCounts.add("Llama 4 Maverick");
+      if (brand.gemini_pro_mentions > 0) modelCounts.add("Gemini Pro 2.5");
+      if (brand.deepseek_r1_mentions > 0) modelCounts.add("DeepSeek R1");
+      if (brand.kimi_k2_mentions > 0) modelCounts.add("Kimi K2");
+      if (brand.gpt_5_mentions > 0) modelCounts.add("GPT 5");
+      if (brand.grok_4_mentions > 0) modelCounts.add("Grok 4");
+      if (brand.mistral_medium_mentions > 0) modelCounts.add("Mistral Medium");
+      if (brand.ernie_mentions > 0) modelCounts.add("Ernie 4.5");
+      if (brand.qwen_mentions > 0) modelCounts.add("Qwen 3 235b");
     });
     
     return modelCounts.size;
@@ -138,7 +165,15 @@ export function CompetitorChart({
       (brand.deepseek_mentions > 0 ? 1 : 0) +
       (brand.gpt_4_1_mentions > 0 ? 1 : 0) +
       (brand.grok_mentions > 0 ? 1 : 0) +
-      (brand.llama_mentions > 0 ? 1 : 0);
+      (brand.llama_mentions > 0 ? 1 : 0) +
+      (brand.gemini_pro_mentions > 0 ? 1 : 0) +
+      (brand.deepseek_r1_mentions > 0 ? 1 : 0) +
+      (brand.kimi_k2_mentions > 0 ? 1 : 0) +
+      (brand.gpt_5_mentions > 0 ? 1 : 0) +
+      (brand.grok_4_mentions > 0 ? 1 : 0) +
+      (brand.mistral_medium_mentions > 0 ? 1 : 0) +
+      (brand.ernie_mentions > 0 ? 1 : 0) +
+      (brand.qwen_mentions > 0 ? 1 : 0);
        // Check selected models and add to total mentions count
     let selectedModelTotalMentions = 0;
     
@@ -161,16 +196,40 @@ export function CompetitorChart({
     if (selectedModel.has("Google AI Mode") && brand.google_ai_mode_mentions > 0) {
       selectedModelTotalMentions++;
     }
-    if (selectedModel.has("DeepSeek R1") && brand.deepseek_mentions > 0) {
+    if (selectedModel.has("DeepSeek v3") && brand.deepseek_mentions > 0) {
       selectedModelTotalMentions++;
     }
     if (selectedModel.has("GPT 4.1 Nano") && brand.gpt_4_1_mentions > 0) {
       selectedModelTotalMentions++;
     }
-    if (selectedModel.has("Grok") && brand.grok_mentions > 0) {
+    if (selectedModel.has("Grok 3 Mini") && brand.grok_mentions > 0) {
       selectedModelTotalMentions++;
     }
-    if (selectedModel.has("Llama") && brand.llama_mentions > 0) {
+    if (selectedModel.has("Llama 4 Maverick") && brand.llama_mentions > 0) {
+      selectedModelTotalMentions++;
+    }
+    if (selectedModel.has("Gemini Pro 2.5") && brand.gemini_pro_mentions > 0) {
+      selectedModelTotalMentions++;
+    }
+    if (selectedModel.has("DeepSeek R1") && brand.deepseek_r1_mentions > 0) {
+      selectedModelTotalMentions++;
+    }   
+    if (selectedModel.has("Kimi K2") && brand.kimi_k2_mentions > 0) {
+      selectedModelTotalMentions++;
+    }
+    if (selectedModel.has("GPT 5") && brand.gpt_5_mentions > 0) {
+      selectedModelTotalMentions++;
+    }
+    if (selectedModel.has("Grok 4") && brand.grok_4_mentions > 0) {
+      selectedModelTotalMentions++;
+    }
+    if (selectedModel.has("Mistral Medium") && brand.mistral_medium_mentions > 0) {
+      selectedModelTotalMentions++;
+    }
+    if (selectedModel.has("Ernie 4.5") && brand.ernie_mentions > 0) {
+      selectedModelTotalMentions++;
+    }
+    if (selectedModel.has("Qwen 3 235b") && brand.qwen_mentions > 0) {
       selectedModelTotalMentions++;
     }
       // Use selectedModelTotalMentions when filtering is active

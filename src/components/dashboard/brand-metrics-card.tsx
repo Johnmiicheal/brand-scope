@@ -117,6 +117,14 @@ interface Brand {
   gpt_4_1_mentions: number;
   grok_mentions: number;
   llama_mentions: number;
+  gemini_pro_mentions: number;
+  deepseek_r1_mentions: number;
+  kimi_k2_mentions: number;
+  gpt_5_mentions: number;
+  grok_4_mentions: number;
+  mistral_medium_mentions: number;
+  ernie_mentions: number;
+  qwen_mentions: number;
 }
 
 interface TemporalBrand {
@@ -134,6 +142,14 @@ interface TemporalBrand {
   gpt_4_1_mentions: number;
   grok_mentions: number;
   llama_mentions: number;
+  gemini_pro_mentions: number;
+  deepseek_r1_mentions: number;
+  kimi_k2_mentions: number;
+  gpt_5_mentions: number;
+  grok_4_mentions: number;
+  mistral_medium_mentions: number;
+  ernie_mentions: number;
+  qwen_mentions: number;
 }
 
 interface BrandMetricsHeaderProps {
@@ -342,9 +358,13 @@ export function BrandMetricsHeader({
       }, [queries, brandName]);
   // Calculate metrics for each session and then average them
   const calculateSessionMetrics = (sessionBrands: Brand[], sessionTemporalBrands: TemporalBrand[]) => {
-    const selectedBrandsData = sessionBrands.filter((b) =>
-      b.brand_name.toLowerCase().includes(brandName.toLowerCase())
-    );
+     // Get all selected brands data
+  const normalizedSelected = new Set(
+    Array.from(selectedBrand).map((n) => n.toLowerCase())
+  );
+  const selectedBrandsData = brands.filter(
+    (b) => normalizedSelected.has(b.brand_name.toLowerCase())
+  );
 
     if (selectedBrandsData.length === 0) return null;
 
@@ -366,6 +386,14 @@ export function BrandMetricsHeader({
         if (brand.gpt_4_1_mentions > 0) modelCounts.add("GPT 4.1 Nano");
         if (brand.grok_mentions > 0) modelCounts.add("Grok");
         if (brand.llama_mentions > 0) modelCounts.add("Llama");
+        if (brand.gemini_pro_mentions > 0) modelCounts.add("Gemini Pro 2.5");
+        if (brand.deepseek_r1_mentions > 0) modelCounts.add("DeepSeek R1");
+        if (brand.kimi_k2_mentions > 0) modelCounts.add("Kimi K2");
+        if (brand.gpt_5_mentions > 0) modelCounts.add("GPT-5");
+        if (brand.grok_4_mentions > 0) modelCounts.add("Grok 4");
+        if (brand.mistral_medium_mentions > 0) modelCounts.add("Mistral Medium");
+        if (brand.ernie_mentions > 0) modelCounts.add("Ernie 4.5");
+        if (brand.qwen_mentions > 0) modelCounts.add("Qwen 3 235b");
       });
       return modelCounts.size;
     };
@@ -384,7 +412,15 @@ export function BrandMetricsHeader({
         (brand.deepseek_mentions > 0 ? 1 : 0) +
         (brand.gpt_4_1_mentions > 0 ? 1 : 0) +
         (brand.grok_mentions > 0 ? 1 : 0) +
-        (brand.llama_mentions > 0 ? 1 : 0);
+        (brand.llama_mentions > 0 ? 1 : 0) +
+        (brand.gemini_pro_mentions > 0 ? 1 : 0) +
+        (brand.deepseek_r1_mentions > 0 ? 1 : 0) +
+        (brand.kimi_k2_mentions > 0 ? 1 : 0) +
+        (brand.gpt_5_mentions > 0 ? 1 : 0) +
+        (brand.grok_4_mentions > 0 ? 1 : 0) +
+        (brand.mistral_medium_mentions > 0 ? 1 : 0) +
+        (brand.ernie_mentions > 0 ? 1 : 0) +
+        (brand.qwen_mentions > 0 ? 1 : 0);
     }, 0);
 
     const coverageRatio = totalMentionsPerModel / (maxModels * selectedBrandsData.length);

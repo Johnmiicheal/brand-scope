@@ -1193,7 +1193,10 @@ async function processQueryDirectly(query: any) {
             "{text}",
             text
           );
-          if (name.toLowerCase().includes("perplexity")) {
+          const lowerName = name.toLowerCase();
+          const textModelTriggers = ["perplexity", "kimi", "llama", "ernie"];
+          const shouldUseGenerateText = textModelTriggers.some((m) => lowerName.includes(m));
+          if (shouldUseGenerateText) {
             console.log(`      Using generateText for Perplexity (${name})...`);
             const { text: jsonTextResponse } = await generateText({
               model: modelConfig.model,

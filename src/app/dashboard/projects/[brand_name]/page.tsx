@@ -362,6 +362,14 @@ export default function BrandProjectPage() {
           gpt_4_1_mentions: 0,
           grok_mentions: 0,
           llama_mentions: 0,
+          gemini_pro_mentions: 0,
+          deepseek_r1_mentions: 0,
+          kimi_k2_mentions: 0,
+          gpt_5_mentions: 0,
+          grok_4_mentions: 0,
+          mistral_medium_mentions: 0,
+          ernie_mentions: 0,
+          qwen_mentions: 0,
         };
 
         // Process model results for this date
@@ -389,6 +397,8 @@ export default function BrandProjectPage() {
                 mentions.claude_mentions += mentionCount;
               } else if (modelName.includes("perplexity")) {
                 mentions.perplexity_mentions += mentionCount;
+              } else if (modelName.includes("gemini pro")) {
+                mentions.gemini_pro_mentions += mentionCount;
               } else if (modelName.includes("gemini")) {
                 mentions.gemini_mentions += mentionCount;
               } else if (modelName.includes("search")) {
@@ -397,14 +407,28 @@ export default function BrandProjectPage() {
                 mentions.ai_overview_mentions += mentionCount;
               } else if (modelName.includes("google ai mode")) {
                 mentions.google_ai_mode_mentions += mentionCount;
+              } else if (modelName.includes("deepseek r1")) {
+                mentions.deepseek_r1_mentions += mentionCount;
               } else if (modelName.includes("deepseek")) {
                 mentions.deepseek_mentions += mentionCount;
               } else if (modelName.includes("nano")) {
                 mentions.gpt_4_1_mentions += mentionCount;
+              } else if (modelName.includes("gpt-5") || modelName.includes("gpt 5")) {
+                mentions.gpt_5_mentions += mentionCount;
+              } else if (modelName.includes("grok 4") || modelName.includes("grok-4")) {
+                mentions.grok_4_mentions += mentionCount;
               } else if (modelName.includes("grok")) {
                 mentions.grok_mentions += mentionCount;
               } else if (modelName.includes("llama")) {
                 mentions.llama_mentions += mentionCount;
+              } else if (modelName.includes("kimi") || modelName.includes("k2")) {
+                mentions.kimi_k2_mentions += mentionCount;
+              } else if (modelName.includes("mistral")) {
+                mentions.mistral_medium_mentions += mentionCount;
+              } else if (modelName.includes("ernie")) {
+                mentions.ernie_mentions += mentionCount;
+              } else if (modelName.includes("qwen")) {
+                mentions.qwen_mentions += mentionCount;
               }
             }
           }

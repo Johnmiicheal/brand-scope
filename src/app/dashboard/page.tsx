@@ -159,6 +159,14 @@ interface IndustryRankingsTableProps {
     gpt_4_1_mentions: number;
     grok_mentions: number;
     llama_mentions: number;
+    gemini_pro_mentions: number;
+    deepseek_r1_mentions: number;
+    kimi_k2_mentions: number;
+    gpt_5_mentions: number;
+    grok_4_mentions: number;
+    mistral_medium_mentions: number;
+    ernie_mentions: number;
+    qwen_mentions: number;
   }[];
   setSelectedBrand: (brand: Set<string>) => void;
   selectedBrand: Set<string>;
@@ -211,6 +219,15 @@ function IndustryRankingsTable({
       if (brand.gpt_4_1_mentions > 0) modelCounts.add("GPT 4.1 Nano");
       if (brand.grok_mentions > 0) modelCounts.add("Grok 3 Mini");
       if (brand.llama_mentions > 0) modelCounts.add("Llama 4 Maverick");
+      // New Voyager models
+      if (brand.gemini_pro_mentions > 0) modelCounts.add("Gemini Pro 2.5");
+      if (brand.deepseek_r1_mentions > 0) modelCounts.add("DeepSeek R1");
+      if (brand.kimi_k2_mentions > 0) modelCounts.add("Kimi K2");
+      if (brand.gpt_5_mentions > 0) modelCounts.add("GPT 5");
+      if (brand.grok_4_mentions > 0) modelCounts.add("Grok 4");
+      if (brand.mistral_medium_mentions > 0) modelCounts.add("Mistral Medium");
+      if (brand.ernie_mentions > 0) modelCounts.add("Ernie 4.5");
+      if (brand.qwen_mentions > 0) modelCounts.add("Qwen 3 235b");
     });
 
     return modelCounts.size;
@@ -229,7 +246,16 @@ function IndustryRankingsTable({
       (brand.deepseek_mentions > 0 ? 1 : 0) +
       (brand.gpt_4_1_mentions > 0 ? 1 : 0) +
       (brand.grok_mentions > 0 ? 1 : 0) +
-      (brand.llama_mentions > 0 ? 1 : 0);
+      (brand.llama_mentions > 0 ? 1 : 0) +
+      // New Voyager models
+      (brand.gemini_pro_mentions > 0 ? 1 : 0) +
+      (brand.deepseek_r1_mentions > 0 ? 1 : 0) +
+      (brand.kimi_k2_mentions > 0 ? 1 : 0) +
+      (brand.gpt_5_mentions > 0 ? 1 : 0) +
+      (brand.grok_4_mentions > 0 ? 1 : 0) +
+      (brand.mistral_medium_mentions > 0 ? 1 : 0) +
+      (brand.ernie_mentions > 0 ? 1 : 0) +
+      (brand.qwen_mentions > 0 ? 1 : 0);
     // Check selected models and add to total mentions count
     let selectedModelTotalMentions = 0;
 
@@ -285,6 +311,55 @@ function IndustryRankingsTable({
     if (
       selectedModel.has("Llama 4 Maverick") &&
       brand.llama_mentions > 0
+    ) {
+      selectedModelTotalMentions++;
+    }
+    // New Voyager models
+    if (
+      selectedModel.has("Gemini Pro 2.5") &&
+      brand.gemini_pro_mentions > 0
+    ) {
+      selectedModelTotalMentions++;
+    }
+    if (
+      selectedModel.has("DeepSeek R1") &&
+      brand.deepseek_r1_mentions > 0
+    ) {
+      selectedModelTotalMentions++;
+    }
+    if (
+      selectedModel.has("Kimi K2") &&
+      brand.kimi_k2_mentions > 0
+    ) {
+      selectedModelTotalMentions++;
+    }
+    if (
+      selectedModel.has("GPT 5") &&
+      brand.gpt_5_mentions > 0
+    ) {
+      selectedModelTotalMentions++;
+    }
+    if (
+      selectedModel.has("Grok 4") &&
+      brand.grok_4_mentions > 0
+    ) {
+      selectedModelTotalMentions++;
+    }
+    if (
+      selectedModel.has("Mistral Medium") &&
+      brand.mistral_medium_mentions > 0
+    ) {
+      selectedModelTotalMentions++;
+    }
+    if (
+      selectedModel.has("Ernie 4.5") &&
+      brand.ernie_mentions > 0
+    ) {
+      selectedModelTotalMentions++;
+    }
+    if (
+      selectedModel.has("Qwen 3 235b") &&
+      brand.qwen_mentions > 0
     ) {
       selectedModelTotalMentions++;
     }
@@ -371,7 +446,7 @@ function IndustryRankingsTable({
                       className="dark:text-white text-black border-[#e2e2e2]/40 dark:border-accent cursor-pointer"
                       onClick={() => {
                         setSelectedBrand(new Set([entity.brand_name]));
-                        toast.info(`You have selected ${entity.brand_name}`);
+                        toastSonner.info(`You have selected ${entity.brand_name}`);
                       }}
                     >
                       <TableCell className="font-medium">{index + 1}</TableCell>
@@ -862,7 +937,16 @@ function DashboardContent() {
           (brand.deepseek_mentions > 0 ? 1 : 0) +
           (brand.gpt_4_1_mentions > 0 ? 1 : 0) +
           (brand.grok_mentions > 0 ? 1 : 0) +
-          (brand.llama_mentions > 0 ? 1 : 0);
+          (brand.llama_mentions > 0 ? 1 : 0) +
+          // New Voyager models
+          (brand.gemini_pro_mentions > 0 ? 1 : 0) +
+          (brand.deepseek_r1_mentions > 0 ? 1 : 0) +
+          (brand.kimi_k2_mentions > 0 ? 1 : 0) +
+          (brand.gpt_5_mentions > 0 ? 1 : 0) +
+          (brand.grok_4_mentions > 0 ? 1 : 0) +
+          (brand.mistral_medium_mentions > 0 ? 1 : 0) +
+          (brand.ernie_mentions > 0 ? 1 : 0) +
+          (brand.qwen_mentions > 0 ? 1 : 0);
 
         let selectedModelTotalMentions = 0;
 
@@ -918,6 +1002,47 @@ function DashboardContent() {
             brand.llama_mentions > 0
           )
             selectedModelTotalMentions++;
+          // New Voyager models
+          if (
+            selectedModel.has("Gemini Pro 2.5") &&
+            brand.gemini_pro_mentions > 0
+          )
+            selectedModelTotalMentions++;
+          if (
+            selectedModel.has("DeepSeek R1") &&
+            brand.deepseek_r1_mentions > 0
+          )
+            selectedModelTotalMentions++;
+          if (
+            selectedModel.has("Kimi K2") &&
+            brand.kimi_k2_mentions > 0
+          )
+            selectedModelTotalMentions++;
+          if (
+            selectedModel.has("GPT 5") &&
+            brand.gpt_5_mentions > 0
+          )
+            selectedModelTotalMentions++;
+          if (
+            selectedModel.has("Grok 4") &&
+            brand.grok_4_mentions > 0
+          )
+            selectedModelTotalMentions++;
+          if (
+            selectedModel.has("Mistral Medium") &&
+            brand.mistral_medium_mentions > 0
+          )
+            selectedModelTotalMentions++;
+          if (
+            selectedModel.has("Ernie 4.5") &&
+            brand.ernie_mentions > 0
+          )
+            selectedModelTotalMentions++;
+          if (
+            selectedModel.has("Qwen 3 235b") &&
+            brand.qwen_mentions > 0
+          )
+            selectedModelTotalMentions++;
         }
 
         const finalTotalMentions =
@@ -946,6 +1071,18 @@ function DashboardContent() {
         if (brand.gemini_mentions > 0) models.push("Gemini 2.5 Flash");
         if (brand.ai_overview_mentions > 0) models.push("Google AI Overview");
         if (brand.google_ai_mode_mentions > 0) models.push("Google AI Mode");
+        if (brand.deepseek_mentions > 0) models.push("DeepSeek v3");
+        if (brand.gpt_4_1_mentions > 0) models.push("GPT 4.1 Nano");
+        if (brand.grok_mentions > 0) models.push("Grok 3 Mini");
+        if (brand.llama_mentions > 0) models.push("Llama 4 Maverick");
+        if (brand.gemini_pro_mentions > 0) models.push("Gemini Pro 2.5");
+        if (brand.deepseek_r1_mentions > 0) models.push("DeepSeek R1");
+        if (brand.kimi_k2_mentions > 0) models.push("Kimi K2");
+        if (brand.gpt_5_mentions > 0) models.push("GPT-5");
+        if (brand.grok_4_mentions > 0) models.push("Grok 4");
+        if (brand.mistral_medium_mentions > 0) models.push("Mistral Medium");
+        if (brand.ernie_mentions > 0) models.push("Ernie 4.5");
+        if (brand.qwen_mentions > 0) models.push("Qwen 3 235b");
         return models.join("; ");
       };
 
@@ -2596,7 +2733,15 @@ function DashboardContent() {
           deepseek_mentions: 0,
           gpt_4_1_mentions: 0,
           grok_mentions: 0,
-          llama_mentions: 0
+          llama_mentions: 0,
+          gemini_pro_mentions: 0,
+          deepseek_r1_mentions: 0,
+          kimi_k2_mentions: 0,
+          gpt_5_mentions: 0,
+          grok_4_mentions: 0,
+          mistral_medium_mentions: 0,
+          ernie_mentions: 0,
+          qwen_mentions: 0,
         };
 
         // Process model results for this date
@@ -2642,14 +2787,30 @@ function DashboardContent() {
                 mentions.ai_overview_mentions += mentionCount;
               } else if (modelName.includes("google ai mode")) {
                 mentions.google_ai_mode_mentions += mentionCount;
-              } else if (modelName.includes("deepseek")) {  
+              } else if (modelName.includes("deepseek v3")) {  
                 mentions.deepseek_mentions += mentionCount;
               } else if (modelName.includes("nano")) {
                 mentions.gpt_4_1_mentions += mentionCount;
-              } else if (modelName.includes("grok")) {
+              } else if (modelName.includes("grok 3")) {
                 mentions.grok_mentions += mentionCount;
               } else if (modelName.includes("llama")) {
                 mentions.llama_mentions += mentionCount;
+              } else if (modelName.includes("gemini pro")) {
+                mentions.gemini_pro_mentions += mentionCount;
+              } else if (modelName.includes("deepseek r1")) {
+                mentions.deepseek_r1_mentions += mentionCount;
+              } else if (modelName.includes("kimi")) {
+                mentions.kimi_k2_mentions += mentionCount;
+              } else if (modelName.includes("gpt 5")) {
+                mentions.gpt_5_mentions += mentionCount;
+              } else if (modelName.includes("grok 4")) {
+                mentions.grok_4_mentions += mentionCount;
+              } else if (modelName.includes("mistral")) {
+                mentions.mistral_medium_mentions += mentionCount;
+              } else if (modelName.includes("ernie")) {
+                mentions.ernie_mentions += mentionCount;
+              } else if (modelName.includes("qwen")) {
+                mentions.qwen_mentions += mentionCount;
               }
             }
           }
@@ -2728,6 +2889,14 @@ function DashboardContent() {
         gpt_4_1_mentions: 0,
         grok_mentions: 0,
         llama_mentions: 0,
+        gemini_pro_mentions: 0,
+        deepseek_r1_mentions: 0,
+        kimi_k2_mentions: 0,
+        gpt_5_mentions: 0,
+        grok_4_mentions: 0,
+        mistral_medium_mentions: 0,
+        ernie_mentions: 0,
+        qwen_mentions: 0,
       };
 
       // Process each filtered result
@@ -2766,6 +2935,8 @@ function DashboardContent() {
                 mentions.claude_mentions += mentionCount;
               } else if (modelName.includes("perplexity")) {
                 mentions.perplexity_mentions += mentionCount;
+              } else if (modelName.includes("gemini pro")) {
+                mentions.gemini_pro_mentions += mentionCount;
               } else if (modelName.includes("gemini")) {
                 mentions.gemini_mentions += mentionCount;
               } else if (modelName.includes("search")) {
@@ -2774,14 +2945,28 @@ function DashboardContent() {
                 mentions.ai_overview_mentions += mentionCount;
               } else if (modelName.includes("google ai mode")) {
                 mentions.google_ai_mode_mentions += mentionCount;
-              } else if (modelName.includes("deepseek")) {
+              } else if (modelName.includes("deepseek r1")) {
+                mentions.deepseek_r1_mentions += mentionCount;
+              } else if (modelName.includes("deepseek v3")) {
                 mentions.deepseek_mentions += mentionCount;
               } else if (modelName.includes("nano")) {
                 mentions.gpt_4_1_mentions += mentionCount;
-              } else if (modelName.includes("grok")) {
+              } else if (modelName.includes("gpt 5")) {
+                mentions.gpt_5_mentions += mentionCount;
+              } else if (modelName.includes("grok 4")) {
+                mentions.grok_4_mentions += mentionCount;
+              } else if (modelName.includes("grok 3")) {
                 mentions.grok_mentions += mentionCount;
               } else if (modelName.includes("llama")) {
                 mentions.llama_mentions += mentionCount;
+              } else if (modelName.includes("kimi") || modelName.includes("k2")) {
+                mentions.kimi_k2_mentions += mentionCount;
+              } else if (modelName.includes("mistral")) {
+                mentions.mistral_medium_mentions += mentionCount;
+              } else if (modelName.includes("ernie")) {
+                mentions.ernie_mentions += mentionCount;
+              } else if (modelName.includes("qwen")) {
+                mentions.qwen_mentions += mentionCount;
               }
             }
           }
