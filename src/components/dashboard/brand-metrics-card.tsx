@@ -15,7 +15,7 @@ import {
   TooltipProvider,
   TooltipContent,
 } from "@/components/ui/tooltip";
-import { AiStudio, Claude, DeepMind, DeepSeek, Gemini, Grok, Meta, OpenAI, Perplexity } from "@lobehub/icons";
+import { AiStudio, Baidu, Claude, DeepMind, DeepSeek, Gemini, Grok, Kimi, Meta, Mistral, OpenAI, Perplexity, Qwen } from "@lobehub/icons";
 import { useEffect, useState } from "react";
 import { ScheduledQuery } from "@/types/scheduled-query";
 import { AnalysisRun } from "@/types/analysis-run";
@@ -358,13 +358,9 @@ export function BrandMetricsHeader({
       }, [queries, brandName]);
   // Calculate metrics for each session and then average them
   const calculateSessionMetrics = (sessionBrands: Brand[], sessionTemporalBrands: TemporalBrand[]) => {
-     // Get all selected brands data
-  const normalizedSelected = new Set(
-    Array.from(selectedBrand).map((n) => n.toLowerCase())
-  );
-  const selectedBrandsData = brands.filter(
-    (b) => normalizedSelected.has(b.brand_name.toLowerCase())
-  );
+    const selectedBrandsData = sessionBrands.filter((b) =>
+      b.brand_name.toLowerCase().includes(brandName.toLowerCase())
+    );
 
     if (selectedBrandsData.length === 0) return null;
 
@@ -385,7 +381,7 @@ export function BrandMetricsHeader({
         if (brand.deepseek_mentions > 0) modelCounts.add("DeepSeek R1");
         if (brand.gpt_4_1_mentions > 0) modelCounts.add("GPT 4.1 Nano");
         if (brand.grok_mentions > 0) modelCounts.add("Grok");
-        if (brand.llama_mentions > 0) modelCounts.add("Llama");
+        if (brand.llama_mentions > 0) modelCounts.add("Llama");   
         if (brand.gemini_pro_mentions > 0) modelCounts.add("Gemini Pro 2.5");
         if (brand.deepseek_r1_mentions > 0) modelCounts.add("DeepSeek R1");
         if (brand.kimi_k2_mentions > 0) modelCounts.add("Kimi K2");
@@ -497,8 +493,8 @@ export function BrandMetricsHeader({
           (modelCounts["Google AI Mode"] || 0) + 1;
       }
       if (brand.deepseek_mentions > 0) {
-        modelCounts["DeepSeek R1"] =
-          (modelCounts["DeepSeek R1"] || 0) + 1;
+        modelCounts["DeepSeek v3"] =
+          (modelCounts["DeepSeek v3"] || 0) + 1;
       }
       if (brand.gpt_4_1_mentions > 0) {
         modelCounts["GPT 4.1 Nano"] =
@@ -511,6 +507,39 @@ export function BrandMetricsHeader({
       if (brand.llama_mentions > 0) {
         modelCounts["Llama"] =
           (modelCounts["Llama"] || 0) + 1;
+      }
+      if (brand.gemini_pro_mentions > 0) {
+        modelCounts["Gemini Pro 2.5"] =
+          (modelCounts["Gemini Pro 2.5"] || 0) + 1;
+      }
+      if (brand.deepseek_r1_mentions > 0) {
+        modelCounts["DeepSeek R1"] =
+          (modelCounts["DeepSeek R1"] || 0) + 1;
+      }
+      if (brand.kimi_k2_mentions > 0) {
+        modelCounts["Kimi K2"] =
+        modelCounts["Kimi K2"] =
+          (modelCounts["Kimi K2"] || 0) + 1;
+      }
+      if (brand.gpt_5_mentions > 0) {
+        modelCounts["GPT-5"] =
+          (modelCounts["GPT-5"] || 0) + 1;
+      }
+      if (brand.grok_4_mentions > 0) {
+        modelCounts["Grok 4"] =
+          (modelCounts["Grok 4"] || 0) + 1;
+      }
+      if (brand.mistral_medium_mentions > 0) {
+        modelCounts["Mistral Medium"] =
+          (modelCounts["Mistral Medium"] || 0) + 1;
+      }
+      if (brand.ernie_mentions > 0) {
+        modelCounts["Ernie 4.5"] =
+          (modelCounts["Ernie 4.5"] || 0) + 1;
+      }
+      if (brand.qwen_mentions > 0) {
+        modelCounts["Qwen 3 235b"] =
+          (modelCounts["Qwen 3 235b"] || 0) + 1;
       }
     });
 
@@ -535,6 +564,14 @@ export function BrandMetricsHeader({
     "GPT 4.1 Nano": OpenAI,
     "Grok": Grok,
     "Llama": Meta.Color,
+    "Gemini Pro 2.5": Gemini,
+    "DeepSeek v3": DeepSeek.Color,
+    "Kimi K2": Kimi.Color,
+    "GPT 5": OpenAI,
+    "Grok 4": Grok,
+    "Mistral Medium": Mistral.Color,
+    "Ernie 4.5": Baidu.Color,
+    "Qwen 3 235b": Qwen.Color,
   };
 
   const activeModels = getUniqueModelsForSelectedBrands();
@@ -555,10 +592,18 @@ export function BrandMetricsHeader({
         if (brand.gpt_search_mentions > 0) allModelCounts.add("GPT 4o Web Search");
         if (brand.ai_overview_mentions > 0) allModelCounts.add("Google AI Overview");
         if (brand.google_ai_mode_mentions > 0) allModelCounts.add("Google AI Mode");
-        if (brand.deepseek_mentions > 0) allModelCounts.add("DeepSeek R1");
+        if (brand.deepseek_mentions > 0) allModelCounts.add("DeepSeek v3");
         if (brand.gpt_4_1_mentions > 0) allModelCounts.add("GPT 4.1 Nano");
         if (brand.grok_mentions > 0) allModelCounts.add("Grok");
         if (brand.llama_mentions > 0) allModelCounts.add("Llama");
+        if (brand.gemini_pro_mentions > 0) allModelCounts.add("Gemini Pro 2.5");
+        if (brand.deepseek_r1_mentions > 0) allModelCounts.add("DeepSeek R1");
+        if (brand.kimi_k2_mentions > 0) allModelCounts.add("Kimi K2");
+        if (brand.gpt_5_mentions > 0) allModelCounts.add("GPT-5");
+        if (brand.grok_4_mentions > 0) allModelCounts.add("Grok 4");
+        if (brand.mistral_medium_mentions > 0) allModelCounts.add("Mistral Medium");
+        if (brand.ernie_mentions > 0) allModelCounts.add("Ernie 4.5");
+        if (brand.qwen_mentions > 0) allModelCounts.add("Qwen 3 235b");
       });
     });
     return allModelCounts.size;
@@ -647,13 +692,29 @@ export function BrandMetricsHeader({
           if (brand.google_ai_mode_mentions > 0)
             modelCounts.add("Google AI Mode");
           if (brand.deepseek_mentions > 0)
-            modelCounts.add("DeepSeek R1");
+            modelCounts.add("DeepSeek v3");
           if (brand.gpt_4_1_mentions > 0)
             modelCounts.add("GPT 4.1 Nano");
           if (brand.grok_mentions > 0)
             modelCounts.add("Grok");
           if (brand.llama_mentions > 0)
             modelCounts.add("Llama");
+          if (brand.gemini_pro_mentions > 0)
+            modelCounts.add("Gemini Pro 2.5");
+          if (brand.deepseek_r1_mentions > 0)
+            modelCounts.add("DeepSeek R1");
+          if (brand.kimi_k2_mentions > 0)
+            modelCounts.add("Kimi K2");
+          if (brand.gpt_5_mentions > 0) 
+            modelCounts.add("GPT-5");
+          if (brand.grok_4_mentions > 0)
+            modelCounts.add("Grok 4");
+          if (brand.mistral_medium_mentions > 0)
+            modelCounts.add("Mistral Medium");
+          if (brand.ernie_mentions > 0)
+            modelCounts.add("Ernie 4.5");
+          if (brand.qwen_mentions > 0)
+            modelCounts.add("Qwen 3 235b");
         });
 
         return modelCounts.size;
@@ -673,7 +734,15 @@ export function BrandMetricsHeader({
           (brand.deepseek_mentions > 0 ? 1 : 0) +
           (brand.gpt_4_1_mentions > 0 ? 1 : 0) +
           (brand.grok_mentions > 0 ? 1 : 0) +
-          (brand.llama_mentions > 0 ? 1 : 0)
+          (brand.llama_mentions > 0 ? 1 : 0) +
+          (brand.gemini_pro_mentions > 0 ? 1 : 0) +
+          (brand.deepseek_r1_mentions > 0 ? 1 : 0) +
+          (brand.kimi_k2_mentions > 0 ? 1 : 0) +
+          (brand.gpt_5_mentions > 0 ? 1 : 0) +
+          (brand.grok_4_mentions > 0 ? 1 : 0) +
+          (brand.mistral_medium_mentions > 0 ? 1 : 0) +
+          (brand.ernie_mentions > 0 ? 1 : 0) +
+          (brand.qwen_mentions > 0 ? 1 : 0)
         );
       }, 0);
 
@@ -722,7 +791,7 @@ export function BrandMetricsHeader({
             brandModelCount++;
           }
           if (
-            selectedModel.has("DeepSeek R1") &&
+            selectedModel.has("DeepSeek v3") &&
             brand.deepseek_mentions > 0
           ) {
             brandModelCount++;
@@ -742,6 +811,54 @@ export function BrandMetricsHeader({
           if (
             selectedModel.has("Llama") &&
             brand.llama_mentions > 0
+          ) {
+            brandModelCount++;
+          }
+          if (
+            selectedModel.has("Gemini Pro 2.5") &&
+            brand.gemini_pro_mentions > 0
+          ) {
+            brandModelCount++;
+          } 
+          if (
+            selectedModel.has("DeepSeek R1") &&
+            brand.deepseek_r1_mentions > 0
+          ) {
+            brandModelCount++;
+          }
+          if (
+            selectedModel.has("Kimi K2") &&
+            brand.kimi_k2_mentions > 0
+          ) {
+            brandModelCount++;
+          }
+          if (
+            selectedModel.has("GPT-5") &&
+            brand.gpt_5_mentions > 0
+          ) {
+            brandModelCount++;
+          }
+          if (  
+            selectedModel.has("Grok 4") &&
+            brand.grok_4_mentions > 0
+          ) {
+            brandModelCount++;
+          }
+          if (
+            selectedModel.has("Mistral Medium") &&
+            brand.mistral_medium_mentions > 0
+          ) {
+            brandModelCount++;
+          }
+          if (  
+            selectedModel.has("Ernie 4.5") &&
+            brand.ernie_mentions > 0
+          ) {
+            brandModelCount++;
+          }
+          if (  
+            selectedModel.has("Qwen 3 235b") &&
+            brand.qwen_mentions > 0
           ) {
             brandModelCount++;
           }
@@ -834,13 +951,29 @@ export function BrandMetricsHeader({
           if (brand.google_ai_mode_mentions > 0)
             modelCounts.add("Google AI Mode");
           if (brand.deepseek_mentions > 0)
-            modelCounts.add("DeepSeek R1");
+            modelCounts.add("DeepSeek v3");
           if (brand.gpt_4_1_mentions > 0)
             modelCounts.add("GPT 4.1 Nano");
           if (brand.grok_mentions > 0)
             modelCounts.add("Grok");
           if (brand.llama_mentions > 0)
             modelCounts.add("Llama");
+          if (brand.gemini_pro_mentions > 0)
+            modelCounts.add("Gemini Pro 2.5");
+          if (brand.deepseek_r1_mentions > 0)
+            modelCounts.add("DeepSeek R1");
+          if (brand.kimi_k2_mentions > 0)
+            modelCounts.add("Kimi K2");
+          if (brand.gpt_5_mentions > 0)
+            modelCounts.add("GPT-5");
+          if (brand.grok_4_mentions > 0)
+            modelCounts.add("Grok 4");
+          if (brand.mistral_medium_mentions > 0)
+            modelCounts.add("Mistral Medium");
+          if (brand.ernie_mentions > 0)
+            modelCounts.add("Ernie 4.5");
+          if (brand.qwen_mentions > 0)
+            modelCounts.add("Qwen 3 235b");
         });
 
         return modelCounts.size;
@@ -858,7 +991,16 @@ export function BrandMetricsHeader({
           (brand.google_ai_mode_mentions > 0 ? 1 : 0) +
           (brand.deepseek_mentions > 0 ? 1 : 0) +
           (brand.gpt_4_1_mentions > 0 ? 1 : 0) +
-          (brand.grok_mentions > 0 ? 1 : 0)
+          (brand.grok_mentions > 0 ? 1 : 0) +
+          (brand.llama_mentions > 0 ? 1 : 0) +
+          (brand.gemini_pro_mentions > 0 ? 1 : 0) +
+          (brand.deepseek_r1_mentions > 0 ? 1 : 0) +
+          (brand.kimi_k2_mentions > 0 ? 1 : 0) +
+          (brand.gpt_5_mentions > 0 ? 1 : 0) +
+          (brand.grok_4_mentions > 0 ? 1 : 0) +
+          (brand.mistral_medium_mentions > 0 ? 1 : 0) +
+          (brand.ernie_mentions > 0 ? 1 : 0) +
+          (brand.qwen_mentions > 0 ? 1 : 0)
         );
       }, 0);
 
@@ -906,7 +1048,7 @@ export function BrandMetricsHeader({
             brandModelCount++;
           }
           if (
-            selectedModel.has("DeepSeek R1") &&
+            selectedModel.has("DeepSeek v3") &&
             brand.deepseek_mentions > 0
           ) {
             brandModelCount++;
@@ -926,6 +1068,54 @@ export function BrandMetricsHeader({
           if (
             selectedModel.has("Llama") &&
             brand.llama_mentions > 0
+          ) {
+            brandModelCount++;
+          } 
+          if (
+            selectedModel.has("Gemini Pro 2.5") &&
+            brand.gemini_pro_mentions > 0
+          ) {
+            brandModelCount++;
+          }
+          if (
+            selectedModel.has("DeepSeek R1") &&
+            brand.deepseek_r1_mentions > 0
+          ) {
+            brandModelCount++;
+          }
+          if (
+            selectedModel.has("Kimi K2") &&
+            brand.kimi_k2_mentions > 0
+          ) {
+            brandModelCount++;
+          }
+          if (
+            selectedModel.has("GPT-5") &&
+            brand.gpt_5_mentions > 0
+          ) {
+            brandModelCount++;
+          }
+          if (
+            selectedModel.has("Grok 4") &&
+            brand.grok_4_mentions > 0
+          ) {
+            brandModelCount++;
+          }
+          if (
+            selectedModel.has("Mistral Medium") &&
+            brand.mistral_medium_mentions > 0
+          ) {
+            brandModelCount++;
+          }
+          if (
+            selectedModel.has("Ernie 4.5") &&
+            brand.ernie_mentions > 0
+          ) {
+            brandModelCount++;
+          }
+          if (
+            selectedModel.has("Qwen 3 235b") &&
+            brand.qwen_mentions > 0
           ) {
             brandModelCount++;
           }

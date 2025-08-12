@@ -6,6 +6,8 @@ import { Toaster } from "sonner";
 import { Analytics } from '@vercel/analytics/next';
 import { ThemeProvider } from "@/components/theme-provider";
 import NextTopLoader from "nextjs-toploader";
+import { PostHogProvider } from "@/components/PostHogProvider";
+import { Suspense } from "react";
 
 
 const inter = Inter({
@@ -67,7 +69,11 @@ export default function RootLayout({
         <ThemeProvider attribute="class" defaultTheme="dark">
         <NextTopLoader color="#7EBDF1" showSpinner={false} height={3} />
           <AuthProvider>
-              {children}
+            <Suspense fallback={<div>Loading...</div>}>
+              <PostHogProvider>
+                {children}
+              </PostHogProvider>
+            </Suspense>
               <Analytics />
               <Toaster />
           </AuthProvider>

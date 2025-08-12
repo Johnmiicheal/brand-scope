@@ -87,13 +87,6 @@ export function SignupForm({
                 Check your email to verify your account.
               </CardDescription>
             </CardHeader>
-            <CardContent className="text-center">
-              <Button asChild variant="outline" className="border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white">
-                <Link href="/login">
-                  Proceed to Login
-                </Link>
-              </Button>
-            </CardContent>
           </Card>
         </motion.div>
       ) : (

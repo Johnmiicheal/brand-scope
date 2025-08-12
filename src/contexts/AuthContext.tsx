@@ -4,6 +4,7 @@
 "use client"
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
+import posthog from 'posthog-js'
 import { useRouter } from 'next/navigation'
 import { User, Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
@@ -130,6 +131,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [router])
 
+  // Identify user in PostHog when available
+  useEffect(() => {
+    if (user) {
+      posthog.identify(user.id, {
+        email: user.email,
+        name: user.user_metadata?.full_name || null,
+      })
+    } else {
+      // Optional: clear identity on logout/unauthenticated
+      posthog.reset()
+    }
+  }, [user])
+
   // Sign in function
   const signIn = async (email: string, password: string) => {
     try {
@@ -140,6 +154,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if(data){
         setUser(data.user);
         setSession(data.session)
+        const { data: subscriptionData } = await supabase
+          .from('user_subscriptions')
+          .select('*')
+          .eq('user_id', data.user.id)
+          .single();
+          
+        if(!subscriptionData) {
+          toast({
+            title: "No subscription found",
+            description: "Redirecting to onboarding...",
+            duration: 3000,
+          })
+          setTimeout(() => {
+            router.push("/onboarding");
+          }, 1000);
+        }
       }
       
       if (error) {
@@ -250,6 +280,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         description: "Check your email to confirm your account",
         duration: 5000,
       });
+      router.push('/onboarding')
     } catch (error: any) {
       toast({
         title: "Sign up failed",
@@ -268,6 +299,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if(!error){
         setUser(null)
         setSession(null)
+        posthog.reset()
         router.push('/login')
       }
     } catch (error: any) {

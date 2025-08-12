@@ -21,6 +21,7 @@ import { Download } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Search, Calendar, Loader2, Info } from "lucide-react";
 import { Brand } from "@/contexts/brand-data-context";
+import { AnalysisMode } from "@/types/search";
 import {
   Dialog,
   DialogContent,
@@ -38,6 +39,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { countries } from "@/lib/countries";
 import { toast } from "@/components/ui/use-toast";
+import { supabase } from "@/lib/supabase";
 
 interface CitationData {
   url_citation?: {
@@ -137,6 +139,9 @@ export function StepsTabContent({
     useState<string>("United States");
   const [editedKeyword, setEditedKeyword] = useState<string>("");
   const [isScheduling, setIsScheduling] = useState(false);
+  const [scheduleMode, setScheduleMode] = useState<AnalysisMode>("Explorer");
+  const [scheduleBrand, setScheduleBrand] = useState<Brand | null>(null);
+  const [availableBrands, setAvailableBrands] = useState<Brand[]>([]);
 
   // Safely get user with error handling
   let user = null;
@@ -147,6 +152,37 @@ export function StepsTabContent({
     console.error("Auth error in StepsTabContent:", authError);
     setError("Authentication error. Please refresh the page.");
   }
+
+  // Fetch available brands for selection
+  useEffect(() => {
+    const fetchBrands = async () => {
+      if (!user?.id) return;
+      try {
+        const { data, error } = await supabase
+          .from("brand_project")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false });
+        
+        if (error) {
+          console.error("Error fetching brands:", error);
+          return;
+        }
+        
+        setAvailableBrands((data as unknown as Brand[]) || []);
+        // Set default to attached brand if available
+        if (brand && data?.some(b => b.id === brand.id)) {
+          setScheduleBrand(brand);
+        } else if (data && data.length > 0) {
+          setScheduleBrand(data[0] as unknown as Brand);
+        }
+      } catch (error) {
+        console.error("Error fetching brands:", error);
+      }
+    };
+    
+    fetchBrands();
+  }, [user?.id, brand]);
 
   // Function to export keywords data to CSV
   const exportKeywordsToCSV = (keywords: Record<string, KeywordData>) => {
@@ -201,7 +237,7 @@ export function StepsTabContent({
     if (monitoringId) {
       fetchExistingSteps();
     }
-  }, [monitoringId]);
+  }, [monitoringId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchExistingSteps = async () => {
     setLoading(true);
@@ -242,13 +278,14 @@ export function StepsTabContent({
           frequency: scheduleFrequency,
           location: scheduleCountry,
           user_id: user.id,
-          attached_brand_id: brand ? [brand.id] : [""],
-          attached_brand_name: brand ? brand.name : "",
-          attached_brand_industry: brand ? brand.industry : "",
-          attached_brand_logo_url: brand ? brand.logo_url || "" : "",
-          attached_brand_website: brand ? brand.website : "",
-          attached_brand_language: brand ? brand.language : "",
-          attached_brand_location: brand ? brand.location : "",
+          attached_brand_id: scheduleBrand ? [scheduleBrand.id] : [""],
+          attached_brand_name: scheduleBrand ? scheduleBrand.name : "",
+          attached_brand_industry: scheduleBrand ? scheduleBrand.industry : "",
+          attached_brand_logo_url: scheduleBrand ? scheduleBrand.logo_url || "" : "",
+          attached_brand_website: scheduleBrand ? scheduleBrand.website : "",
+          attached_brand_language: scheduleBrand ? scheduleBrand.language : "",
+          attached_brand_location: scheduleBrand ? scheduleBrand.location : "",
+          mode: scheduleMode,
         }),
       });
 
@@ -278,6 +315,9 @@ export function StepsTabContent({
   const openScheduleModal = (keyword: KeywordData) => {
     setSelectedKeyword(keyword);
     setEditedKeyword(keyword.conversational_keyword);
+    // Reset to defaults when opening modal
+    setScheduleMode("Explorer");
+    setScheduleBrand(brand || (availableBrands.length > 0 ? availableBrands[0] : null));
     setShowScheduleModal(true);
   };
 
@@ -784,47 +824,95 @@ export function StepsTabContent({
               />
             </div>
 
-            <div className="flex gap-5 w-full items-center justify-between">
+            <div className="space-y-4">
+              {/* Analysis Mode Selection */}
               <div className="space-y-2 w-full">
-                <label className="text-sm font-medium">
-                  Monitoring Frequency
-                </label>
+                <label className="text-sm font-medium">Analysis Mode</label>
                 <Select
-                  value={scheduleFrequency}
-                  onValueChange={(value: "daily" | "weekly") =>
-                    setScheduleFrequency(value)
-                  }
+                  value={scheduleMode}
+                  onValueChange={(value: AnalysisMode) => setScheduleMode(value)}
                 >
                   <SelectTrigger className="w-full">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="daily">Daily</SelectItem>
-                    <SelectItem value="weekly">Weekly</SelectItem>
+                    <SelectItem value="Explorer">Explorer - Comprehensive Analysis</SelectItem>
+                    <SelectItem value="Voyager">Voyager - Focused Analysis</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
+              {/* Brand Selection */}
               <div className="space-y-2 w-full">
-                <label className="text-sm font-medium">Location</label>
+                <label className="text-sm font-medium">Brand</label>
                 <Select
-                  value={scheduleCountry}
-                  onValueChange={setScheduleCountry}
+                  value={scheduleBrand?.id || ""}
+                  onValueChange={(value: string) => {
+                    const selected = availableBrands.find(b => b.id === value);
+                    setScheduleBrand(selected || null);
+                  }}
                 >
                   <SelectTrigger className="w-full">
-                    <SelectValue />
+                    <SelectValue placeholder="Select a brand" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="global" disabled>
-                      Select Location
-                    </SelectItem>
-                    {countries.map((country) => (
-                      <SelectItem key={country.value} value={country.label}>
-                        {country.label}
+                    {availableBrands.length === 0 ? (
+                      <SelectItem value="" disabled>
+                        No brands available
                       </SelectItem>
-                    ))}
+                    ) : (
+                      availableBrands.map((brand) => (
+                        <SelectItem key={brand.id} value={brand.id}>
+                          {brand.name}
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div className="flex gap-5 w-full items-center justify-between">
+                <div className="space-y-2 w-full">
+                  <label className="text-sm font-medium">
+                    Monitoring Frequency
+                  </label>
+                  <Select
+                    value={scheduleFrequency}
+                    onValueChange={(value: "daily" | "weekly") =>
+                      setScheduleFrequency(value)
+                    }
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="daily">Daily</SelectItem>
+                      <SelectItem value="weekly">Weekly</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2 w-full">
+                  <label className="text-sm font-medium">Location</label>
+                  <Select
+                    value={scheduleCountry}
+                    onValueChange={setScheduleCountry}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="global" disabled>
+                        Select Location
+                      </SelectItem>
+                      {countries.map((country) => (
+                        <SelectItem key={country.value} value={country.label}>
+                          {country.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
 

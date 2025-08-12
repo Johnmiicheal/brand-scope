@@ -1,20 +1,39 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Loader2, Search, AlertCircle, Zap, Sparkles, History } from "lucide-react";
+import {
+  Loader2,
+  Search,
+  AlertCircle,
+  Zap,
+  Sparkles,
+  History,
+  ChevronRight,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import { Select, SelectItem, SelectContent, SelectTrigger, SelectValue } from "@/components/ui/select";
-
+import {
+  Select,
+  SelectItem,
+  SelectContent,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type FormData = {
   businessBrief: string;
@@ -24,16 +43,14 @@ type FormData = {
   location: string;
 };
 
-
-
 const fadeIn = {
   hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { duration: 0.5 } }
+  visible: { opacity: 1, transition: { duration: 0.5 } },
 };
 
 const slideUp = {
   hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.4 } }
+  visible: { opacity: 1, y: 0, transition: { duration: 0.4 } },
 };
 
 export default function KeywordAnalysisPage() {
@@ -42,7 +59,7 @@ export default function KeywordAnalysisPage() {
     businessBrief: "",
     keyword: "",
     website: "",
-    language: "en",
+    language: "",
     location: "",
   });
   const [isLoading, setIsLoading] = useState(false);
@@ -51,6 +68,7 @@ export default function KeywordAnalysisPage() {
   const [dailyLimitReached, setDailyLimitReached] = useState(false);
   const [analysisTime, setAnalysisTime] = useState(0);
   const { user } = useAuth();
+  const [currentStep, setCurrentStep] = useState<1 | 2>(1);
 
   // Timer for analysis duration
   useEffect(() => {
@@ -76,7 +94,7 @@ export default function KeywordAnalysisPage() {
   ) => {
     const { id, value } = e.target;
     setFormData((prev) => ({ ...prev, [id]: value }));
-    
+
     // Clear error when user starts typing
     if (error) setError(null);
     if (dailyLimitReached) setDailyLimitReached(false);
@@ -102,16 +120,30 @@ export default function KeywordAnalysisPage() {
     setDailyLimitReached(false);
 
     // Validate that at least one field is filled
-    if (!formData.businessBrief.trim() && !formData.keyword.trim() && !formData.website.trim()) {
-      setError("Please provide at least one of: business brief, keyword, or website.");
+    if (
+      !formData.businessBrief.trim() &&
+      !formData.keyword.trim() &&
+      !formData.website.trim()
+    ) {
+      setError(
+        "Please provide at least one of: business brief, keyword, or website."
+      );
       setIsLoading(false);
       return;
     }
 
+    // Validate language selection
+    if (!formData.language) {
+      setError("Please select a language.");
+      setIsLoading(false);
+      setCurrentStep(2);
+      return;
+    }
+
     try {
-      const response = await fetch('/api/keywords-analysis', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/keywords-analysis", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           businessBrief: formData.businessBrief.trim(),
           keyword: formData.keyword.trim(),
@@ -127,9 +159,11 @@ export default function KeywordAnalysisPage() {
       if (!response.ok) {
         if (response.status === 429) {
           setDailyLimitReached(true);
-          setError(data.error || 'Daily limit reached');
+          setError(data.error || "Daily limit reached");
         } else {
-          setError(data.error || `Request failed with status ${response.status}`);
+          setError(
+            data.error || `Request failed with status ${response.status}`
+          );
         }
         return;
       }
@@ -139,8 +173,8 @@ export default function KeywordAnalysisPage() {
 
         // Redirect to history page with keyword_id immediately
         setTimeout(() => {
-        if (data.keyword_id) {
-          router.push(`/dashboard/keywords/history/${data.keyword_id}`);
+          if (data.keyword_id) {
+            router.push(`/dashboard/keywords/history/${data.keyword_id}`);
           } else {
             router.push(`/dashboard/keywords/history`);
           }
@@ -149,7 +183,8 @@ export default function KeywordAnalysisPage() {
         setError("Invalid response format from analysis service");
       }
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : "An unexpected error occurred.";
+      const errorMessage =
+        err instanceof Error ? err.message : "An unexpected error occurred.";
       setError(errorMessage);
       console.error("Keyword analysis error:", err);
     } finally {
@@ -157,12 +192,14 @@ export default function KeywordAnalysisPage() {
     }
   };
 
-
-
-  const hasAnyInput = formData.businessBrief.trim() || formData.keyword.trim() || formData.website.trim();
+  const hasAnyInput =
+    formData.businessBrief.trim() ||
+    formData.keyword.trim() ||
+    formData.website.trim();
+  const canProceedStep1 = Boolean(hasAnyInput);
 
   return (
-    <motion.div 
+    <motion.div
       className="flex flex-col gap-6 p-6"
       initial="hidden"
       animate="visible"
@@ -172,15 +209,18 @@ export default function KeywordAnalysisPage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div>
-              <h1 className="text-3xl font-bold tracking-tight">Keyword Analysis</h1>
+              <h1 className="text-3xl font-bold tracking-tight">
+                Keyword Analysis
+              </h1>
               <p className="text-muted-foreground">
-                Discover 50 keyword opportunities for your business with AI-powered analysis
+                Discover 50 keyword opportunities for your business with
+                AI-powered analysis
               </p>
             </div>
           </div>
-          <Button 
-            variant="outline" 
-            onClick={() => router.push('/dashboard/keywords/history')}
+          <Button
+            variant="outline"
+            onClick={() => router.push("/dashboard/keywords/history")}
             className="flex items-center gap-2"
           >
             <History className="w-4 h-4" />
@@ -194,142 +234,268 @@ export default function KeywordAnalysisPage() {
         <Alert className="bg-blue-500/10 border-blue-500/20 border-dashed text-blue-500">
           <Zap className="h-4 w-4" />
           <AlertDescription className="flex items-center gap-2">
-            Each keyword analysis costs <Badge variant="secondary" className="bg-blue-500/20 text-blue-600">3 Credits</Badge> and provides 
-            <strong className="text-blue-500">50 keyword opportunities</strong> with detailed metrics.
+            Each keyword analysis costs{" "}
+            <Badge variant="secondary" className="bg-blue-500/20 text-blue-600">
+              3 Credits
+            </Badge>{" "}
+            and provides
+            <strong className="text-blue-500">
+              50 keyword opportunities
+            </strong>{" "}
+            with detailed metrics.
           </AlertDescription>
         </Alert>
       </motion.div>
 
-      <motion.div variants={slideUp}>
+      <motion.div variants={slideUp} className="max-w-5xl mx-auto w-full">
         <Card className="border-none px-0">
           <CardHeader className="px-0">
             <CardTitle className="flex items-center gap-2">
               <Sparkles className="w-5 h-5" />
-              Business Information
+              Keyword Analysis
             </CardTitle>
             <CardDescription>
-              Provide information about your business to get personalized keyword recommendations. 
-              At least one field is required.
+              Provide information to get personalized keyword recommendations.
+              Follow the steps below.
             </CardDescription>
+            {/* Step indicator */}
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <div
+                className={`h-2 rounded-full transition-colors ${
+                  currentStep === 1 ? "bg-blue-500" : "bg-blue-500/40"
+                }`}
+              ></div>
+              <div
+                className={`h-2 rounded-full transition-colors ${
+                  currentStep === 2 ? "bg-blue-500" : "bg-blue-500/40"
+                }`}
+              ></div>
+            </div>
           </CardHeader>
           <CardContent className="px-0">
             <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="flex flex-col gap-6">
-                {/* Left Column */}
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="businessBrief" className="text-base font-medium">
-                      Business Brief Description
-                    </Label>
-                    <Textarea
-                      id="businessBrief"
-                      placeholder="e.g., My business is a dental clinic named DentiClinic that provides comprehensive dental care services..."
-                      value={formData.businessBrief}
-                      onChange={handleInputChange}
-                      className="min-h-[100px] resize-none"
-                      disabled={isLoading}
-                    />
-                    <p className="text-sm text-muted-foreground">
-                      Describe your business, services, and target audience
-                    </p>
-                  </div>
+              <AnimatePresence mode="wait">
+                {currentStep === 1 ? (
+                  <motion.div
+                    key="step-1"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.25 }}
+                    className="flex flex-col gap-6"
+                  >
+                    <div className="space-y-1">
+                      <div className="text-sm text-muted-foreground">
+                        Step 1
+                      </div>
+                      <div className="text-xl font-semibold">
+                        Business Information
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        Fill at least one of the fields below.
+                      </p>
+                    </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="keyword" className="text-base font-medium">
-                      Main Keyword (optional)
-                    </Label>
-                    <Input
-                      id="keyword"
-                      placeholder="e.g., dental clinic, marketing tools, etc."
-                      value={formData.keyword}
-                      onChange={handleInputChange}
-                      disabled={isLoading}
-                    />
-                    <p className="text-sm text-muted-foreground">
-                      Primary keyword related to your business or industry
-                    </p>
-                  </div>
-                </div>
+                    <div className="flex flex-col gap-7">
+                      <div className="space-y-2">
+                        <Label
+                          htmlFor="businessBrief"
+                          className="text-base font-medium"
+                        >
+                          Business Brief Description
+                        </Label>
+                        <Textarea
+                          id="businessBrief"
+                          placeholder="e.g., My business is a dental clinic named DentiClinic that provides comprehensive dental care services..."
+                          value={formData.businessBrief}
+                          onChange={handleInputChange}
+                          className="min-h-[70px] resize-none rounded-xl p-4"
+                          disabled={isLoading}
+                        />
+                        <p className="text-sm text-muted-foreground">
+                          Describe your business, services, and target audience
+                        </p>
+                      </div>
 
-                {/* Right Column */}
-                <div className="space-y-4 flex gap-4">
-                  <div className="space-y-2 w-full">
-                    <Label htmlFor="website" className="text-base font-medium">
-                      Website URL
-                    </Label>
-                    <Input
-                      id="website"
-                      type="url"
-                      placeholder="e.g., https://denticlinic.ai"
-                      value={formData.website}
-                      onChange={handleInputChange}
-                      disabled={isLoading}
-                    />
-                    <p className="text-sm text-muted-foreground">
-                      Your business website (optional if other fields are provided)
-                    </p>
-                  </div>
-                  <div className="space-y-2 w-full">
-                    <Label htmlFor="location" className="text-base font-medium">
-                      Location
-                    </Label>
-                    <Input
-                      id="location"
-                      type="text"
-                      placeholder="e.g., New York, USA"
-                      value={formData.location}
-                      onChange={handleInputChange}
-                      disabled={isLoading}
-                    />
-                    <p className="text-sm text-muted-foreground">
-                      City or Country (optional)
-                    </p>
-                  </div>
-                  <div className="space-y-2 w-full">
-                    <Label htmlFor="language" className="text-base font-medium">
-                      Language
-                    </Label>
-                    <Select value={formData.language} onValueChange={(value) => setFormData(prev => ({ ...prev, language: value }))}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select a language" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="en">English</SelectItem>
-                        <SelectItem value="es">Spanish</SelectItem>
-                        <SelectItem value="fr">French</SelectItem>
-                        <SelectItem value="de">German</SelectItem>
-                        <SelectItem value="it">Italian</SelectItem>
-                        <SelectItem value="pt">Portuguese</SelectItem>
-                        <SelectItem value="ru">Russian</SelectItem>
-                      </SelectContent>
-                    </Select> 
-                    <p className="text-sm text-muted-foreground">
-                      Your local language (optional)
-                    </p>
-                  </div>
+                      <div className="space-y-2">
+                        <Label
+                          htmlFor="keyword"
+                          className="text-base font-medium"
+                        >
+                          Main Keyword
+                        </Label>
+                        <Input
+                          id="keyword"
+                          placeholder="e.g., dental clinic, marketing tools, etc."
+                          value={formData.keyword}
+                          onChange={handleInputChange}
+                          disabled={isLoading}
+                          className="rounded-xl"
+                        />
+                        <p className="text-sm text-muted-foreground">
+                          Primary keyword related to your business or industry
+                        </p>
+                      </div>
 
-                </div>
-                  <div className="pt-8">
-                    <Button
-                      type="submit"
-                      disabled={isLoading || !hasAnyInput}
-                      className="w-full bg-blue-500 hover:bg-blue-600"
-                      size="lg"
-                    >
-                      {isLoading ? (
-                        <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Analyzing Keywords... {formatTime(analysisTime)}
-                        </>
-                      ) : (
-                        <>
-                          <Search className="w-4 h-4 mr-2" />
-                          Analyze Keywords (3 Credits)
-                        </>
-                      )}
-                    </Button>
-                  </div>
-              </div>
+                      <div className="space-y-2 lg:col-span-2">
+                        <Label
+                          htmlFor="website"
+                          className="text-base font-medium"
+                        >
+                          Website URL
+                        </Label>
+                        <Input
+                          id="website"
+                          type="url"
+                          placeholder="e.g., https://denticlinic.ai"
+                          value={formData.website}
+                          onChange={handleInputChange}
+                          disabled={isLoading}
+                          className="rounded-xl"
+                        />
+                        <p className="text-sm text-muted-foreground">
+                          Your business website
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="pt-2 flex items-center justify-between gap-3">
+                      <div className="text-sm text-muted-foreground">
+                        {canProceedStep1
+                          ? ""
+                          : "Provide at least one field to continue"}
+                      </div>
+                      <Button
+                        type="button"
+                        onClick={() => setCurrentStep(2)}
+                        disabled={!canProceedStep1}
+                        className="bg-blue-600 hover:bg-blue-500 text-white rounded-full"
+                      >
+                        Next
+                        <ChevronRight className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="step-2"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.25 }}
+                    className="flex flex-col gap-6"
+                  >
+                    <div className="space-y-2">
+                      <div className="text-sm text-muted-foreground">
+                        Step 2
+                      </div>
+                      <div className="text-xl font-semibold">Demographics</div>
+                      <p className="text-sm text-muted-foreground">
+                        Choose location (optional) and language (required) for
+                        your keyword analysis.
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <Label
+                          htmlFor="location"
+                          className="text-base font-medium"
+                        >
+                          Location
+                        </Label>
+                        <Input
+                          id="location"
+                          type="text"
+                          placeholder="e.g., New York, USA"
+                          value={formData.location}
+                          onChange={handleInputChange}
+                          disabled={isLoading}
+                        />
+                        <p className="text-sm text-muted-foreground">
+                          City or country
+                        </p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label
+                          htmlFor="language"
+                          className="text-base font-medium"
+                        >
+                          Language <span className="text-red-500">*</span>
+                        </Label>
+                        <Select
+                          value={formData.language}
+                          onValueChange={(value) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              language: value,
+                            }))
+                          }
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Select a language" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="en">English</SelectItem>
+                            <SelectItem value="es">Spanish</SelectItem>
+                            <SelectItem value="fr">French</SelectItem>
+                            <SelectItem value="de">German</SelectItem>
+                            <SelectItem value="it">Italian</SelectItem>
+                            <SelectItem value="pt">Portuguese</SelectItem>
+                            <SelectItem value="ru">Russian</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        {!formData.language && (
+                          <p className="text-sm text-red-500/70">
+                            Language is required
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="pt-2 flex items-center justify-between gap-3">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setCurrentStep(1)}
+                        disabled={isLoading}
+                        className="bg-neutral-600 rounded-full hover:bg-neutral-700"
+                      >
+                        Back
+                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Badge
+                          variant="secondary"
+                          className="bg-blue-500/20 text-blue-600 py-3 px-4 pointer-events-none"
+                        >
+                          <Zap className="w-4 h-4 mr-2" />
+                          3 Credits
+                        </Badge>
+                        <Button
+                          type="submit"
+                          disabled={
+                            isLoading || !hasAnyInput || !formData.language
+                          }
+                          className="bg-blue-600 rounded-full hover:bg-blue-500 text-white"
+                        >
+                          {isLoading ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              Analyzing... {formatTime(analysisTime)}
+                            </>
+                          ) : (
+                            <>
+                              <Search className="w-4 h-4" />
+                              Analyze Keywords
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               {/* Error Display */}
               <AnimatePresence>
@@ -339,13 +505,16 @@ export default function KeywordAnalysisPage() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
                   >
-                    <Alert variant={dailyLimitReached ? "default" : "destructive"}>
+                    <Alert
+                      variant={dailyLimitReached ? "default" : "destructive"}
+                    >
                       <AlertCircle className="h-4 w-4" />
                       <AlertDescription>
                         {error}
                         {dailyLimitReached && (
                           <div className="mt-2 text-sm">
-                            Come back tomorrow for another analysis, or upgrade your plan for more daily analyses.
+                            Come back tomorrow for another analysis, or upgrade
+                            your plan for more daily analyses.
                           </div>
                         )}
                       </AlertDescription>
@@ -357,8 +526,6 @@ export default function KeywordAnalysisPage() {
           </CardContent>
         </Card>
       </motion.div>
-
-
     </motion.div>
   );
-} 
+}

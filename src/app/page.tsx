@@ -40,8 +40,12 @@ import {
   Gemini,
   Grok,
   Meta,
+  Mistral,
   OpenAI,
   Perplexity,
+  Qwen,
+  Baidu,
+  Kimi,
 } from "@lobehub/icons";
 
 export default function Home() {
@@ -76,6 +80,11 @@ export default function Home() {
     "gpt-4.1-nano": OpenAI,
     "grok-3-mini": Grok,
     "llama-4-maverick": Meta.Color,
+    "mistral-medium": Mistral.Color,
+    "ernie-4.5": Baidu.Color,
+    "qwen-3-235b": Qwen.Color,
+    "kimi-k2": Kimi.Color,
+    "gpt-5": OpenAI,
   };
 
   const plans = [

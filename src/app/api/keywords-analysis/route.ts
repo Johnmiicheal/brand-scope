@@ -67,14 +67,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Check if user has exceeded daily limit
-    if (usageData && usageData.usage_count >= 5) {
-      return NextResponse.json(
-        { error: 'Daily keyword analysis limit reached. You can perform 5 analyses per day.' },
-        { status: 429, headers: corsHeaders }
-      );
-    }
-
     // Check and deduct credits for keyword analysis
     const keywordCreditCost = constraints.keyword_analysis.credit_cost;
     
@@ -285,7 +277,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       data: outputData,
-      remainingAnalyses: 4 - (usageData?.usage_count || 0), // 5 per day limit
       keyword_id: analysisId // Include the analysis ID for redirect
     }, { headers: corsHeaders });
 

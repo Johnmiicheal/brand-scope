@@ -167,9 +167,7 @@ export default function ProjectsPage() {
           <p className="text-muted-foreground mb-6">
             Create your first brand project to start analyzing your brand&apos;s performance
           </p>
-          <Button asChild>
-            <Link href="/dashboard/search">Start Analysis</Link>
-          </Button>
+          <Button onClick={() => setShowBrandModal(true)} className="bg-blue-600 hover:bg-blue-500 text-white rounded-full">Create Brand</Button>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

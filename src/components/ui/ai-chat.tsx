@@ -627,11 +627,13 @@ export function AIChatInterface({
   const modes = [
     {
       key: "Explorer",
+      label: "Native Search",
       caption:
         "Enhanced brand analysis and insights from top AI search engines (Includes native search support)",
     },
     {
       key: "Voyager",
+      label: "Non Native Search",
       caption:
         "Analyse prompts and get insights from top LLMs (No native search support)",
     },
@@ -711,8 +713,8 @@ export function AIChatInterface({
     modelsData?.[mode.toLowerCase() as "explorer" | "voyager"];
 
   return (
-    <div className="flex flex-col items-center w-full max-w-4xl mx-auto p-4 space-y-8">
-      <h1 className="text-4xl font- text-center text-neutral-700 dark:text-white">
+    <div className="flex flex-col items-center w-full max-w-5xl mx-auto p-4 space-y-8">
+      <h1 className="text-4xl text-center text-neutral-700 dark:text-white">
         {isMonitoringMode
           ? "Search and Monitor Prompts"
           : attachedBrand
@@ -720,17 +722,17 @@ export function AIChatInterface({
           : "Let's help you understand your prompts"}
       </h1>
 
-      <div className="w-full">
+      <div className="w-full max-w-5xl mx-auto">
         <div
           className={cn(
-            "relative bg-[#e2e2e2]/20 dark:bg-neutral-900/10 rounded-xl border border-[#e2e2e2]/20 hover:border-[#e2e2e2]/40 dark:border-neutral-800",
+            "relative w-full bg-[#e2e2e2]/20 dark:bg-neutral-900/10 rounded-xl border border-[#e2e2e2]/20 hover:border-[#e2e2e2]/40 dark:border-neutral-800",
             isMonitoringMode &&
               "ring-3 ring-blue-500 ring-offset-2 ring-offset-background dark:ring-offset-neutral-950",
             attachedBrand &&
               "ring-3 ring-purple-500 ring-offset-2 ring-offset-background dark:ring-offset-neutral-950"
           )}
         >
-          <div className="overflow-y-auto">
+          <div className="overflow-y-auto w-full">
             <Textarea
               ref={textareaRef}
               value={value}
@@ -745,7 +747,7 @@ export function AIChatInterface({
                   : "Enter search prompt to analyze..."
               }
               className={cn(
-                "w-full px-4 py-3",
+                "w-full px-4 py-3 max-w-5xl mx-auto",
                 "resize-none",
                 "bg-transparent",
                 "border-none",
@@ -792,7 +794,7 @@ export function AIChatInterface({
                       {location
                         ? domains.find((item) => item.country_name === location)
                             ?.country_name
-                        : "Select location..."}
+                        : "Location..."}
                     </span>
                   </button>
                 </PopoverTrigger>
@@ -852,7 +854,7 @@ export function AIChatInterface({
                         opacity: { duration: 0.15 },
                       }}
                     >
-                      {mode}
+                      Select LLM
                     </motion.div>
                   </Button>
                   <DropdownMenuTrigger className="focus-visible:ring-0 focus-visible:ring-offset-0 focus:outline-none">
@@ -875,7 +877,7 @@ export function AIChatInterface({
                   {/* Mode Selection */}
                   <div className="space-y-2 mb-4">
                     <h4 className="font-medium text-sm text-neutral-600 dark:text-white">
-                      Analysis Mode
+                      Select one mode
                     </h4>
                     {modes.map((item) => (
                       <div
@@ -887,7 +889,7 @@ export function AIChatInterface({
                           {item.key === mode && <Check className="w-4 h-4" />}
                           <div>
                             <h4 className="text-[14px] text-neutral-600 dark:text-white">
-                              {item.key}
+                              {item.label}
                             </h4>
                             <p className="text-neutral-400 dark:text-white/70 text-[10px]">
                               {item.caption}
@@ -904,7 +906,7 @@ export function AIChatInterface({
                   <div className="space-y-4 mt-4">
                     <div className="flex items-center justify-between">
                       <h4 className="font-medium text-sm text-neutral-600 dark:text-white">
-                        AI Models for {mode}
+                        AI Models for {modes.find((item) => item.key === mode)?.label}
                       </h4>
                       <Badge
                         variant="secondary"
@@ -1135,7 +1137,7 @@ export function AIChatInterface({
           <div className="flex w-[90%] gap-3 mx-0 p-5 items-center rounded-b-xl border-l border-r border-b border-[#e2e2e2]/50 dark:border-accent text-foreground">
             <div className="flex gap-2 items-center text-sm font-bold w-1/4 text-neutral-500 dark:text-white">
               <Telescope className="w-4 h-4" />
-              {mode}
+              {modes.find((item) => item.key === mode)?.label}
             </div>
             <span className="text-xs w-full text-neutral-500 dark:text-muted-foreground">
               {modes.find((item) => item.key === mode)?.caption}

@@ -44,6 +44,7 @@ import {
   Download,
   TextSearch,
   Filter,
+  WholeWord,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -125,6 +126,7 @@ import {
   Tooltip as ChartTooltip,
   Legend,
 } from "chart.js";
+import { SummaryTabContent } from "@/components/dashboard/summary-tab-content";
 
 const INDUSTRIES = [
   "Technology",
@@ -290,59 +292,32 @@ function IndustryRankingsTable({
       selectedModelTotalMentions++;
     }
     // Voyager mode models
-    if (
-      selectedModel.has("DeepSeek v3") &&
-      brand.deepseek_mentions > 0
-    ) {
+    if (selectedModel.has("DeepSeek v3") && brand.deepseek_mentions > 0) {
       selectedModelTotalMentions++;
     }
-    if (
-      selectedModel.has("GPT 4.1 Nano") &&
-      brand.gpt_4_1_mentions > 0
-    ) {
+    if (selectedModel.has("GPT 4.1 Nano") && brand.gpt_4_1_mentions > 0) {
       selectedModelTotalMentions++;
     }
-    if (
-      selectedModel.has("Grok 3 Mini") &&
-      brand.grok_mentions > 0
-    ) {
+    if (selectedModel.has("Grok 3 Mini") && brand.grok_mentions > 0) {
       selectedModelTotalMentions++;
     }
-    if (
-      selectedModel.has("Llama 4 Maverick") &&
-      brand.llama_mentions > 0
-    ) {
+    if (selectedModel.has("Llama 4 Maverick") && brand.llama_mentions > 0) {
       selectedModelTotalMentions++;
     }
     // New Voyager models
-    if (
-      selectedModel.has("Gemini Pro 2.5") &&
-      brand.gemini_pro_mentions > 0
-    ) {
+    if (selectedModel.has("Gemini Pro 2.5") && brand.gemini_pro_mentions > 0) {
       selectedModelTotalMentions++;
     }
-    if (
-      selectedModel.has("DeepSeek R1") &&
-      brand.deepseek_r1_mentions > 0
-    ) {
+    if (selectedModel.has("DeepSeek R1") && brand.deepseek_r1_mentions > 0) {
       selectedModelTotalMentions++;
     }
-    if (
-      selectedModel.has("Kimi K2") &&
-      brand.kimi_k2_mentions > 0
-    ) {
+    if (selectedModel.has("Kimi K2") && brand.kimi_k2_mentions > 0) {
       selectedModelTotalMentions++;
     }
-    if (
-      selectedModel.has("GPT 5") &&
-      brand.gpt_5_mentions > 0
-    ) {
+    if (selectedModel.has("GPT 5") && brand.gpt_5_mentions > 0) {
       selectedModelTotalMentions++;
     }
-    if (
-      selectedModel.has("Grok 4") &&
-      brand.grok_4_mentions > 0
-    ) {
+    if (selectedModel.has("Grok 4") && brand.grok_4_mentions > 0) {
       selectedModelTotalMentions++;
     }
     if (
@@ -351,16 +326,10 @@ function IndustryRankingsTable({
     ) {
       selectedModelTotalMentions++;
     }
-    if (
-      selectedModel.has("Ernie 4.5") &&
-      brand.ernie_mentions > 0
-    ) {
+    if (selectedModel.has("Ernie 4.5") && brand.ernie_mentions > 0) {
       selectedModelTotalMentions++;
     }
-    if (
-      selectedModel.has("Qwen 3 235b") &&
-      brand.qwen_mentions > 0
-    ) {
+    if (selectedModel.has("Qwen 3 235b") && brand.qwen_mentions > 0) {
       selectedModelTotalMentions++;
     }
 
@@ -446,7 +415,9 @@ function IndustryRankingsTable({
                       className="dark:text-white text-black border-[#e2e2e2]/40 dark:border-accent cursor-pointer"
                       onClick={() => {
                         setSelectedBrand(new Set([entity.brand_name]));
-                        toastSonner.info(`You have selected ${entity.brand_name}`);
+                        toastSonner.info(
+                          `You have selected ${entity.brand_name}`
+                        );
                       }}
                     >
                       <TableCell className="font-medium">{index + 1}</TableCell>
@@ -531,18 +502,8 @@ function DashboardContent() {
     null
   );
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [onboardingStep, setOnboardingStep] = useState(0);
-  const [selectedPlan, setSelectedPlan] = useState("");
-  const [brandName, setBrandName] = useState("");
-  const [brandWebsite, setBrandWebsite] = useState("");
-  const [brandIndustry, setBrandIndustry] = useState("");
-  const [brandLogo, setBrandLogo] = useState<File | null>(null);
-  const [brandLogoPreview, setBrandLogoPreview] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [showBrandModal, setShowBrandModal] = useState(false);
-  const [brands, setBrands] = useState<Brand[]>([]);
+
   const [userBrands, setUserBrands] = useState<Brand[]>([]);
   const [currentBrand, setCurrentBrand] = useState<Brand | null>(null);
   const [selectedBrand, setSelectedBrand] = useState<Brand | null>(null);
@@ -557,6 +518,9 @@ function DashboardContent() {
     from: undefined,
     to: undefined,
   });
+  const [selectedAnalysisDate, setSelectedAnalysisDate] = useState<
+  string | null
+>(null);
   const [selectedModel, setSelectedModel] = useState<Set<string>>(
     new Set<string>([])
   );
@@ -566,8 +530,8 @@ function DashboardContent() {
 
   // Handle URL parameters for selected query and brand clearing
   const searchParams = useSearchParams();
-  const selectedQueryId = searchParams.get('selectedQuery');
-  const shouldClearBrand = searchParams.get('clearBrand') === 'true';
+  const selectedQueryId = searchParams.get("selectedQuery");
+  const shouldClearBrand = searchParams.get("clearBrand") === "true";
 
   const fetchBrands = async () => {
     try {
@@ -612,61 +576,6 @@ function DashboardContent() {
   useEffect(() => {
     fetchBrands();
   }, []);
-
-  // Plans configuration
-  const plans = [
-    {
-      id: "pro",
-      name: "Pro Plan",
-      price: "$89/month",
-      features: [
-        "Country Monitoring",
-        "Company Research",
-        "SEO Keyword Analysis",
-        "Brand Analysis",
-      ],
-      credits: "2250 Credits",
-      searches: "30 Searches",
-      monitoring: "10 Monitoring",
-      frequency: "(Weekly only)",
-      recommended: false,
-      product_id: "price_1RniuTR16g0cZkq31HV8wnRh",
-    },
-    {
-      id: "plus",
-      name: "Plus Plan",
-      price: "$249/month",
-      features: [
-        "Country Monitoring",
-        "Company Research",
-        "SEO Keyword Analysis",
-        "Brand Analysis",
-      ],
-      credits: "7200 Credits",
-      searches: "300 Searches",
-      monitoring: "100 Monitoring",
-      frequency: "(Daily + Weekly)",
-      recommended: true,
-      product_id: "price_1Rniv8R16g0cZkq37mTSXDfo",
-    },
-    {
-      id: "premium",
-      name: "Premium Plan",
-      price: "$699/month",
-      features: [
-        "Country Monitoring",
-        "Company Research",
-        "SEO Keyword Analysis",
-        "Brand Analysis",
-      ],
-      credits: "27000 Credits",
-      searches: "900 Searches",
-      monitoring: "300 Monitoring",
-      frequency: "(Daily + Weekly)",
-      recommended: false,
-      product_id: "price_1RnivgR16g0cZkq3Re1ttVTu",
-    },
-  ];
 
   // Update time every second
   useEffect(() => {
@@ -721,6 +630,15 @@ function DashboardContent() {
             .eq("user_id", currentUser.id)
             .single();
 
+        if (!fetchedSubscriptionData) {
+          toastSonner.error(
+            "No subscription found. Redirecting to onboarding..."
+          );
+          setTimeout(() => {
+            router.push("/onboarding");
+          }, 1000);
+        }
+
         if (subscriptionError) {
           if (subscriptionError.code === "PGRST116") {
             setSubscription(null);
@@ -774,9 +692,6 @@ function DashboardContent() {
           setError(
             `We could not fetch your scheduled queries. Please try again later.`
           );
-          throw new Error(
-            `Error fetching scheduled queries: ${response.statusText}`
-          );
         }
 
         const data = await response.json();
@@ -790,7 +705,9 @@ function DashboardContent() {
             setQueries(filteredDataByMyBrand);
             // If we have a selectedQueryId from URL, find and select that query
             if (selectedQueryId) {
-              const foundQuery = filteredDataByMyBrand.find(q => q.id === selectedQueryId);
+              const foundQuery = filteredDataByMyBrand.find(
+                (q) => q.id === selectedQueryId
+              );
               setSelectedQuery(foundQuery || filteredDataByMyBrand[0]);
             } else {
               setSelectedQuery(filteredDataByMyBrand[0]);
@@ -799,7 +716,9 @@ function DashboardContent() {
             setQueries(data.monitoring);
             // If we have a selectedQueryId from URL, find and select that query
             if (selectedQueryId) {
-              const foundQuery = data.monitoring.find(q => q.id === selectedQueryId);
+              const foundQuery = data.monitoring.find(
+                (q) => q.id === selectedQueryId
+              );
               setSelectedQuery(foundQuery || data.monitoring[0]);
             } else {
               setSelectedQuery(data.monitoring[0]);
@@ -852,11 +771,6 @@ function DashboardContent() {
           newSelection.add("all");
         } else {
           newSelection.delete("all");
-          // Optional: if unchecking "all" and the list is empty,
-          // and you want to ensure at least one "default" state like "all"
-          // if (newSelection.size === 0 && analysis_brands.length > 0) {
-          //   newSelection.add("all"); // Or leave empty for "no selection"
-          // }
         }
       } else {
         // Handle individual brand selection
@@ -870,14 +784,6 @@ function DashboardContent() {
           newSelection.delete(brandName);
         }
 
-        // Optional: if all individual brands are selected, automatically select "all"
-        // const allIndividualBrandsSelected = analysis_brands.every(brand => newSelection.has(brand.name));
-        // if (allIndividualBrandsSelected && analysis_brands.length > 0) {
-        //   newSelection.clear();
-        //   newSelection.add("all");
-        // }
-
-        // Optional: if the selection becomes empty (and not due to unchecking "all"), select "all"
         if (newSelection.size === 0 && analysis_brands.length > 0) {
           newSelection.add("all"); // Default to "all" if empty
         }
@@ -982,25 +888,13 @@ function DashboardContent() {
           )
             selectedModelTotalMentions++;
           // Voyager mode models
-          if (
-            selectedModel.has("DeepSeek v3") &&
-            brand.deepseek_mentions > 0
-          )
+          if (selectedModel.has("DeepSeek v3") && brand.deepseek_mentions > 0)
             selectedModelTotalMentions++;
-          if (
-            selectedModel.has("GPT 4.1 Nano") &&
-            brand.gpt_4_1_mentions > 0
-          )
+          if (selectedModel.has("GPT 4.1 Nano") && brand.gpt_4_1_mentions > 0)
             selectedModelTotalMentions++;
-          if (
-            selectedModel.has("Grok 3 Mini") &&
-            brand.grok_mentions > 0
-          )
+          if (selectedModel.has("Grok 3 Mini") && brand.grok_mentions > 0)
             selectedModelTotalMentions++;
-          if (
-            selectedModel.has("Llama 4 Maverick") &&
-            brand.llama_mentions > 0
-          )
+          if (selectedModel.has("Llama 4 Maverick") && brand.llama_mentions > 0)
             selectedModelTotalMentions++;
           // New Voyager models
           if (
@@ -1013,35 +907,20 @@ function DashboardContent() {
             brand.deepseek_r1_mentions > 0
           )
             selectedModelTotalMentions++;
-          if (
-            selectedModel.has("Kimi K2") &&
-            brand.kimi_k2_mentions > 0
-          )
+          if (selectedModel.has("Kimi K2") && brand.kimi_k2_mentions > 0)
             selectedModelTotalMentions++;
-          if (
-            selectedModel.has("GPT 5") &&
-            brand.gpt_5_mentions > 0
-          )
+          if (selectedModel.has("GPT 5") && brand.gpt_5_mentions > 0)
             selectedModelTotalMentions++;
-          if (
-            selectedModel.has("Grok 4") &&
-            brand.grok_4_mentions > 0
-          )
+          if (selectedModel.has("Grok 4") && brand.grok_4_mentions > 0)
             selectedModelTotalMentions++;
           if (
             selectedModel.has("Mistral Medium") &&
             brand.mistral_medium_mentions > 0
           )
             selectedModelTotalMentions++;
-          if (
-            selectedModel.has("Ernie 4.5") &&
-            brand.ernie_mentions > 0
-          )
+          if (selectedModel.has("Ernie 4.5") && brand.ernie_mentions > 0)
             selectedModelTotalMentions++;
-          if (
-            selectedModel.has("Qwen 3 235b") &&
-            brand.qwen_mentions > 0
-          )
+          if (selectedModel.has("Qwen 3 235b") && brand.qwen_mentions > 0)
             selectedModelTotalMentions++;
         }
 
@@ -2524,7 +2403,9 @@ function DashboardContent() {
       (result: { model_results: { llm_name: string }[] }) =>
         result.model_results?.map((r: { llm_name: string }) => r.llm_name) || []
     );
-    allModels.push("Google AI Overview");
+    if(googleSearchResults?.search_results?.length > 0){
+      allModels.push("Google AI Overview");
+    }
     return [...new Set(allModels)];
   }, [results]);
 
@@ -2787,7 +2668,7 @@ function DashboardContent() {
                 mentions.ai_overview_mentions += mentionCount;
               } else if (modelName.includes("google ai mode")) {
                 mentions.google_ai_mode_mentions += mentionCount;
-              } else if (modelName.includes("deepseek v3")) {  
+              } else if (modelName.includes("deepseek v3")) {
                 mentions.deepseek_mentions += mentionCount;
               } else if (modelName.includes("nano")) {
                 mentions.gpt_4_1_mentions += mentionCount;
@@ -2959,7 +2840,10 @@ function DashboardContent() {
                 mentions.grok_mentions += mentionCount;
               } else if (modelName.includes("llama")) {
                 mentions.llama_mentions += mentionCount;
-              } else if (modelName.includes("kimi") || modelName.includes("k2")) {
+              } else if (
+                modelName.includes("kimi") ||
+                modelName.includes("k2")
+              ) {
                 mentions.kimi_k2_mentions += mentionCount;
               } else if (modelName.includes("mistral")) {
                 mentions.mistral_medium_mentions += mentionCount;
@@ -3034,7 +2918,8 @@ function DashboardContent() {
         const firstSelectedBrand = Array.from(selectedBrands)[0];
         // Check if the selected brand exists in the current brand mentions
         const brandExists = brandMentionsInSummaries.some(
-          (brand) => brand.brand_name.toLowerCase() === firstSelectedBrand.toLowerCase()
+          (brand) =>
+            brand.brand_name.toLowerCase() === firstSelectedBrand.toLowerCase()
         );
         if (!brandExists) {
           setSelectedBrands(new Set([firstBrandName]));
@@ -3042,6 +2927,24 @@ function DashboardContent() {
       }
     }
   }, [brandMentionsInSummaries, selectedBrands]);
+
+  const modelSummary = useMemo(() => {
+    if (!selectedQuery?.results?.[0]?.model_summary) return null;
+
+    const summaries = selectedQuery.results[0].model_summary;
+    
+    // If no model selected or "all" selected, use first summary
+    if (selectedModel.size === 0 || selectedModel.has("all")) {
+      return summaries.length > 0 ? summaries[0] : null;
+    }
+
+    // Filter by selected model(s) - get first match
+    const filteredSummary = summaries.find((r: { model: string }) =>
+      selectedModel.has(r.model)
+    );
+
+    return filteredSummary || null;
+  }, [selectedQuery, selectedModel]);
 
   // Effect to reset filters when prompt changes
   useEffect(() => {
@@ -3172,124 +3075,9 @@ function DashboardContent() {
     );
   }
 
-  const handleNextStep = () => {
-    setOnboardingStep((prev) => prev + 1);
-  };
-
-  const handleSkip = () => {
-    if (onboardingStep === 0) {
-      setSelectedPlan("free");
-    }
-    setOnboardingStep((prev) => prev + 1);
-  };
-
   const handleStartSearching = () => {
     // Handle subscription creation with selected plan
     router.push("/dashboard/search");
-  };
-
-  const handleCreateBrand = async () => {
-    if (!brandName || !brandWebsite || !brandIndustry) {
-      alert("Please fill all required fields");
-      return;
-    }
-
-    try {
-      setSubmitting(true);
-
-      // Get current user
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) {
-        alert("You must be logged in to create a brand");
-        setSubmitting(false);
-        return;
-      }
-
-      let logoData = null;
-
-      // Convert file to base64 if provided
-      if (brandLogo) {
-        logoData = brandLogoPreview;
-      }
-
-      // Create brand record
-      const brandId = uuidv4();
-      const { data, error } = await supabase
-        .from("brands")
-        .insert([
-          {
-            id: brandId,
-            name: brandName,
-            logo_url: logoData,
-            website: brandWebsite,
-            industry: brandIndustry,
-            user_id: user.id,
-          },
-        ])
-        .select();
-
-      if (error) {
-        console.error("Error creating brand:", error);
-        setSubmitting(false);
-        return;
-      }
-
-      // Clear form
-      setBrandName("");
-      setBrandWebsite("");
-      setBrandIndustry("");
-      setBrandLogo(null);
-      setBrandLogoPreview(null);
-
-      // Trigger brand analysis
-      await analyzeBrand(brandId);
-
-      setSubmitting(false);
-    } catch (error) {
-      console.error("Error:", error);
-      setSubmitting(false);
-    }
-  };
-
-  const analyzeBrand = async (brandId: string) => {
-    try {
-      setIsAnalyzing(true);
-      // Call the analysis API
-      const response = await fetch(
-        process.env.NEXT_PUBLIC_ANALYZE_BRAND as string,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${sessionKey}`,
-          },
-          body: JSON.stringify({
-            brandId,
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error("Brand analysis failed:", errorData);
-        setIsAnalyzing(false);
-        return;
-      }
-      toast({
-        title: "Brand analysis completed",
-        description:
-          "We've analyzed your brand and you can view the results in the dashboard",
-        duration: 5000,
-      });
-      setOnboardingStep((prev) => prev + 1);
-      setIsAnalyzing(false);
-    } catch (error) {
-      console.error("Error analyzing brand:", error);
-      setIsAnalyzing(false);
-    }
   };
 
   // const handleAnalyze = async () => {
@@ -3327,375 +3115,72 @@ function DashboardContent() {
   //   }
   // };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setBrandLogo(file);
-
-      // Create preview
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setBrandLogoPreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleFileDrop = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      const file = e.dataTransfer.files[0];
-      setBrandLogo(file);
-
-      // Create preview
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setBrandLogoPreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-  };
-
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-  };
-
-  const openFileDialog = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
-  };
-
   if (!subsLoading && !subscription && !loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="w-full max-w-7xl p-8 bg-transparent rounded-lg shadow-lg">
-          <div className="flex justify-between mb-16">
-            {[1, 2, 3].map((step) => (
-              <div key={step} className="flex flex-col items-center">
-                <div
-                  className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 ${
-                    onboardingStep >= step - 1
-                      ? "bg-blue-500 text-white"
-                      : "bg-gray-800 text-gray-300"
-                  }`}
-                >
-                  {step}
-                </div>
-                <span className="text-sm text-gray-400">
-                  {step === 1
-                    ? "Select Plan"
-                    : step === 2
-                    ? "Your Brand"
-                    : "Get Started"}
-                </span>
-              </div>
-            ))}
-          </div>
-
-          {onboardingStep === 0 && (
-            <div className="text-center">
-              <h2 className="text-3xl font-bold text-gray-200 mb-2">
-                Choose Your Plan
-              </h2>
-              <p className="text-gray-400 mb-18">
-                Select the plan that best fits your needs
-              </p>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-8">
-                {plans.map((plan) => (
-                  <div
-                    key={plan.id}
-                    className={`border border-neutral-600 rounded-lg p-4 transition-all hover:translate-y-[-5px] items-start flex flex-col gap-3 cursor-pointer relative ${
-                      selectedPlan === plan.product_id
-                        ? "!border-2 !border-blue-500"
-                        : ""
-                    } ${
-                      plan.recommended
-                        ? "bg-gradient-to-b from-background to-blue-500/50"
-                        : ""
-                    }`}
-                    onClick={() => setSelectedPlan(plan?.product_id || "")}
-                  >
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-md font-bold">{plan.name}</h3>
-                      {plan.recommended && (
-                        <div className="bg-blue-500 text-white text-xs font-bold px-3 py-1 rounded-xl">
-                          POPULAR
-                        </div>
-                      )}
-                    </div>
-                    <p className="text-3xl font-bold mb-4">{plan.price}</p>
-                    <div className="space-y-2 text-left">
-                      <p className="flex items-center">
-                        <Check className="w-5 h-5 text-blue-500 mr-2" />
-                        {plan.credits}
-                      </p>
-                      <p className="flex items-center">
-                        <Check className="w-5 h-5 text-blue-500 mr-2" />
-                        Prompt Monitoring {plan.frequency}
-                      </p>
-                      {plan.features.map((feature, index) => (
-                        <p key={index} className="flex items-center">
-                          <Check className="w-5 h-5 text-blue-500 mr-2" />
-                          {feature}
-                        </p>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="flex justify-between mt-8">
-                <Button
-                  className="bg-blue-600 hover:bg-blue-700"
-                  onClick={handleNextStep}
-                  disabled={!selectedPlan}
-                >
-                  Continue
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {onboardingStep === 1 && (
-            <div className="text-center">
-              <h2 className="text-3xl font-bold text-gray-200 mb-2">
-                Tell Us About Your Brand
-              </h2>
-              <p className="text-gray-400 mb-8">
-                This helps us personalize your experience (optional)
-              </p>
-
-              {isAnalyzing ? (
-                <div className="flex items-center justify-center min-h-[400px]">
-                  <div className="w-full max-w-3xl">
-                    <h1 className="text-2xl font-bold mb-6 text-center">
-                      Creating Brand Analysis
-                    </h1>
-                    <p className="text-muted-foreground mb-8 text-center">
-                      Analyzing...
-                    </p>
-                    <LoadingState />
-                  </div>
-                </div>
-              ) : (
-                <div className="max-w-md mx-auto mb-8">
-                  <div className="sm:max-w-[500px] overflow-hidden border-accent">
-                    <div className="p-6">
-                      <div className="grid gap-6">
-                        <div className="grid gap-2">
-                          <Label htmlFor="name">Name</Label>
-                          <Input
-                            id="name"
-                            value={brandName}
-                            placeholder="Acme Corporation"
-                            onChange={(e) => setBrandName(e.target.value)}
-                            className="bg-zinc-800"
-                            required
-                          />
-                        </div>
-
-                        <div className="grid gap-2">
-                          <Label htmlFor="website">Website</Label>
-                          <Input
-                            id="website"
-                            value={brandWebsite}
-                            onChange={(e) => setBrandWebsite(e.target.value)}
-                            className="bg-zinc-800"
-                            placeholder="https://example.com"
-                            required
-                          />
-                        </div>
-
-                        <div className="grid gap-2">
-                          <Label htmlFor="industry">Industry</Label>
-                          <Select
-                            value={brandIndustry}
-                            onValueChange={setBrandIndustry}
-                          >
-                            <SelectTrigger className="bg-zinc-800 w-full">
-                              <SelectValue placeholder="Select industry" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {INDUSTRIES.map((industry) => (
-                                <SelectItem key={industry} value={industry}>
-                                  {industry}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div className="grid gap-2">
-                          <Label htmlFor="logo">Logo</Label>
-                          <div className="flex items-center gap-4">
-                            <input
-                              ref={fileInputRef}
-                              id="logo"
-                              type="file"
-                              accept="image/*"
-                              onChange={handleFileChange}
-                              className="hidden"
-                            />
-
-                            {!brandLogoPreview ? (
-                              <div
-                                onClick={openFileDialog}
-                                onDragEnter={handleDragEnter}
-                                onDragOver={handleDragOver}
-                                onDragLeave={handleDragLeave}
-                                onDrop={handleFileDrop}
-                                className={`
-                          h-32 w-full rounded-md border-2 border-dashed 
-                          flex flex-col items-center justify-center p-4 
-                          cursor-pointer transition-all duration-200
-                          ${
-                            isDragging
-                              ? "border-blue-500 bg-blue-500/10"
-                              : "border-zinc-700 bg-zinc-800 hover:border-zinc-500"
-                          }
-                        `}
-                              >
-                                <div className="flex flex-col items-center text-center">
-                                  <CloudUpload className="w-5 h-5 text-zinc-400 mb-2" />
-                                  <div className="font-medium text-sm mb-1">
-                                    Click to upload
-                                  </div>
-                                  <div className="text-xs text-zinc-400">
-                                    or drag and drop your logo here
-                                  </div>
-                                  <div className="text-[10px] text-zinc-500 mt-3">
-                                    PNG, JPG or SVG (max 5MB)
-                                  </div>
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="w-full flex flex-col items-center">
-                                <div className="w-28 h-28 p-3 rounded-md overflow-hidden bg-zinc-700 flex items-center justify-center mb-3">
-                                  <Image
-                                    src={brandLogoPreview}
-                                    alt="Preview"
-                                    width={50}
-                                    height={50}
-                                    className="w-full h-full object-contain"
-                                  />
-                                </div>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={openFileDialog}
-                                  className="mt-2"
-                                >
-                                  <CloudUpload className="w-4 h-4 mr-2" />
-                                  Change Logo
-                                </Button>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="px-6 py-4">
-                      <Button
-                        onClick={handleCreateBrand}
-                        disabled={submitting}
-                        className="w-full"
-                      >
-                        {submitting ? "Creating..." : "Create Brand"}
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <div className="flex justify-between mt-8">
-                <Button
-                  variant="outline"
-                  onClick={() => setOnboardingStep(0)}
-                  disabled={isAnalyzing}
-                >
-                  Back
-                </Button>
-                <div className="space-x-4">
-                  <Button
-                    variant="ghost"
-                    onClick={handleSkip}
-                    disabled={isAnalyzing}
-                  >
-                    Skip
-                  </Button>
-                  <Button
-                    className="bg-blue-600 hover:bg-blue-700"
-                    onClick={handleNextStep}
-                    disabled={isAnalyzing}
-                  >
-                    Continue
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {onboardingStep === 2 && (
-            <div className="text-center items-center flex flex-col">
-              <h2 className="text-3xl font-bold text-gray-300 mb-4">
-                Ready to Get Started?
-              </h2>
-              <p className="text-gray-500 mb-8 max-w-2xl mx-auto">
-                You&apos;ve chosen the{" "}
-                <span className="font-bold">
-                  {plans.find((p) => p.product_id === selectedPlan)?.name}
-                </span>{" "}
-                plan. You can always upgrade or change your plan later in
-                settings.
-              </p>
-
-              <div className="max-w-md mx-auto flex gap-4">
-                <CheckoutButton
-                  priceId={selectedPlan || ""}
-                  userId={user?.id || ""}
-                  buttonText="Continue to payments"
-                />
-              </div>
-            </div>
-          )}
+      <div className="flex flex-col items-center justify-center h-screen gap-2">
+        <Blocks className="w-6 h-6 text-blue-500" />
+        <div className="text-center text-blue-500 mb-2">
+          No Subscriptions Found
         </div>
+        <p>
+          You have no subscriptions. Please get a subscription to start
+          monitoring your keywords and brands.
+        </p>
+        <Button
+          variant="outline"
+          className="mt-5"
+          onClick={() => window.location.assign("/onboarding")}
+        >
+          Get Subscription
+        </Button>
       </div>
     );
   }
 
   if (error && queries.length <= 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen gap-2">
+      <div className="flex flex-col items-center mt-20 h-screen gap-2">
         <Blocks className="w-6 h-6 text-blue-500" />
         <div className="text-center text-blue-500 mb-2">
-          No Scheduled Searches
+          No Monitored Searches
         </div>
-        <p>
-          You have no scheduled searches. Please create a new search to get
-          started.
+        <p className="text-center text-muted-foreground max-w-md">
+          Let&apos;s get you started with monitoring your brands and keywords.
         </p>
+        <div className="flex items-center gap-2 mt-5">
+          {["/images/monitoring.png", "/images/keywords.png"].map(
+            (image, index) => (
+              <div
+                key={index}
+                className="flex md:w-[580px] h-[320px] border rounded-[25px] p-2 flex-col items-start gap-2 justify-start group"
+              >
+                <div className="overflow-hidden rounded-[20px] border w-full h-full transition-all duration:300">
+                  <Image
+                    key={index}
+                    src={image}
+                    alt="Monitoring"
+                    width={1920}
+                    height={1080}
+                    className="grayscale object-cover group-hover:grayscale-0 group-hover:scale-95 transition-all duration-300"
+                  />
+                </div>
+                <div className="p-2">
+                  <h2 className="text-lg font-medium">
+                    {index === 0 ? "Search and Monitor" : "Keyword Analysis"}
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    {index === 0
+                      ? "Monitor your brands ranking and perception with keywords across AI search engines like ChatGPT, Perplexity, AI Overview and more in your country and language"
+                      : "Analyze your keywords and get insights on their search volume, competition, category, and more"}
+                  </p>
+                </div>
+              </div>
+            )
+          )}
+        </div>
         <Button
           variant="outline"
-          className="mt-5"
+          className="mt-5 rounded-full"
           onClick={() =>
             window.location.assign("/dashboard/search?monitoring=true")
           }
@@ -3835,8 +3320,15 @@ function DashboardContent() {
                         value="ai-analysis"
                         className="data-[state=active]:!bg-blue-500/20 border-none rounded-full"
                       >
-                        <Gemini.Color className="w-4 h-4" />
+                        <Gemini className="w-4 h-4" />
                         AI Analysis
+                      </TabsTrigger>
+                      <TabsTrigger
+                        value="response"
+                        className="data-[state=active]:!bg-blue-500/20 border-none rounded-full"
+                      >
+                        <WholeWord className="w-4 h-4" />
+                        Response
                       </TabsTrigger>
                       <TabsTrigger
                         value="citations"
@@ -3957,7 +3449,7 @@ function DashboardContent() {
                                 </span>
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent className="w-80">
+                            <DropdownMenuContent className="w-80 rounded-xl">
                               <DropdownMenuLabel>
                                 Filter by Brand
                               </DropdownMenuLabel>
@@ -4454,7 +3946,7 @@ function DashboardContent() {
                               >
                                 All Models
                               </DropdownMenuCheckboxItem>
-                              <ScrollArea className="h-[200px]">
+                              <ScrollArea className="max-h-[200px]">
                                 {analysis_models?.map((model: string) => (
                                   <DropdownMenuCheckboxItem
                                     key={model}
@@ -4500,8 +3992,9 @@ function DashboardContent() {
                         <Eye className="w-4 h-4 mr-2" />
                         Currently viewing:{" "}
                         <em className="text-white">
-                          &quot;{selectedQuery?.query}&quot;
+                          &quot;{selectedQuery?.query}&quot;&nbsp;
                         </em>
+                        from <span className="font-semibold">&nbsp;{analysis_models.length} Models Analysis</span>
                       </p>
                       <AnimatePresence>
                         {isExpanded && (
@@ -4630,7 +4123,7 @@ function DashboardContent() {
 
                       <div className="flex md:flex-row flex-col gap-4 w-full h-full">
                         <MetricsHeader
-                        className="md:max-w-2/3"
+                          className="md:max-w-2/3"
                           brands={brandMentionsInSummaries}
                           temporalBrands={temportalBrandMentionsInSummaries}
                           selectedBrand={selectedBrands}
@@ -4719,6 +4212,92 @@ function DashboardContent() {
                         
                         </TabsContent>
                       </Tabs> */}
+                    </TabsContent>
+                    <TabsContent value="response">
+                      <div className="flex gap-4 items-center">
+                        {/* Date Range Selection */}
+                        {new Date(selectedQuery.results[0].analysis_date).toLocaleString(undefined, {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          second: '2-digit',
+                          timeZoneName: 'short'
+                        })}
+
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="outline"
+                                className="w-full !border !border-accent md:w-fit"
+                              >
+                                {selectedModel.size === 0
+                                  ? analysis_models[0]
+                                  : selectedModel.size === 1
+                                  ? Array.from(selectedModel)[0]
+                                  : `${selectedModel.size} models selected`}
+                                <span>
+                                  <ChevronDown className="w-4 h-4 opacity-40" />
+                                </span>
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent className="w-56">
+                              <DropdownMenuLabel>
+                                Filter by Model
+                              </DropdownMenuLabel>
+                              <DropdownMenuSeparator />
+                              <ScrollArea className="max-h-[200px]">
+                                {analysis_models?.map((model: string) => (
+                                  <DropdownMenuCheckboxItem
+                                    key={model}
+                                    checked={selectedModel.has(model)}
+                                    onCheckedChange={(checked) => {
+                                      setSelectedModel(new Set<string>([model]));
+                                    }}
+                                  >
+                                    {model}
+                                  </DropdownMenuCheckboxItem>
+                                ))}
+                              </ScrollArea>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                      </div>
+                      {(() => {
+                        if (!selectedQuery?.results?.[0]?.model_summary) {
+                          return (
+                            <div className="flex items-center justify-center p-8">
+                              <p className="text-muted-foreground">No summary available. Please select a query to view the analysis.</p>
+                            </div>
+                          );
+                        }
+
+                        const summaries = selectedQuery.results[0].model_summary;
+                        
+                        // If no model selected or "all" selected, use first summary
+                        if (selectedModel.size === 0 || selectedModel.has("all")) {
+                          return summaries.length > 0 ? (
+                            <SummaryTabContent item={summaries[0]} />
+                          ) : (
+                            <div className="flex items-center justify-center p-8">
+                              <p className="text-muted-foreground">No summary data available.</p>
+                            </div>
+                          );
+                        }
+
+                        // Filter by selected model(s) - get first match
+                        const filteredSummary = summaries.find((r: { model: string }) =>
+                          selectedModel.has(r.model)
+                        );
+
+                        return filteredSummary ? (
+                          <SummaryTabContent item={filteredSummary} />
+                        ) : (
+                          <div className="flex items-center justify-center p-8">
+                            <p className="text-muted-foreground">No summary available for the selected model.</p>
+                          </div>
+                        );
+                      })()}
                     </TabsContent>
                     <TabsContent value="citations">
                       <CitationsCard

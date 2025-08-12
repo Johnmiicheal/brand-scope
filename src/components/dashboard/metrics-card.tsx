@@ -1083,7 +1083,7 @@ export function MetricsHeader({
         />
 
         <MetricCard
-          title="Mentions"
+          title="Brand Mentions"
           value={mentions}
           trend={mentionsTrend}
           trendLabel="vs previous analysis"
@@ -1099,7 +1099,7 @@ export function MetricsHeader({
           transition={{ duration: 0.4 }}
         >
           <div className="text-sm text-muted-foreground mb-1 flex items-center gap-2">
-            Listed in Models
+            Present in Models ({activeModels.length}/{getMaxActiveModels()})
           </div>
           <div className="flex flex-wrap gap-2">
             {activeModels.map((model) => {

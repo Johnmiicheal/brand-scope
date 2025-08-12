@@ -5,7 +5,7 @@ import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { generateObject } from "ai";
 import { domains } from "@/types/domains";
 
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 
 // Define a type for search record data

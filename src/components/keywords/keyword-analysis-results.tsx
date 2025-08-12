@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Monitor, Eye, TrendingUp, Target, Calendar, MapPin, Download } from "lucide-react";
 
@@ -12,6 +12,10 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/components/ui/use-toast";
 import { countries } from "@/lib/countries";
+import { AnalysisMode } from "@/types/search";
+import { Brand } from "@/contexts/brand-data-context";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/hooks/useAuth";
 
 type KeywordData = {
   conversational_keyword: string;
@@ -28,7 +32,6 @@ type KeywordData = {
 type KeywordAnalysisResultsProps = {
   keywords: Record<string, KeywordData>;
   metadata: Array<{ language: string; country: string }>;
-  onScheduleKeyword?: (keyword: string, frequency: string, country: string) => void;
 };
 
 const fadeIn = {
@@ -44,14 +47,47 @@ const staggerContainer = {
   }
 };
 
-export function KeywordAnalysisResults({ keywords, metadata, onScheduleKeyword }: KeywordAnalysisResultsProps) {
+export function KeywordAnalysisResults({ keywords, metadata }: KeywordAnalysisResultsProps) {
+  const { user } = useAuth();
   const [selectedKeyword, setSelectedKeyword] = useState<KeywordData | null>(null);
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
   const [scheduleFrequency, setScheduleFrequency] = useState("weekly");
   const [scheduleCountry, setScheduleCountry] = useState("global");
   const [isScheduling, setIsScheduling] = useState(false);
+  const [scheduleMode, setScheduleMode] = useState<AnalysisMode>("Explorer");
+  const [scheduleBrand, setScheduleBrand] = useState<Brand | null>(null);
+  const [availableBrands, setAvailableBrands] = useState<Brand[]>([]);
 
   const keywordEntries = Object.entries(keywords);
+
+  // Fetch available brands for selection
+  useEffect(() => {
+    const fetchBrands = async () => {
+      if (!user?.id) return;
+      try {
+        const { data, error } = await supabase
+          .from("brand_project")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false });
+        
+        if (error) {
+          console.error("Error fetching brands:", error);
+          return;
+        }
+        
+        setAvailableBrands((data as unknown as Brand[]) || []);
+        // Set default to first brand if available
+        if (data && data.length > 0) {
+          setScheduleBrand(data[0] as unknown as Brand);
+        }
+      } catch (error) {
+        console.error("Error fetching brands:", error);
+      }
+    };
+    
+    fetchBrands();
+  }, [user?.id]);
 
   const getIntentColor = (intent: string) => {
     switch (intent.toLowerCase()) {
@@ -91,28 +127,52 @@ export function KeywordAnalysisResults({ keywords, metadata, onScheduleKeyword }
   };
 
   const handleScheduleKeyword = async () => {
-    if (!selectedKeyword || !onScheduleKeyword) return;
+    if (!selectedKeyword || !user?.id) return;
 
     setIsScheduling(true);
+    toast({
+      title: "Monitoring Started",
+      description: `Monitoring "${selectedKeyword.conversational_keyword}" has started. You can now close this modal and continue with your work.`,
+    });
+
     try {
-      await onScheduleKeyword(
-        selectedKeyword.conversational_keyword,
-        scheduleFrequency,
-        scheduleCountry
-      );
-      
+      const response = await fetch("/api/schedule-query", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          query: selectedKeyword.conversational_keyword,
+          frequency: scheduleFrequency,
+          location: scheduleCountry,
+          user_id: user.id,
+          attached_brand_id: scheduleBrand ? [scheduleBrand.id] : [""],
+          attached_brand_name: scheduleBrand ? scheduleBrand.name : "",
+          attached_brand_industry: scheduleBrand ? scheduleBrand.industry : "",
+          attached_brand_logo_url: scheduleBrand ? scheduleBrand.logo_url || "" : "",
+          attached_brand_website: scheduleBrand ? scheduleBrand.website : "",
+          attached_brand_language: scheduleBrand ? scheduleBrand.language : "",
+          attached_brand_location: scheduleBrand ? scheduleBrand.location : "",
+          mode: scheduleMode,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to schedule keyword");
+      }
+
       toast({
-        title: "Keyword Scheduled",
+        title: "Keyword Monitoring Completed",
         description: `"${selectedKeyword.conversational_keyword}" has been scheduled for ${scheduleFrequency} monitoring.`,
       });
-      
+
       setIsScheduleModalOpen(false);
       setSelectedKeyword(null);
     } catch (error) {
       toast({
         title: "Error",
         description: "Failed to schedule keyword monitoring. Please try again.",
-        variant: "destructive"
+        variant: "destructive",
       });
       console.error(error);
     } finally {
@@ -122,6 +182,9 @@ export function KeywordAnalysisResults({ keywords, metadata, onScheduleKeyword }
 
   const openScheduleModal = (keyword: KeywordData) => {
     setSelectedKeyword(keyword);
+    // Reset to defaults when opening modal
+    setScheduleMode("Explorer");
+    setScheduleBrand(availableBrands.length > 0 ? availableBrands[0] : null);
     setIsScheduleModalOpen(true);
   };
 
@@ -356,35 +419,83 @@ export function KeywordAnalysisResults({ keywords, metadata, onScheduleKeyword }
                 </div>
               </div>
             )}
-            <div className="flex gap-5 w-full items-center justify-between">
+            <div className="space-y-4">
+              {/* Analysis Mode Selection */}
               <div className="space-y-2 w-full">
-                <label className="text-sm font-medium">Monitoring Frequency</label>
-                <Select value={scheduleFrequency} onValueChange={setScheduleFrequency}>
+                <label className="text-sm font-medium">Analysis Mode</label>
+                <Select
+                  value={scheduleMode}
+                  onValueChange={(value: AnalysisMode) => setScheduleMode(value)}
+                >
                   <SelectTrigger className="w-full">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="daily">Daily</SelectItem>
-                    <SelectItem value="weekly">Weekly</SelectItem>
+                    <SelectItem value="Explorer">Explorer - Comprehensive Analysis</SelectItem>
+                    <SelectItem value="Voyager">Voyager - Focused Analysis</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
+              {/* Brand Selection */}
               <div className="space-y-2 w-full">
-                <label className="text-sm font-medium">Location</label>
-                <Select value={scheduleCountry} onValueChange={setScheduleCountry}>
+                <label className="text-sm font-medium">Brand</label>
+                <Select
+                  value={scheduleBrand?.id || ""}
+                  onValueChange={(value: string) => {
+                    const selected = availableBrands.find(b => b.id === value);
+                    setScheduleBrand(selected || null);
+                  }}
+                >
                   <SelectTrigger className="w-full">
-                    <SelectValue />
+                    <SelectValue placeholder="Select a brand" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="global" disabled>Select Location</SelectItem>
-                    {countries.map((country) => (
-                      <SelectItem key={country.value} value={country.value}>
-                        {country.label}
+                    {availableBrands.length === 0 ? (
+                      <SelectItem value="" disabled>
+                        No brands available
                       </SelectItem>
-                    ))}
+                    ) : (
+                      availableBrands.map((brand) => (
+                        <SelectItem key={brand.id} value={brand.id}>
+                          {brand.name}
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div className="flex gap-5 w-full items-center justify-between">
+                <div className="space-y-2 w-full">
+                  <label className="text-sm font-medium">Monitoring Frequency</label>
+                  <Select value={scheduleFrequency} onValueChange={setScheduleFrequency}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="daily">Daily</SelectItem>
+                      <SelectItem value="weekly">Weekly</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2 w-full">
+                  <label className="text-sm font-medium">Location</label>
+                  <Select value={scheduleCountry} onValueChange={setScheduleCountry}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="global" disabled>Select Location</SelectItem>
+                      {countries.map((country) => (
+                        <SelectItem key={country.value} value={country.value}>
+                          {country.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
 
