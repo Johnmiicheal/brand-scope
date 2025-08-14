@@ -9,12 +9,13 @@ import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LoadingState } from "@/components/loading-state";
 import Stripe from "stripe";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { UserSubscription } from "@/hooks/useAuth";
 import { User } from "@supabase/supabase-js";
 import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Mail } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -40,11 +41,34 @@ import {
   Kimi,
 } from "@lobehub/icons";
 import { countries } from "@/lib/countries";
+import { plans } from "@/lib/utils";
+import { INDUSTRIES } from "@/lib/utils";
+import ShinyText from "@/components/ui/shiny-text";
+
+// Personal email domains to block
+const PERSONAL_EMAIL_DOMAINS = [
+  'gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'icloud.com',
+  'aol.com', 'protonmail.com', 'yandex.com', 'mail.com', 'zoho.com',
+  'tutanota.com', 'fastmail.com', 'live.com', 'msn.com'
+];
+
+type FormData = {
+  businessBrief: string;
+  keyword: string;
+  website: string;
+  language: string;
+  location: string;
+};
 
 export default function OnboardingPage() {
   const router = useRouter();
   const [onboardingStep, setOnboardingStep] = useState(0);
   const [selectedPlan, setSelectedPlan] = useState("");
+  const [workEmail, setWorkEmail] = useState("");
+  const [validatedEmail, setValidatedEmail] = useState("");
+  const [emailDomain, setEmailDomain] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [password, setPassword] = useState("");
   const [brandName, setBrandName] = useState("");
   const [brandWebsite, setBrandWebsite] = useState("");
   const [brandIndustry, setBrandIndustry] = useState("");
@@ -61,6 +85,21 @@ export default function OnboardingPage() {
     null
   );
   const [subLoading, setSubLoading] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [keywordResults, setKeywordResults] = useState<Record<string, { keywords?: string[] }> | null>(null);
+  const [selectedKeyword, setSelectedKeyword] = useState<string>("");
+  const step = useSearchParams();
+  const currentStep = step.get("step") || 0;
+
+  const [formData, setFormData] = useState<FormData>({
+    businessBrief: "",
+    keyword: "",
+    website: "",
+    language: "",
+    location: "",
+  });
+
+
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -78,155 +117,126 @@ export default function OnboardingPage() {
       }
 
       if (!session) {
-        if (window.location.pathname !== "/login") {
-          router.push("/login");
-        }
         setUser(null);
         setSubscription(null);
         setSubLoading(false);
       } else {
         setSessionKey(session.access_token || "");
         setUser(session.user);
+         // If user is logged in and still on step 0 or 1, move to step 2 (brand creation)
+         if (onboardingStep === 0 || onboardingStep === 1) {
+           setOnboardingStep(2);
+         }
         setSubLoading(false);
       }
     };
     checkAuth();
-  }, []);
+  }, [onboardingStep]);
 
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const INDUSTRIES = [
-    "Aerospace",
-    "Agriculture",
-    "Automotive",
-    "Banking",
-    "Beauty",
-    "Biotechnology",
-    "Construction",
-    "Consulting",
-    "E-commerce",
-    "Education",
-    "Energy",
-    "Entertainment",
-    "Fashion",
-    "Finance",
-    "Food & Beverage",
-    "Gaming",
-    "Government",
-    "Healthcare",
-    "Insurance",
-    "Legal",
-    "Logistics",
-    "Manufacturing",
-    "Marketing",
-    "Media",
-    "Mining",
-    "Music",
-    "Non-Profit",
-    "Pharmaceuticals",
-    "Publishing",
-    "Real Estate",
-    "Retail",
-    "Security",
-    "Sports",
-    "Technology",
-    "Telecommunications",
-    "Transportation",
-    "Travel",
-    "Utilities",
-    "Other",
-  ];
-  // Plans configuration
-  const plans = [
-    {
-      id: "pro",
-      name: "Pro Plan",
-      description: "Get Started with essential AI Analysis.",
-      price: "$89",
-      features: [
-        "Country Monitoring",
-        "Company Research",
-        "SEO Keyword Analysis",
-        "Native AI Search",
-      ],
-      models: [
-        { name: "GPT 4o Web Search", key: "gpt-4o-search" },
-        { name: "Claude 4.0 Sonnet", key: "claude-search" },
-        { name: "Perplexity Sonar", key: "perplexity-sonar" },
-        { name: "Gemini 2.5 Flash", key: "gemini-search" },
-        { name: "Google AI Overview", key: "google-ai-overview" },
-        { name: "Google AI Mode", key: "google-ai-mode" },
-      ],
-      credits: "2250 Credits",
-      searches: "30 Searches",
-      monitoring: "10 Monitoring",
-      frequency: "(Weekly only)",
-      recommended: false,
-      product_id: "price_1RniuTR16g0cZkq31HV8wnRh",
-    },
-    {
-      id: "plus",
-      name: "Plus Plan",
-      description: "Scale your insights and monitoring.",
-      price: "$249",
-      features: [
-        "Country Monitoring",
-        "Company Research",
-        "SEO Keyword Analysis",
-        "Native AI Search",
-      ],
-      credits: "7200 Credits",
-      models: [
-        { name: "GPT 5", key: "gpt-5" },
-        { name: "GPT 4o Web Search", key: "gpt-4o-search" },
-        { name: "Claude 4.0 Sonnet", key: "claude-search" },
-        { name: "Perplexity Sonar", key: "perplexity-sonar" },
-        { name: "Gemini 2.5 Flash", key: "gemini-search" },
-        { name: "Google AI Overview", key: "google-ai-overview" },
-        { name: "Google AI Mode", key: "google-ai-mode" },
-        { name: "DeepSeek v3", key: "deepseek-v3" },
-        { name: "Grok 4", key: "grok-4" },
-        { name: "Llama 4 Maverick", key: "llama-4-maverick" },
-        { name: "Mistral Medium", key: "mistral-medium" },
-        { name: "Ernie 4.5", key: "ernie-4.5" },
-        { name: "Qwen 3.235B", key: "qwen-3-235b" },
-      ],
-      searches: "300 Searches",
-      monitoring: "100 Monitoring",
-      frequency: "(Daily + Weekly)",
-      recommended: true,
-      product_id: "price_1Rniv8R16g0cZkq37mTSXDfo",
-    },
-    {
-      id: "premium",
-      name: "Premium Plan",
-      description: "For comprehensive insights and monitoring.",
-      price: "$699",
-      features: [
-        "Country Monitoring",
-        "Company Research",
-        "SEO Keyword Analysis",
-        "Native AI Search",
-      ],
-      credits: "27000 Credits",
-      models: [
-        { name: "GPT 5", key: "gpt-5" },
-        { name: "GPT 4o Web Search", key: "gpt-4o-search" },
-        { name: "Claude 4.0 Sonnet", key: "claude-search" },
-        { name: "Perplexity Sonar", key: "perplexity-sonar" },
-        { name: "Gemini 2.5 Flash", key: "gemini-search" },
-        { name: "Google AI Overview", key: "google-ai-overview" },
-        { name: "Google AI Mode", key: "google-ai-mode" },
-        { name: "DeepSeek v3", key: "deepseek-v3" },
-        { name: "Grok 4", key: "grok-4" },
-        { name: "Llama 4 Maverick", key: "llama-4-maverick" },
-      ],
-      searches: "900 Searches",
-      monitoring: "300 Monitoring",
-      frequency: "(Daily + Weekly)",
-      recommended: false,
-      product_id: "price_1RnivgR16g0cZkq3Re1ttVTu",
-    },
-  ];
+  // Email validation functions
+  const isPersonalEmail = (email: string): boolean => {
+    const domain = email.split('@')[1]?.toLowerCase();
+    return PERSONAL_EMAIL_DOMAINS.includes(domain);
+  };
+
+  const extractDomain = (email: string): string => {
+    const domain = email.split('@')[1];
+    return domain ? `https://${domain}` : '';
+  };
+
+  const validateWorkEmail = (email: string): { isValid: boolean; message?: string } => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    
+    if (!emailRegex.test(email)) {
+      return { isValid: false, message: 'Please enter a valid email address' };
+    }
+    
+    if (isPersonalEmail(email)) {
+      return { isValid: false, message: 'Please use your work email address (not gmail, yahoo, etc.)' };
+    }
+    
+    return { isValid: true };
+  };
+
+  // Handle work email validation (step 0)
+  const handleEmailValidation = () => {
+    const validation = validateWorkEmail(workEmail);
+    if (!validation.isValid) {
+      toast.error(validation.message);
+      return;
+    }
+
+    // Extract domain and set up for next step
+    const domain = extractDomain(workEmail);
+    setEmailDomain(domain);
+    setValidatedEmail(workEmail);
+    setBrandWebsite(domain); // Pre-fill website with domain
+    
+    toast.success('Work email validated! Now let\'s create your account.');
+    setOnboardingStep(1); // Move to registration step
+  };
+
+  // Handle user registration (step 1)
+  const handleUserRegistration = async () => {
+    if (!fullName || !password || !validatedEmail) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    if (password.length < 6) {
+      toast.error('Password must be at least 6 characters long');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      
+      // Sign up with email confirmation disabled
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: validatedEmail,
+        password: password,
+        options: {
+          emailRedirectTo: undefined, // Skip email confirmation
+          data: {
+            full_name: fullName,
+            user_type: 'brand'
+          }
+        }
+      });
+      
+      if (authError) {
+        throw authError;
+      }
+
+      if (authData.user) {
+        // Create user record
+        const { error: userError } = await supabase
+          .from('users')
+          .insert({
+            id: authData.user.id,
+            email: validatedEmail,
+            full_name: fullName,
+            plan_type: 'free',
+            created_at: new Date().toISOString(),
+            user_type: 'brand'
+          });
+
+        if (userError) {
+          console.error('Error creating user record:', userError);
+        }
+
+        setUser(authData.user);
+        setSessionKey(authData.session?.access_token || '');
+        setOnboardingStep(2); // Move to brand creation
+        toast.success('Account created! Now let\'s set up your brand.');
+      }
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Registration failed. Please try again.';
+      toast.error(errorMessage);
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const handleNextStep = () => {
     setOnboardingStep((prev) => prev + 1);
@@ -283,6 +293,13 @@ export default function OnboardingPage() {
           },
         ])
         .select();
+        setFormData({
+          businessBrief: `${brandName} is a ${brandIndustry} brand that operates in the ${brandLocation} market.`,
+          keyword: "",
+          website: brandWebsite,
+          language: brandLanguage,
+          location: brandLocation,
+        })
 
       if (error) {
         console.error("Error creating brand:", error);
@@ -290,53 +307,116 @@ export default function OnboardingPage() {
         return;
       }
 
-      // Clear form
-      setBrandName("");
-      setBrandWebsite("");
-      setBrandIndustry("");
-      setBrandLogo(null);
-      setBrandLogoPreview(null);
+
 
       // Trigger brand analysis
-      await analyzeBrand(brandId);
+      await handleKeywordAnalysis({
+        businessBrief: `${brandName} is a ${brandIndustry} brand that operates in the ${brandLocation} market.`,
+        keyword: "",
+        website: brandWebsite,
+        language: brandLanguage,
+        location: brandLocation,
+      });
 
       setSubmitting(false);
+            // Clear form
+            setBrandName("");
+            setBrandWebsite("");
+            setBrandIndustry("");
+            setBrandLogo(null);
+            setBrandLogoPreview(null);
     } catch (error) {
       console.error("Error:", error);
       setSubmitting(false);
     }
   };
 
-  const analyzeBrand = async (brandId: string) => {
-    try {
+  const handleKeywordAnalysis = async (formData: FormData) => {
       setIsAnalyzing(true);
-      // Call the analysis API
-      const response = await fetch(
-        process.env.NEXT_PUBLIC_ANALYZE_BRAND as string,
-        {
+
+    try {
+      const response = await fetch("/api/keywords-analysis", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${sessionKey}`,
-          },
+        headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            brandId,
-          }),
-        }
-      );
+          businessBrief: formData.businessBrief.trim(),
+          keyword: formData.keyword.trim(),
+          website: formData.website.trim(),
+          language: formData.language,
+          user: user,
+          location: formData.location.trim(),
+        }),
+      });
+
+      const data = await response.json();
 
       if (!response.ok) {
-        const errorData = await response.json();
-        console.error("Brand analysis failed:", errorData);
-        setIsAnalyzing(false);
+          toast.error(
+            data.error || `Request failed with status ${response.status}`
+          );
         return;
       }
-      toast.success("Brand analysis completed");
-      setOnboardingStep((prev) => prev + 1);
+
+             if (data.success && data.data) {
+         setKeywordResults(data.data);
+         toast.success(`Keyword analysis completed!`);
+         setOnboardingStep(3); // Move to keywords step
+       } else {
+         toast.error("Invalid response format from analysis service");
+       }
+    } catch (err: unknown) {
+      const errorMessage =
+        err instanceof Error ? err.message : "An unexpected error occurred.";
+      toast.error(errorMessage);
+      console.error("Keyword analysis error:", err);
+    } finally {
       setIsAnalyzing(false);
+    }
+     };
+
+  const setupMonitoring = async () => {
+    if (!selectedKeyword || !user) {
+      toast.error('Please select a keyword and ensure you are logged in');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      
+      // Create a monitoring entry for the selected keyword
+      const monitoringId = uuidv4();
+      
+      const { error } = await supabase
+        .from('scheduled_queries')
+        .insert({
+          id: monitoringId,
+          mode_id: monitoringId,
+          user_id: user.id,
+          query: selectedKeyword,
+          frequency: 'weekly',
+          status: 'active',
+          next_analysis_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // Next week
+          attached_brand_name: brandName,
+          attached_brand_industry: brandIndustry,
+          attached_brand_website: brandWebsite,
+          attached_brand_language: brandLanguage,
+          attached_brand_location: brandLocation,
+          location: brandLocation,
+          selected_models: ['gpt-4o-search', 'claude-search'],
+          credits_per_run: 0, // Free monitoring for onboarding
+          include_google_search: true
+        });
+
+      if (error) {
+        throw error;
+      }
+
+      toast.success('Monitoring setup successful! Complete payment to access full features.');
+      setSubmitting(false);
     } catch (error) {
-      console.error("Error analyzing brand:", error);
-      setIsAnalyzing(false);
+      console.error('Error setting up monitoring:', error);
+      toast.error('Failed to set up monitoring');
+      setSubmitting(false);
     }
   };
 
@@ -415,6 +495,7 @@ export default function OnboardingPage() {
     "kimi-k2": Kimi.Color,
     "gpt-5": OpenAI,
   };
+
   return (
     <div className="flex items-center justify-center min-h-[60vh]">
       <div className="w-full max-w-7xl p-8 bg-transparent rounded-lg shadow-lg">
@@ -429,7 +510,7 @@ export default function OnboardingPage() {
           />
         </div>
         <div className="flex justify-between mb-16">
-          {[1, 2, 3].map((step) => (
+           {[1, 2, 3, 4, 5].map((step) => (
             <div key={step} className="flex flex-col items-center">
               <div
                 className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 ${
@@ -442,135 +523,159 @@ export default function OnboardingPage() {
               </div>
               <span className="text-sm text-gray-400">
                 {step === 1
-                  ? "Your Brand"
+                   ? "Email"
                   : step === 2
-                  ? "Select Plan"
-                  : "Get Started"}
+                   ? "Account"
+                   : step === 3
+                   ? "Brand"
+                   : step === 4
+                   ? "Keywords"
+                   : "Payment"}
               </span>
             </div>
           ))}
         </div>
 
+        
+
+                {onboardingStep === 0 && (
+          <div className="text-center">
+            <h2 className="text-3xl font-bold text-gray-200 mb-2">
+              Get your free interactive report & AI Keyword research
+            </h2>
+            <p className="text-gray-400 mb-8 max-w-2xl mx-auto">
+              Enter your work email (30s) - your work domain will be used to analyze the report
+            </p>
+
+            <div className="max-w-md mx-auto mb-8">
+              <div className="space-y-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="work-email">Work Email</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Input
+                      id="work-email"
+                      type="email"
+                      value={workEmail}
+                      placeholder="john@yourcompany.com"
+                      onChange={(e) => setWorkEmail(e.target.value)}
+                      className="bg-zinc-800 pl-10"
+                      required
+                    />
+                        </div>
+                  <p className="text-xs text-gray-500">
+                    We don&apos;t accept personal emails (gmail, yahoo, etc.). If you have a personal email, please proceed to signup.
+                  </p>
+                    </div>
+                  </div>
+
+              <Button
+                onClick={handleEmailValidation}
+                disabled={!workEmail}
+                className="w-full bg-blue-600 hover:bg-blue-700 mt-6"
+              >
+                Validate Work Email
+              </Button>
+                              </div>
+                        </div>
+        )}
+
         {onboardingStep === 1 && (
           <div className="text-center">
             <h2 className="text-3xl font-bold text-gray-200 mb-2">
-              Choose Your Plan
+              Create Your Account
             </h2>
-            <p className="text-gray-400 mb-18">
-              Select the plan that best fits your needs
+            <p className="text-gray-400 mb-8 max-w-xl mx-auto">
+              Complete your registration to get started with your free analysis
             </p>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-8">
-              {plans.map((plan) => (
-                <div
-                  key={plan.id}
-                  className={`border border-neutral-900 rounded-lg p-4 transition-all duration-400 aspect-[9/14] hover:translate-y-[-5px] items-start flex flex-col gap-3 cursor-pointer relative ${
-                    selectedPlan === plan.product_id
-                      ? "!border-2 !border-blue-500"
-                      : ""
-                  } ${
-                    plan.recommended
-                      ? "bg-gradient-to-b from-background to-blue-500/50"
-                      : ""
-                  }`}
-                  onClick={() => setSelectedPlan(plan?.product_id || "")}
-                >
-                  <div
-                    className={`space-y-2  p-4 rounded-lg w-full flex flex-col items-start ${
-                      plan.recommended ? "bg-blue-600" : "bg-zinc-800/50"
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-md font-bold">{plan.name}</h3>
-                      {plan.recommended && (
-                        <div className="bg-blue-500 text-white text-xs font-bold px-3 py-1 rounded-xl">
-                          POPULAR
-                        </div>
-                      )}
-                    </div>
-                    <p className="text-3xl font-bold mb-4">{plan.price}</p>
-                  </div>
-                  <div className="space-y-2 text-left">
-                    <p className="flex items-center">
-                      <Check className="w-5 h-5 text-blue-500 mr-2" />
-                      {plan.credits}
-                    </p>
-                    <p className="flex items-center">
-                      <Check className="w-5 h-5 text-blue-500 mr-2" />
-                      Prompt Monitoring {plan.frequency}
-                    </p>
-                    {plan.features.map((feature, index) => (
-                      <p key={index} className="flex items-center">
-                        <Check className="w-5 h-5 text-blue-500 mr-2" />
-                        {feature}
-                      </p>
-                    ))}
-                    <li className="flex items-start gap-3 mt-4">
-                      <div className="flex-1">
-                        <div className="flex flex-wrap gap-2 mt-2">
-                          {plan.models.map((model, index) => {
-                            const IconComponent = modelIcons[model.key];
-                            return (
-                              <div
-                                key={index}
-                                className="flex items-center gap-1 bg-neutral-800/30 px-2 py-1 rounded-md"
-                              >
-                                {IconComponent && (
-                                  <IconComponent className="h-3 w-3" />
-                                )}
-                                <span className="text-xs text-neutral-300">
-                                  {model.name}
-                                </span>
-                              </div>
-                            );
-                          })}
-                        </div>
+            <div className="max-w-md mx-auto mb-8">
+              <div className="space-y-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="email-display">Email</Label>
+                  <Input
+                    id="email-display"
+                    type="email"
+                    value={validatedEmail}
+                    disabled
+                    className="bg-zinc-700 text-gray-300"
+                  />
                       </div>
-                    </li>
+                
+                <div className="grid gap-2">
+                  <Label htmlFor="full-name">Full Name</Label>
+                  <Input
+                    id="full-name"
+                    type="text"
+                    value={fullName}
+                    placeholder="John Doe"
+                    onChange={(e) => setFullName(e.target.value)}
+                    className="bg-zinc-800"
+                    required
+                  />
                   </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="password">Password</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={password}
+                    placeholder="Min 6 characters"
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="bg-zinc-800"
+                    required
+                  />
                 </div>
-              ))}
             </div>
 
-            <div className="flex justify-between mt-8">
               <Button
-                variant="outline"
-                onClick={() => setOnboardingStep(0)}
-                disabled={isAnalyzing}
+                onClick={handleUserRegistration}
+                disabled={submitting || !fullName || !password}
+                className="w-full bg-blue-600 hover:bg-blue-700 mt-6"
               >
-                Back
+                {submitting ? "Creating Account..." : "Create Account"}
               </Button>
+              
+              <div className="flex justify-start mt-4">
               <Button
-                className="bg-blue-600 hover:bg-blue-700"
-                onClick={handleNextStep}
-                disabled={!selectedPlan}
-              >
-                Continue
+                  variant="ghost"
+                  onClick={() => setOnboardingStep(0)}
+                  disabled={submitting}
+                >
+                  ← Back
               </Button>
+              </div>
             </div>
           </div>
         )}
 
-        {onboardingStep === 0 && (
+        {onboardingStep === 2 && (
           <div className="text-center">
-            <h2 className="text-3xl font-bold text-gray-200 mb-2">
-              Create your first brand
-            </h2>
-            <p className="text-gray-400 mb-8 max-w-xl mx-auto">
-              This helps us personalize your experience and you can attach your
-              brand to your keyword analysis (optional)
-            </p>
+            {!isAnalyzing && (
+              <div className="text-center">
+                <h2 className="text-3xl font-bold text-gray-200 mb-2">
+                  Create your first brand
+                </h2>
+                <p className="text-gray-400 mb-8 max-w-xl mx-auto">
+                  This helps us personalize your experience and you can attach your
+                  brand to your keyword analysis (optional)
+                </p>
+              </div>
+            )}
 
             {isAnalyzing ? (
               <div className="flex items-center justify-center min-h-[400px]">
-                <div className="w-full max-w-3xl">
+                <div className="w-full items-center justify-center flex flex-col max-w-3xl">
+                  <Image src="/icons/air-icon-light.svg" alt="Loading" width={70} height={70} className="mb-6 animate-[spin_4s_linear_infinite]" />
                   <h1 className="text-2xl font-bold mb-6 text-center">
-                    Creating Brand Analysis
+                    Analysing your brand
                   </h1>
-                  <p className="text-muted-foreground mb-8 text-center">
-                    Analyzing...
+                  <p className="!text-[#b5b5b5a4] mb-3 max-w-lg mx-auto">
+                    We are creating a collection of keywords that are relevant to your brand to get you started.
                   </p>
-                  <LoadingState />
+                  <ShinyText text='This will only take a few seconds...' disabled={false} speed={3} className="font-medium text-sm" />
+
                 </div>
               </div>
             ) : (
@@ -600,6 +705,9 @@ export default function OnboardingPage() {
                           placeholder="https://example.com"
                           required
                         />
+                         <p className="text-xs text-gray-500">
+                           Pre-filled from your email domain
+                         </p>
                       </div>
 
                       <div className="flex gap-2 w-full">
@@ -747,8 +855,14 @@ export default function OnboardingPage() {
               </div>
             )}
 
-            <div className="flex justify-end mt-8">
-              <div className="space-x-4">
+                         <div className="flex justify-between mt-8">
+               <Button
+                 variant="ghost"
+                 onClick={() => setOnboardingStep(1)}
+                 disabled={isAnalyzing}
+               >
+                 ← Back
+               </Button>
                 <Button
                   variant="ghost"
                   onClick={handleSkip}
@@ -756,38 +870,240 @@ export default function OnboardingPage() {
                 >
                   Skip
                 </Button>
+             </div>
+          </div>
+        )}
+
+                 {onboardingStep === 3 && (
+           <div className="text-center">
+             <h2 className="text-3xl font-bold text-gray-200 mb-2">
+               Select Keywords to Monitor
+             </h2>
+             <p className="text-gray-400 mb-8 max-w-2xl mx-auto">
+               Choose which keywords you&apos;d like to monitor from your analysis results
+             </p>
+
+             {keywordResults ? (
+               <div className="max-w-4xl mx-auto">
+                 <div className="mb-8">
+                   <h3 className="text-xl font-semibold mb-4">Analysis Results</h3>
+                   <div className="grid gap-4 mb-8">
+                     {Object.entries(keywordResults).map(([sessionId, data]) => (
+                       <div key={sessionId} className="bg-zinc-800/50 rounded-lg p-6">
+                         <div className="grid gap-3">
+                           {data.keywords?.map((keyword: string, index: number) => (
+                             <div 
+                               key={index} 
+                               className={`flex items-center justify-between p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                                 selectedKeyword === keyword 
+                                   ? 'border-blue-500 bg-blue-500/10' 
+                                   : 'border-zinc-700 bg-zinc-800/50 hover:border-zinc-500'
+                               }`}
+                               onClick={() => setSelectedKeyword(keyword)}
+                             >
+                               <div className="flex items-center gap-3">
+                                 <div className={`w-4 h-4 rounded-full border-2 ${
+                                   selectedKeyword === keyword ? 'bg-blue-500 border-blue-500' : 'border-zinc-400'
+                                 }`}></div>
+                                 <span>{keyword}</span>
+                               </div>
+                             </div>
+                           ))}
+                         </div>
+                       </div>
+                     ))}
+                   </div>
+                 </div>
+
+                 <div className="flex gap-4 justify-center">
                 <Button
+                     variant="outline"
+                     onClick={() => setOnboardingStep(2)}
+                   >
+                     ← Back
+                   </Button>
+                   <Button
+                     onClick={() => setOnboardingStep(4)}
+                     disabled={!selectedKeyword}
                   className="bg-blue-600 hover:bg-blue-700"
-                  onClick={handleNextStep}
+                   >
+                     Continue with Selected Keyword
+                   </Button>
+                 </div>
+               </div>
+             ) : (
+               <div className="text-center">
+                 <p className="text-gray-400 mb-4">
+                   No keyword results available. Please go back and try again.
+                 </p>
+                 <div className="flex justify-center gap-5">
+                 <Button
+                   onClick={() => setOnboardingStep(2)}
+                   variant="outline"
+                 >
+                   Go Back
+                 </Button>
+                 <Button
+                   onClick={() => setOnboardingStep(4)}
+                   variant="outline"
+                   className="rounded-full"
+                 >
+                   Jump to payments
+                 </Button>
+                 </div>
+               </div>
+             )}
+           </div>
+         )}
+
+         {onboardingStep === 4 && (
+           <div className="text-center">
+             <h2 className="text-3xl font-bold text-gray-200 mb-2">
+               Choose Your Plan
+             </h2>
+            <p className="text-gray-400 mb-18">
+              Select the plan that best fits your needs
+            </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-8">
+              {plans.map((plan) => (
+                <div
+                  key={plan.id}
+                  className={`border border-neutral-900 rounded-lg p-4 transition-all duration-400 aspect-[9/14] hover:translate-y-[-5px] items-start flex flex-col gap-3 cursor-pointer relative ${
+                    selectedPlan === plan.product_id
+                      ? "!border-2 !border-blue-500"
+                      : ""
+                  } ${
+                    plan.recommended
+                      ? "bg-gradient-to-b from-background to-blue-500/50"
+                      : ""
+                  }`}
+                  onClick={() => setSelectedPlan(plan?.product_id || "")}
+                >
+                  <div
+                    className={`space-y-2  p-4 rounded-lg w-full flex flex-col items-start ${
+                      plan.recommended ? "bg-blue-600" : "bg-zinc-800/50"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-md font-bold">{plan.name}</h3>
+                      {plan.recommended && (
+                        <div className="bg-blue-500 text-white text-xs font-bold px-3 py-1 rounded-xl">
+                          POPULAR
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-3xl font-bold mb-4">{plan.price}</p>
+                  </div>
+                  <div className="space-y-2 text-left">
+                    <p className="flex items-center">
+                      <Check className="w-5 h-5 text-blue-500 mr-2" />
+                      {plan.credits}
+                    </p>
+                    <p className="flex items-center">
+                      <Check className="w-5 h-5 text-blue-500 mr-2" />
+                      Prompt Monitoring {plan.frequency}
+                    </p>
+                    {plan.features.map((feature, index) => (
+                      <p key={index} className="flex items-center">
+                        <Check className="w-5 h-5 text-blue-500 mr-2" />
+                        {feature}
+                      </p>
+                    ))}
+                    <li className="flex items-start gap-3 mt-4">
+                      <div className="flex-1">
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {plan.models.map((model, index) => {
+                            const IconComponent = modelIcons[model.key];
+                            return (
+                              <div
+                                key={index}
+                                className="flex items-center gap-1 bg-neutral-800/30 px-2 py-1 rounded-md"
+                              >
+                                {IconComponent && (
+                                  <IconComponent className="h-3 w-3" />
+                                )}
+                                <span className="text-xs text-neutral-300">
+                                  {model.name}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </li>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+                         <div className="flex justify-between mt-8">
+               <Button
+                 variant="outline"
+                 onClick={() => setOnboardingStep(3)}
                   disabled={isAnalyzing}
+               >
+                 Back
+               </Button>
+               <Button
+                 className="bg-blue-600 hover:bg-blue-700"
+                 onClick={() => setOnboardingStep(5)}
+                 disabled={!selectedPlan}
                 >
                   Continue
                 </Button>
-              </div>
             </div>
           </div>
         )}
 
-        {onboardingStep === 2 && (
+      
+
+                                  {onboardingStep === 5 && (
           <div className="text-center items-center flex flex-col">
             <h2 className="text-3xl font-bold text-gray-300 mb-4">
-              Ready to Get Started?
+               Setup Monitoring & Payment
             </h2>
             <p className="text-gray-500 mb-8 max-w-2xl mx-auto">
+              Complete your setup by activating monitoring for your selected keyword and choosing a plan.
+            </p>
+
+            {selectedKeyword && (
+              <div className="bg-zinc-800/50 rounded-lg p-6 mb-8 max-w-2xl mx-auto">
+                <h3 className="text-lg font-semibold mb-2">Selected Keyword for Monitoring</h3>
+                <p className="text-blue-400 font-medium mb-4">&quot;{selectedKeyword}&quot;</p>
+                <Button
+                  onClick={setupMonitoring}
+                  disabled={submitting}
+                  className="bg-green-600 hover:bg-green-700 mb-4"
+                >
+                  {submitting ? "Setting up..." : "Setup Free Monitoring"}
+                </Button>
+              </div>
+            )}
+
+            <div className="mb-8">
+              <h3 className="text-xl font-semibold mb-4">Choose Your Plan</h3>
+              <p className="text-gray-500 mb-6">
               You&apos;ve chosen the{" "}
               <span className="font-bold">
                 {plans.find((p) => p.product_id === selectedPlan)?.name}
               </span>{" "}
-              plan. You can always upgrade or change your plan later in
-              settings.
+                plan. You can always upgrade or change your plan later in settings.
             </p>
+            </div>
 
             <div className="max-w-md mx-auto flex gap-4">
               <CheckoutButton
                 priceId={selectedPlan || ""}
                 userId={user?.id || ""}
-                buttonText="Continue to payments"
+                buttonText="Complete Payment & Access Dashboard"
               />
+              <Button
+                variant="outline"
+                onClick={() => router.push('/dashboard')}
+              >
+                Continue with Free Account
+              </Button>
             </div>
           </div>
         )}

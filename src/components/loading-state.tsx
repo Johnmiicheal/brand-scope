@@ -19,8 +19,8 @@ const aiTips = [
 
 export function LoadingState() {
   return (
-        <div className="flex items-start gap-4 pl-14">
-          <div className="flex-1 space-y-4">
+        <div className="flex items-center justify-center w-full gap-4 pl-14">
+          <div className="flex flex-col items-center justify-center space-y-4">
             <div className="space-y-2">
               <p className="text-sm text-neutral-500">Processing with</p>
               <TextLoop interval={1.5}>
