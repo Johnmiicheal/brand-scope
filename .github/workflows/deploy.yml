@@ -1,4 +1,4 @@
-name: Deploy Next.js App to Server
+name: Deploy Next.js App with Bun
 
 on:
   push:
@@ -12,16 +12,24 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
+      - name: Install Bun
+        run: |
+          curl -fsSL https://bun.sh/install | bash
+          export BUN_INSTALL="$HOME/.bun"
+          export PATH="$BUN_INSTALL/bin:$PATH"
+          bun --version
 
       - name: Install dependencies
-        run: npm install --force
+        run: |
+          export BUN_INSTALL="$HOME/.bun"
+          export PATH="$BUN_INSTALL/bin:$PATH"
+          bun install
 
       - name: Build Next.js app
-        run: npm run build
+        run: |
+          export BUN_INSTALL="$HOME/.bun"
+          export PATH="$BUN_INSTALL/bin:$PATH"
+          bun run build
 
       - name: Deploy to server
         uses: appleboy/ssh-action@v1.0.3
@@ -33,6 +41,6 @@ jobs:
           script: |
             cd ${{ secrets.APP_PATH }}
             git pull origin master
-            npm install --force
-            npm run build
+            bun install
+            bun run build
             pm2 restart airankia
