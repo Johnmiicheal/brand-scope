@@ -212,7 +212,7 @@ export default function Home() {
                   >
                     Log in
                   </Link>
-                  <Link href="/signup">
+                  <Link href="/onboarding">
                     <Button variant="outline" size="sm">
                       Sign up
                     </Button>
@@ -259,7 +259,7 @@ export default function Home() {
                     className={"w-57 -ml-3 rounded-full"}
                   />
                   <button
-                    onClick={() => window.location.assign("/dashboard")}
+                    onClick={() => window.location.assign("/onboarding")}
                     className="rounded-full relative cursor-pointer inline-flex items-center gap-2 bg-zinc-950 px-4 py-3 text-base font-medium text-zinc-50 outline outline-1 outline-[#fff2f21f]"
                   >
                     Analyse your Brand <ChevronRight className="h-5 w-5" />
