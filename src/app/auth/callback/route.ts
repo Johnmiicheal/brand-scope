@@ -6,7 +6,7 @@ import { cookies } from 'next/headers'
  * Auth callback route for handling OAuth redirects
  */
 export async function GET(request: Request) {
-  const { searchParams, origin } = new URL(request.url)
+  const { searchParams } = new URL(request.url)
   const code = searchParams.get('code')
   // if "next" is in param, use it as the redirect URL
   const next = searchParams.get('next') ?? '/dashboard/search' // Default redirect to dashboard
@@ -86,15 +86,15 @@ export async function GET(request: Request) {
       }
       
       // Redirect based on 'next' parameter or default
-      return NextResponse.redirect(`${origin}${next}`)
+      return NextResponse.redirect(`https://airankia.com${next}`)
     } else {
       console.error("Auth Callback Error:", error.message)
       // Optionally redirect to an error page
-      return NextResponse.redirect(`${origin}/login`)
+      return NextResponse.redirect(`https://airankia.com/login`)
     }
   }
 
   // return the user to an error page with instructions
   console.error("Auth Callback Error: No code received or exchange failed.")
-  return NextResponse.redirect(`${origin}/login`)
+  return NextResponse.redirect(`https://airankia.com/login`)
 } 
