@@ -4,12 +4,10 @@
 import { supabase } from "@/lib/supabase";
 import { v4 as uuidv4 } from "uuid";
 import { useEffect, useRef, useState } from "react";
-import { Brand } from "@/lib/supabase/brands";
+
 import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { LoadingState } from "@/components/loading-state";
-import Stripe from "stripe";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { UserSubscription } from "@/hooks/useAuth";
 import { User } from "@supabase/supabase-js";
 import { toast } from "sonner";
@@ -44,6 +42,7 @@ import { countries } from "@/lib/countries";
 import { plans } from "@/lib/utils";
 import { INDUSTRIES } from "@/lib/utils";
 import ShinyText from "@/components/ui/shiny-text";
+import { KeywordAnalysisResults } from "@/components/keywords/keyword-analysis-results";
 
 // Personal email domains to block
 const PERSONAL_EMAIL_DOMAINS = [
@@ -58,6 +57,23 @@ type FormData = {
   website: string;
   language: string;
   location: string;
+};
+
+type KeywordData = {
+  conversational_keyword: string;
+  intent: string;
+  google_seed_keyword: string;
+  category: string;
+  search_volume: number;
+  competition_index: number;
+  low_cpc: string;
+  trend_6m: string;
+  relevance_score: number;
+};
+
+type KeywordAnalysisResultsProps = {
+  keywords: Record<string, KeywordData>;
+  metadata: Array<{ language: string; country: string }>;
 };
 
 export default function OnboardingPage() {
@@ -86,10 +102,9 @@ export default function OnboardingPage() {
   );
   const [subLoading, setSubLoading] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [keywordResults, setKeywordResults] = useState<Record<string, { keywords?: string[] }> | null>(null);
+  const [keywordResults, setKeywordResults] = useState<KeywordAnalysisResultsProps | null>(null);
   const [selectedKeyword, setSelectedKeyword] = useState<string>("");
-  const step = useSearchParams();
-  const currentStep = step.get("step") || 0;
+
 
   const [formData, setFormData] = useState<FormData>({
     businessBrief: "",
@@ -885,34 +900,15 @@ export default function OnboardingPage() {
 
              {keywordResults ? (
                <div className="max-w-4xl mx-auto">
-                 <div className="mb-8">
+                 <div className="mb-8 items-center justify-center flex flex-col">
                    <h3 className="text-xl font-semibold mb-4">Analysis Results</h3>
-                   <div className="grid gap-4 mb-8">
-                     {Object.entries(keywordResults).map(([sessionId, data]) => (
-                       <div key={sessionId} className="bg-zinc-800/50 rounded-lg p-6">
-                         <div className="grid gap-3">
-                           {data.keywords?.map((keyword: string, index: number) => (
-                             <div 
-                               key={index} 
-                               className={`flex items-center justify-between p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                                 selectedKeyword === keyword 
-                                   ? 'border-blue-500 bg-blue-500/10' 
-                                   : 'border-zinc-700 bg-zinc-800/50 hover:border-zinc-500'
-                               }`}
-                               onClick={() => setSelectedKeyword(keyword)}
-                             >
-                               <div className="flex items-center gap-3">
-                                 <div className={`w-4 h-4 rounded-full border-2 ${
-                                   selectedKeyword === keyword ? 'bg-blue-500 border-blue-500' : 'border-zinc-400'
-                                 }`}></div>
-                                 <span>{keyword}</span>
-                               </div>
-                             </div>
-                           ))}
-                         </div>
-                       </div>
-                     ))}
-                   </div>
+
+                    <KeywordAnalysisResults 
+                      keywords={keywordResults.keywords}
+                      metadata={keywordResults.metadata}
+                      limit={10}
+                    />
+
                  </div>
 
                  <div className="flex gap-4 justify-center">
@@ -924,10 +920,9 @@ export default function OnboardingPage() {
                    </Button>
                    <Button
                      onClick={() => setOnboardingStep(4)}
-                     disabled={!selectedKeyword}
                   className="bg-blue-600 hover:bg-blue-700"
                    >
-                     Continue with Selected Keyword
+                     Continue
                    </Button>
                  </div>
                </div>

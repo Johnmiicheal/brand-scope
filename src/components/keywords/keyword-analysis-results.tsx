@@ -32,6 +32,7 @@ type KeywordData = {
 type KeywordAnalysisResultsProps = {
   keywords: Record<string, KeywordData>;
   metadata: Array<{ language: string; country: string }>;
+  limit?: number;
 };
 
 const fadeIn = {
@@ -47,7 +48,7 @@ const staggerContainer = {
   }
 };
 
-export function KeywordAnalysisResults({ keywords, metadata }: KeywordAnalysisResultsProps) {
+export function KeywordAnalysisResults({ keywords, metadata, limit=50 }: KeywordAnalysisResultsProps) {
   const { user } = useAuth();
   const [selectedKeyword, setSelectedKeyword] = useState<KeywordData | null>(null);
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
@@ -201,7 +202,7 @@ export function KeywordAnalysisResults({ keywords, metadata }: KeywordAnalysisRe
       'Relevance Score'
     ];
 
-    const csvData = keywordEntries.map(([, keyword]) => [
+    const csvData = keywordEntries.slice(0, limit).map(([, keyword]) => [
       keyword.conversational_keyword,
       keyword.google_seed_keyword,
       keyword.intent,
@@ -277,7 +278,7 @@ export function KeywordAnalysisResults({ keywords, metadata }: KeywordAnalysisRe
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <div>
+            <div className="text-start">
               <CardTitle>Keyword Opportunities</CardTitle>
               <CardDescription>
                 Click on any keyword row to schedule it for monitoring
@@ -311,7 +312,7 @@ export function KeywordAnalysisResults({ keywords, metadata }: KeywordAnalysisRe
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {keywordEntries.map(([id, keyword]) => (
+                  {keywordEntries.slice(0, limit).map(([id, keyword]) => (
                   <motion.tr
                     key={id}
                     variants={fadeIn}
@@ -319,7 +320,7 @@ export function KeywordAnalysisResults({ keywords, metadata }: KeywordAnalysisRe
                     onClick={() => openScheduleModal(keyword)}
                   >
                     <TableCell className="font-medium">
-                      <div>
+                      <div className="text-start">
                         <div className="font-semibold text-sm">
                           {keyword.conversational_keyword}
                         </div>
