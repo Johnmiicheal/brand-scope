@@ -263,6 +263,7 @@ export function MetricsHeader({
     }));
   };
 
+
   // Model to icon mapping
   const modelIcons: Record<
     string,

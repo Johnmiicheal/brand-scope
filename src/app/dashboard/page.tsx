@@ -4216,7 +4216,7 @@ function DashboardContent() {
                     <TabsContent value="response">
                       <div className="flex gap-4 items-center">
                         {/* Date Range Selection */}
-                        {new Date(selectedQuery.results[0].analysis_date).toLocaleString(undefined, {
+                        {new Date(selectedQuery.results[0]?.analysis_date).toLocaleString(undefined, {
                           year: 'numeric',
                           month: 'long',
                           day: 'numeric',

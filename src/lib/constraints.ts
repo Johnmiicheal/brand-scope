@@ -73,12 +73,9 @@ export const constraints = {
       models: [
         { key: 'deepseek-v3', name: 'DeepSeek v3', credit_cost: 1 },
         { key: 'claude-sonnet-4', name: 'Claude Sonnet 4', credit_cost: 1 },
-        { key: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', credit_cost: 1 },
-        { key: 'gemini-pro-2.5', name: 'Gemini Pro 2.5', credit_cost: 1 },
+        { key: 'gemini-pro-2.5', name: 'Gemini Pro 2.5', credit_cost: 2 },
         { key: 'deepseek-r1', name: 'DeepSeek R1', credit_cost: 1 },
         { key: 'kimi-k2', name: 'Kimi K2', credit_cost: 1 },
-        { key: 'gpt-4.1', name: 'GPT-4.1', credit_cost: 1 },
-        { key: 'gpt-4o', name: 'GPT-4o', credit_cost: 1 },
         { key: 'gpt-5', name: 'GPT-5', credit_cost: 2 },
         { key: 'llama-4-maverick', name: 'Llama 4 Maverick', credit_cost: 1 },
         { key: 'grok-4', name: 'Grok 4', credit_cost: 1 },
