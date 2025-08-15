@@ -33,6 +33,7 @@ type KeywordAnalysisResultsProps = {
   keywords: Record<string, KeywordData>;
   metadata: Array<{ language: string; country: string }>;
   limit?: number;
+  usedQuery?: string[];
 };
 
 const fadeIn = {
@@ -48,7 +49,7 @@ const staggerContainer = {
   }
 };
 
-export function KeywordAnalysisResults({ keywords, metadata, limit=50 }: KeywordAnalysisResultsProps) {
+export function KeywordAnalysisResults({ keywords, metadata, limit=50, usedQuery }: KeywordAnalysisResultsProps) {
   const { user } = useAuth();
   const [selectedKeyword, setSelectedKeyword] = useState<KeywordData | null>(null);
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
@@ -316,7 +317,7 @@ export function KeywordAnalysisResults({ keywords, metadata, limit=50 }: Keyword
                   <motion.tr
                     key={id}
                     variants={fadeIn}
-                    className="cursor-pointer hover:bg-muted/50 transition-colors"
+                    className={`cursor-pointer hover:bg-muted/50 transition-colors ${usedQuery?.includes(keyword.conversational_keyword) && "opacity-40 pointer-events-none cursor-not-allowed"}`}
                     onClick={() => openScheduleModal(keyword)}
                   >
                     <TableCell className="font-medium">

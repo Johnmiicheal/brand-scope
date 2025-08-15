@@ -5,9 +5,9 @@ import { supabase } from "@/lib/supabase";
 import { v4 as uuidv4 } from "uuid";
 import { useEffect, useRef, useState } from "react";
 
-import { Check } from "lucide-react";
+import { Check, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { UserSubscription } from "@/hooks/useAuth";
 import { User } from "@supabase/supabase-js";
 import { toast } from "sonner";
@@ -43,12 +43,25 @@ import { plans } from "@/lib/utils";
 import { INDUSTRIES } from "@/lib/utils";
 import ShinyText from "@/components/ui/shiny-text";
 import { KeywordAnalysisResults } from "@/components/keywords/keyword-analysis-results";
+import SubsCard from "@/components/fancy-web/subs-card";
+import { ScheduledQuery } from "@/components/library/scheduled-queries-list";
 
 // Personal email domains to block
 const PERSONAL_EMAIL_DOMAINS = [
-  'gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'icloud.com',
-  'aol.com', 'protonmail.com', 'yandex.com', 'mail.com', 'zoho.com',
-  'tutanota.com', 'fastmail.com', 'live.com', 'msn.com'
+  "gmail.com",
+  "yahoo.com",
+  "hotmail.com",
+  "outlook.com",
+  "icloud.com",
+  "aol.com",
+  "protonmail.com",
+  "yandex.com",
+  "mail.com",
+  "zoho.com",
+  "tutanota.com",
+  "fastmail.com",
+  "live.com",
+  "msn.com",
 ];
 
 type FormData = {
@@ -78,9 +91,11 @@ type KeywordAnalysisResultsProps = {
 
 export default function OnboardingPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const email = searchParams.get("email");  
   const [onboardingStep, setOnboardingStep] = useState(0);
   const [selectedPlan, setSelectedPlan] = useState("");
-  const [workEmail, setWorkEmail] = useState("");
+  const [workEmail, setWorkEmail] = useState(email || "");
   const [validatedEmail, setValidatedEmail] = useState("");
   const [emailDomain, setEmailDomain] = useState("");
   const [fullName, setFullName] = useState("");
@@ -102,8 +117,60 @@ export default function OnboardingPage() {
   );
   const [subLoading, setSubLoading] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [keywordResults, setKeywordResults] = useState<KeywordAnalysisResultsProps | null>(null);
-  const [selectedKeyword, setSelectedKeyword] = useState<string>("");
+  const [keywordResults, setKeywordResults] =
+    useState<KeywordAnalysisResultsProps | null>(null);
+  const [scheduledQueries, setScheduledQueries] = useState<ScheduledQuery[]>([]);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+
+  // Update time every second
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  // Timer for analysis duration
+  useEffect(() => {
+    let interval: NodeJS.Timeout | undefined = undefined;
+
+    if (isAnalyzing) {
+      interval = setInterval(() => {
+        setElapsedSeconds((prevSeconds) => prevSeconds + 1);
+      }, 1000);
+    } else {
+      setElapsedSeconds(0);
+    }
+
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
+  }, [isAnalyzing]);
+
+  const formatTime = (totalSeconds: number): string => {
+    if (totalSeconds < 0) return "0s";
+    if (totalSeconds === 0) return "0s";
+
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+
+    const parts: string[] = [];
+
+    if (hours > 0) parts.push(`${hours}h`);
+    if (minutes > 0) parts.push(`${minutes}m`);
+    if (seconds > 0 || parts.length === 0) {
+      if (seconds > 0 || (hours === 0 && minutes === 0)) {
+        parts.push(`${seconds}s`);
+      }
+    }
+    return parts.join(" ");
+  };
 
 
   const [formData, setFormData] = useState<FormData>({
@@ -138,38 +205,56 @@ export default function OnboardingPage() {
       } else {
         setSessionKey(session.access_token || "");
         setUser(session.user);
-         // If user is logged in and still on step 0 or 1, move to step 2 (brand creation)
-         if (onboardingStep === 0 || onboardingStep === 1) {
-           setOnboardingStep(2);
-         }
+        // If user is logged in and still on step 0 or 1, move to step 2 (brand creation)
+        if (onboardingStep === 0 || onboardingStep === 1) {
+          setOnboardingStep(2);
+        }
         setSubLoading(false);
       }
     };
     checkAuth();
   }, [onboardingStep]);
 
+  useEffect(() => {
+    const checkQueries = async () => {
+      const { data, error } = await supabase.from("scheduled_queries").select("*").eq("user_id", user?.id || "");
+      if (error) {
+        console.error("Error fetching scheduled queries:", error);
+      }
+      if (data) {
+        setScheduledQueries(data as ScheduledQuery[]);
+      }
+    };
+    checkQueries();
+  }, [user, keywordResults]);
+
   // Email validation functions
   const isPersonalEmail = (email: string): boolean => {
-    const domain = email.split('@')[1]?.toLowerCase();
+    const domain = email.split("@")[1]?.toLowerCase();
     return PERSONAL_EMAIL_DOMAINS.includes(domain);
   };
 
   const extractDomain = (email: string): string => {
-    const domain = email.split('@')[1];
-    return domain ? `https://${domain}` : '';
+    const domain = email.split("@")[1];
+    return domain ? `https://${domain}` : "";
   };
 
-  const validateWorkEmail = (email: string): { isValid: boolean; message?: string } => {
+  const validateWorkEmail = (
+    email: string
+  ): { isValid: boolean; message?: string } => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    
+
     if (!emailRegex.test(email)) {
-      return { isValid: false, message: 'Please enter a valid email address' };
+      return { isValid: false, message: "Please enter a valid email address" };
     }
-    
+
     if (isPersonalEmail(email)) {
-      return { isValid: false, message: 'Please use your work email address (not gmail, yahoo, etc.)' };
+      return {
+        isValid: false,
+        message: "Please use your work email address (not gmail, yahoo, etc.)",
+      };
     }
-    
+
     return { isValid: true };
   };
 
@@ -186,26 +271,26 @@ export default function OnboardingPage() {
     setEmailDomain(domain);
     setValidatedEmail(workEmail);
     setBrandWebsite(domain); // Pre-fill website with domain
-    
-    toast.success('Work email validated! Now let\'s create your account.');
+
+    toast.success("Work email validated! Now let's create your account.");
     setOnboardingStep(1); // Move to registration step
   };
 
   // Handle user registration (step 1)
   const handleUserRegistration = async () => {
     if (!fullName || !password || !validatedEmail) {
-      toast.error('Please fill in all required fields');
+      toast.error("Please fill in all required fields");
       return;
     }
 
     if (password.length < 6) {
-      toast.error('Password must be at least 6 characters long');
+      toast.error("Password must be at least 6 characters long");
       return;
     }
 
     try {
       setSubmitting(true);
-      
+
       // Sign up with email confirmation disabled
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: validatedEmail,
@@ -214,39 +299,40 @@ export default function OnboardingPage() {
           emailRedirectTo: undefined, // Skip email confirmation
           data: {
             full_name: fullName,
-            user_type: 'brand'
-          }
-        }
+            user_type: "brand",
+          },
+        },
       });
-      
+
       if (authError) {
         throw authError;
       }
 
       if (authData.user) {
         // Create user record
-        const { error: userError } = await supabase
-          .from('users')
-          .insert({
-            id: authData.user.id,
-            email: validatedEmail,
-            full_name: fullName,
-            plan_type: 'free',
-            created_at: new Date().toISOString(),
-            user_type: 'brand'
-          });
+        const { error: userError } = await supabase.from("users").insert({
+          id: authData.user.id,
+          email: validatedEmail,
+          full_name: fullName,
+          plan_type: "free",
+          created_at: new Date().toISOString(),
+          user_type: "brand",
+        });
 
         if (userError) {
-          console.error('Error creating user record:', userError);
+          console.error("Error creating user record:", userError);
         }
 
         setUser(authData.user);
-        setSessionKey(authData.session?.access_token || '');
+        setSessionKey(authData.session?.access_token || "");
         setOnboardingStep(2); // Move to brand creation
-        toast.success('Account created! Now let\'s set up your brand.');
+        toast.success("Account created! Now let's set up your brand.");
       }
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Registration failed. Please try again.';
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Registration failed. Please try again.";
       toast.error(errorMessage);
     } finally {
       setSubmitting(false);
@@ -308,21 +394,19 @@ export default function OnboardingPage() {
           },
         ])
         .select();
-        setFormData({
-          businessBrief: `${brandName} is a ${brandIndustry} brand that operates in the ${brandLocation} market.`,
-          keyword: "",
-          website: brandWebsite,
-          language: brandLanguage,
-          location: brandLocation,
-        })
+      setFormData({
+        businessBrief: `${brandName} is a ${brandIndustry} brand that operates in the ${brandLocation} market.`,
+        keyword: "",
+        website: brandWebsite,
+        language: brandLanguage,
+        location: brandLocation,
+      });
 
       if (error) {
         console.error("Error creating brand:", error);
         setSubmitting(false);
         return;
       }
-
-
 
       // Trigger brand analysis
       await handleKeywordAnalysis({
@@ -334,12 +418,12 @@ export default function OnboardingPage() {
       });
 
       setSubmitting(false);
-            // Clear form
-            setBrandName("");
-            setBrandWebsite("");
-            setBrandIndustry("");
-            setBrandLogo(null);
-            setBrandLogoPreview(null);
+      // Clear form
+      setBrandName("");
+      setBrandWebsite("");
+      setBrandIndustry("");
+      setBrandLogo(null);
+      setBrandLogoPreview(null);
     } catch (error) {
       console.error("Error:", error);
       setSubmitting(false);
@@ -347,13 +431,13 @@ export default function OnboardingPage() {
   };
 
   const handleKeywordAnalysis = async (formData: FormData) => {
-      setIsAnalyzing(true);
+    setIsAnalyzing(true);
 
     try {
       const response = await fetch("/api/keywords-analysis", {
-          method: "POST",
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
+        body: JSON.stringify({
           businessBrief: formData.businessBrief.trim(),
           keyword: formData.keyword.trim(),
           website: formData.website.trim(),
@@ -366,19 +450,19 @@ export default function OnboardingPage() {
       const data = await response.json();
 
       if (!response.ok) {
-          toast.error(
-            data.error || `Request failed with status ${response.status}`
-          );
+        toast.error(
+          data.error || `Request failed with status ${response.status}`
+        );
         return;
       }
 
-             if (data.success && data.data) {
-         setKeywordResults(data.data);
-         toast.success(`Keyword analysis completed!`);
-         setOnboardingStep(3); // Move to keywords step
-       } else {
-         toast.error("Invalid response format from analysis service");
-       }
+      if (data.success && data.data) {
+        setKeywordResults(data.data);
+        toast.success(`Keyword analysis completed!`);
+        setOnboardingStep(3); // Move to keywords step
+      } else {
+        toast.error("Invalid response format from analysis service");
+      }
     } catch (err: unknown) {
       const errorMessage =
         err instanceof Error ? err.message : "An unexpected error occurred.";
@@ -386,52 +470,6 @@ export default function OnboardingPage() {
       console.error("Keyword analysis error:", err);
     } finally {
       setIsAnalyzing(false);
-    }
-     };
-
-  const setupMonitoring = async () => {
-    if (!selectedKeyword || !user) {
-      toast.error('Please select a keyword and ensure you are logged in');
-      return;
-    }
-
-    try {
-      setSubmitting(true);
-      
-      // Create a monitoring entry for the selected keyword
-      const monitoringId = uuidv4();
-      
-      const { error } = await supabase
-        .from('scheduled_queries')
-        .insert({
-          id: monitoringId,
-          mode_id: monitoringId,
-          user_id: user.id,
-          query: selectedKeyword,
-          frequency: 'weekly',
-          status: 'active',
-          next_analysis_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // Next week
-          attached_brand_name: brandName,
-          attached_brand_industry: brandIndustry,
-          attached_brand_website: brandWebsite,
-          attached_brand_language: brandLanguage,
-          attached_brand_location: brandLocation,
-          location: brandLocation,
-          selected_models: ['gpt-4o-search', 'claude-search'],
-          credits_per_run: 0, // Free monitoring for onboarding
-          include_google_search: true
-        });
-
-      if (error) {
-        throw error;
-      }
-
-      toast.success('Monitoring setup successful! Complete payment to access full features.');
-      setSubmitting(false);
-    } catch (error) {
-      console.error('Error setting up monitoring:', error);
-      toast.error('Failed to set up monitoring');
-      setSubmitting(false);
     }
   };
 
@@ -511,6 +549,8 @@ export default function OnboardingPage() {
     "gpt-5": OpenAI,
   };
 
+  const usedQueries = scheduledQueries.filter((query) => query.user_id === user?.id).map((query) => query.query);
+
   return (
     <div className="flex items-center justify-center min-h-[60vh]">
       <div className="w-full max-w-7xl p-8 bg-transparent rounded-lg shadow-lg">
@@ -525,7 +565,7 @@ export default function OnboardingPage() {
           />
         </div>
         <div className="flex justify-between mb-16">
-           {[1, 2, 3, 4, 5].map((step) => (
+          {[1, 2, 3, 4, 5].map((step) => (
             <div key={step} className="flex flex-col items-center">
               <div
                 className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 ${
@@ -538,28 +578,27 @@ export default function OnboardingPage() {
               </div>
               <span className="text-sm text-gray-400">
                 {step === 1
-                   ? "Email"
+                  ? "Email"
                   : step === 2
-                   ? "Account"
-                   : step === 3
-                   ? "Brand"
-                   : step === 4
-                   ? "Keywords"
-                   : "Payment"}
+                  ? "Account"
+                  : step === 3
+                  ? "Brand"
+                  : step === 4
+                  ? "Keywords"
+                  : "Payment"}
               </span>
             </div>
           ))}
         </div>
 
-        
-
-                {onboardingStep === 0 && (
+        {onboardingStep === 0 && (
           <div className="text-center">
             <h2 className="text-3xl font-bold text-gray-200 mb-2">
               Get your free interactive report & AI Keyword research
             </h2>
             <p className="text-gray-400 mb-8 max-w-2xl mx-auto">
-              Enter your work email (30s) - your work domain will be used to analyze the report
+              Enter your work email (30s) - your work domain will be used to
+              analyze the report
             </p>
 
             <div className="max-w-md mx-auto mb-8">
@@ -577,12 +616,13 @@ export default function OnboardingPage() {
                       className="bg-zinc-800 pl-10"
                       required
                     />
-                        </div>
-                  <p className="text-xs text-gray-500">
-                    We don&apos;t accept personal emails (gmail, yahoo, etc.). If you have a personal email, please proceed to signup.
-                  </p>
-                    </div>
                   </div>
+                  <p className="text-xs text-gray-500">
+                    We don&apos;t accept personal emails (gmail, yahoo, etc.).
+                    If you have a personal email, please proceed to signup.
+                  </p>
+                </div>
+              </div>
 
               <Button
                 onClick={handleEmailValidation}
@@ -591,8 +631,8 @@ export default function OnboardingPage() {
               >
                 Validate Work Email
               </Button>
-                              </div>
-                        </div>
+            </div>
+          </div>
         )}
 
         {onboardingStep === 1 && (
@@ -615,8 +655,8 @@ export default function OnboardingPage() {
                     disabled
                     className="bg-zinc-700 text-gray-300"
                   />
-                      </div>
-                
+                </div>
+
                 <div className="grid gap-2">
                   <Label htmlFor="full-name">Full Name</Label>
                   <Input
@@ -628,7 +668,7 @@ export default function OnboardingPage() {
                     className="bg-zinc-800"
                     required
                   />
-                  </div>
+                </div>
 
                 <div className="grid gap-2">
                   <Label htmlFor="password">Password</Label>
@@ -642,7 +682,7 @@ export default function OnboardingPage() {
                     required
                   />
                 </div>
-            </div>
+              </div>
 
               <Button
                 onClick={handleUserRegistration}
@@ -651,15 +691,15 @@ export default function OnboardingPage() {
               >
                 {submitting ? "Creating Account..." : "Create Account"}
               </Button>
-              
+
               <div className="flex justify-start mt-4">
-              <Button
+                <Button
                   variant="ghost"
                   onClick={() => setOnboardingStep(0)}
                   disabled={submitting}
                 >
                   ← Back
-              </Button>
+                </Button>
               </div>
             </div>
           </div>
@@ -673,8 +713,8 @@ export default function OnboardingPage() {
                   Create your first brand
                 </h2>
                 <p className="text-gray-400 mb-8 max-w-xl mx-auto">
-                  This helps us personalize your experience and you can attach your
-                  brand to your keyword analysis (optional)
+                  This helps us personalize your experience and you can attach
+                  your brand to your keyword analysis (optional)
                 </p>
               </div>
             )}
@@ -682,15 +722,30 @@ export default function OnboardingPage() {
             {isAnalyzing ? (
               <div className="flex items-center justify-center min-h-[400px]">
                 <div className="w-full items-center justify-center flex flex-col max-w-3xl">
-                  <Image src="/icons/air-icon-light.svg" alt="Loading" width={70} height={70} className="mb-6 animate-[spin_4s_linear_infinite]" />
+                  <Image
+                    src="/icons/air-icon-light.svg"
+                    alt="Loading"
+                    width={70}
+                    height={70}
+                    className="mb-6 animate-[spin_4s_linear_infinite]"
+                  />
                   <h1 className="text-2xl font-bold mb-6 text-center">
                     Analysing your brand
                   </h1>
                   <p className="!text-[#b5b5b5a4] mb-3 max-w-lg mx-auto">
-                    We are creating a collection of keywords that are relevant to your brand to get you started.
+                    We are creating a collection of keywords that are relevant
+                    to your brand to get you started.
                   </p>
-                  <ShinyText text='This will only take a few seconds...' disabled={false} speed={3} className="font-medium text-sm" />
-
+                  <ShinyText
+                    text="This will only take a few seconds..."
+                    disabled={false}
+                    speed={3}
+                    className="font-medium text-sm"
+                  />
+                  <div className="text-xs text-gray-500 my-3 flex items-center bg-zinc-800/50 rounded-full p-2">
+                    <Clock className="w-4 h-4 mr-2" />
+                    {formatTime(elapsedSeconds)}
+                  </div>
                 </div>
               </div>
             ) : (
@@ -720,9 +775,9 @@ export default function OnboardingPage() {
                           placeholder="https://example.com"
                           required
                         />
-                         <p className="text-xs text-gray-500">
-                           Pre-filled from your email domain
-                         </p>
+                        <p className="text-xs text-gray-500">
+                          Pre-filled from your email domain
+                        </p>
                       </div>
 
                       <div className="flex gap-2 w-full">
@@ -870,92 +925,95 @@ export default function OnboardingPage() {
               </div>
             )}
 
-                         <div className="flex justify-between mt-8">
-               <Button
-                 variant="ghost"
-                 onClick={() => setOnboardingStep(1)}
-                 disabled={isAnalyzing}
-               >
-                 ← Back
-               </Button>
-                <Button
-                  variant="ghost"
-                  onClick={handleSkip}
-                  disabled={isAnalyzing}
-                >
-                  Skip
-                </Button>
-             </div>
+            <div className="flex justify-between mt-8">
+              <Button
+                variant="ghost"
+                onClick={() => setOnboardingStep(1)}
+                disabled={isAnalyzing}
+              >
+                ← Back
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={handleSkip}
+                disabled={isAnalyzing}
+              >
+                Skip
+              </Button>
+            </div>
           </div>
         )}
 
-                 {onboardingStep === 3 && (
-           <div className="text-center">
-             <h2 className="text-3xl font-bold text-gray-200 mb-2">
-               Select Keywords to Monitor
-             </h2>
-             <p className="text-gray-400 mb-8 max-w-2xl mx-auto">
-               Choose which keywords you&apos;d like to monitor from your analysis results
-             </p>
+        {onboardingStep === 3 && (
+          <div className="text-center">
+            <h2 className="text-3xl font-bold text-gray-200 mb-2">
+              Select Keywords to Monitor
+            </h2>
+            <p className="text-gray-400 mb-8 max-w-2xl mx-auto">
+              Choose which keywords you&apos;d like to monitor from your
+              analysis results
+            </p>
 
-             {keywordResults ? (
-               <div className="max-w-4xl mx-auto">
-                 <div className="mb-8 items-center justify-center flex flex-col">
-                   <h3 className="text-xl font-semibold mb-4">Analysis Results</h3>
+            {keywordResults ? (
+              <div className="max-w-4xl mx-auto">
+                <div className="mb-8 items-center justify-center flex flex-col">
+                  <h3 className="text-xl font-semibold mb-4">
+                    Analysis Results
+                  </h3>
 
-                    <KeywordAnalysisResults 
-                      keywords={keywordResults.keywords}
-                      metadata={keywordResults.metadata}
-                      limit={10}
-                    />
+                  <KeywordAnalysisResults
+                    keywords={keywordResults.keywords}
+                    metadata={keywordResults.metadata}
+                    limit={10}
+                    usedQuery={usedQueries}
+                  />
+                </div>
 
-                 </div>
+                <div className="flex gap-4 justify-center">
+                  <Button
+                    variant="outline"
+                    onClick={() => setOnboardingStep(2)}
+                  >
+                    ← Back
+                  </Button>
+                  <Button
+                    onClick={() => setOnboardingStep(4)}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    Continue
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center">
+                <p className="text-gray-400 mb-4">
+                  No keyword results available. Please go back and try again.
+                </p>
+                <div className="flex justify-center gap-5">
+                  <Button
+                    onClick={() => setOnboardingStep(2)}
+                    variant="outline"
+                  >
+                    Go Back
+                  </Button>
+                  <Button
+                    onClick={() => setOnboardingStep(4)}
+                    variant="outline"
+                    className="rounded-full"
+                  >
+                    Jump to payments
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
-                 <div className="flex gap-4 justify-center">
-                <Button
-                     variant="outline"
-                     onClick={() => setOnboardingStep(2)}
-                   >
-                     ← Back
-                   </Button>
-                   <Button
-                     onClick={() => setOnboardingStep(4)}
-                  className="bg-blue-600 hover:bg-blue-700"
-                   >
-                     Continue
-                   </Button>
-                 </div>
-               </div>
-             ) : (
-               <div className="text-center">
-                 <p className="text-gray-400 mb-4">
-                   No keyword results available. Please go back and try again.
-                 </p>
-                 <div className="flex justify-center gap-5">
-                 <Button
-                   onClick={() => setOnboardingStep(2)}
-                   variant="outline"
-                 >
-                   Go Back
-                 </Button>
-                 <Button
-                   onClick={() => setOnboardingStep(4)}
-                   variant="outline"
-                   className="rounded-full"
-                 >
-                   Jump to payments
-                 </Button>
-                 </div>
-               </div>
-             )}
-           </div>
-         )}
-
-         {onboardingStep === 4 && (
-           <div className="text-center">
-             <h2 className="text-3xl font-bold text-gray-200 mb-2">
-               Choose Your Plan
-             </h2>
+        {onboardingStep === 4 && (
+          <div className="text-center">
+            <h2 className="text-3xl font-bold text-gray-200 mb-2">
+              Choose Your Plan
+            </h2>
             <p className="text-gray-400 mb-18">
               Select the plan that best fits your needs
             </p>
@@ -1032,73 +1090,64 @@ export default function OnboardingPage() {
               ))}
             </div>
 
-                         <div className="flex justify-between mt-8">
-               <Button
-                 variant="outline"
-                 onClick={() => setOnboardingStep(3)}
-                  disabled={isAnalyzing}
-               >
-                 Back
-               </Button>
-               <Button
-                 className="bg-blue-600 hover:bg-blue-700"
-                 onClick={() => setOnboardingStep(5)}
-                 disabled={!selectedPlan}
-                >
-                  Continue
-                </Button>
+            <div className="flex justify-between mt-8">
+              <Button
+                variant="outline"
+                onClick={() => setOnboardingStep(3)}
+                disabled={isAnalyzing}
+              >
+                Back
+              </Button>
+              <Button
+                className="bg-blue-600 hover:bg-blue-700"
+                onClick={() => setOnboardingStep(5)}
+                disabled={!selectedPlan}
+              >
+                Continue
+              </Button>
             </div>
           </div>
         )}
 
-      
-
-                                  {onboardingStep === 5 && (
+        {onboardingStep === 5 && (
           <div className="text-center items-center flex flex-col">
             <h2 className="text-3xl font-bold text-gray-300 mb-4">
-               Setup Monitoring & Payment
+              Setup Monitoring & Payment
             </h2>
             <p className="text-gray-500 mb-8 max-w-2xl mx-auto">
-              Complete your setup by activating monitoring for your selected keyword and choosing a plan.
+              Complete your setup and view your monitored keywords by activating your subscription.
             </p>
-
-            {selectedKeyword && (
-              <div className="bg-zinc-800/50 rounded-lg p-6 mb-8 max-w-2xl mx-auto">
-                <h3 className="text-lg font-semibold mb-2">Selected Keyword for Monitoring</h3>
-                <p className="text-blue-400 font-medium mb-4">&quot;{selectedKeyword}&quot;</p>
-                <Button
-                  onClick={setupMonitoring}
-                  disabled={submitting}
-                  className="bg-green-600 hover:bg-green-700 mb-4"
-                >
-                  {submitting ? "Setting up..." : "Setup Free Monitoring"}
-                </Button>
-              </div>
-            )}
 
             <div className="mb-8">
-              <h3 className="text-xl font-semibold mb-4">Choose Your Plan</h3>
-              <p className="text-gray-500 mb-6">
-              You&apos;ve chosen the{" "}
-              <span className="font-bold">
-                {plans.find((p) => p.product_id === selectedPlan)?.name}
-              </span>{" "}
-                plan. You can always upgrade or change your plan later in settings.
-            </p>
+              <SubsCard
+                title={
+                  plans.find((p) => p.product_id === selectedPlan)?.name || ""
+                }
+                description={
+                  plans.find((p) => p.product_id === selectedPlan)
+                    ?.description || ""
+                }
+                price={
+                  plans.find((p) => p.product_id === selectedPlan)?.price || ""
+                }
+              />
+              <p className="text-gray-500 my-6">
+                You&apos;ve chosen the{" "}
+                <span className="font-bold">
+                  {plans.find((p) => p.product_id === selectedPlan)?.name}
+                </span>{" "}
+                plan. You can always upgrade or change your plan later in
+                settings.
+              </p>
             </div>
 
             <div className="max-w-md mx-auto flex gap-4">
+              <Button variant="outline" className="rounded-full" onClick={() => setOnboardingStep(4)}>Change Plan</Button>
               <CheckoutButton
                 priceId={selectedPlan || ""}
                 userId={user?.id || ""}
                 buttonText="Complete Payment & Access Dashboard"
               />
-              <Button
-                variant="outline"
-                onClick={() => router.push('/dashboard')}
-              >
-                Continue with Free Account
-              </Button>
             </div>
           </div>
         )}
