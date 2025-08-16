@@ -1,5 +1,5 @@
 import Image from "next/image";
-import SearchPrompts from "./features-card/search-prompts";
+import SearchPrompts from "./blocks/search-prompts";
 
 export default function Features() {
     const models = [

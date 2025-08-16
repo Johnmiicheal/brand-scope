@@ -44,25 +44,7 @@ import { INDUSTRIES } from "@/lib/utils";
 import ShinyText from "@/components/ui/shiny-text";
 import { KeywordAnalysisResults } from "@/components/keywords/keyword-analysis-results";
 import SubsCard from "@/components/fancy-web/subs-card";
-import { ScheduledQuery } from "@/components/library/scheduled-queries-list";
 
-// Personal email domains to block
-const PERSONAL_EMAIL_DOMAINS = [
-  "gmail.com",
-  "yahoo.com",
-  "hotmail.com",
-  "outlook.com",
-  "icloud.com",
-  "aol.com",
-  "protonmail.com",
-  "yandex.com",
-  "mail.com",
-  "zoho.com",
-  "tutanota.com",
-  "fastmail.com",
-  "live.com",
-  "msn.com",
-];
 
 type FormData = {
   businessBrief: string;
@@ -93,12 +75,10 @@ export default function OnboardingPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const email = searchParams.get("email");  
+  const domain = searchParams.get("domain");
+  const step = searchParams.get("step");
   const [onboardingStep, setOnboardingStep] = useState(0);
   const [selectedPlan, setSelectedPlan] = useState("");
-  const [workEmail, setWorkEmail] = useState(email || "");
-  const [validatedEmail, setValidatedEmail] = useState("");
-  const [emailDomain, setEmailDomain] = useState("");
-  const [fullName, setFullName] = useState("");
   const [password, setPassword] = useState("");
   const [brandName, setBrandName] = useState("");
   const [brandWebsite, setBrandWebsite] = useState("");
@@ -119,7 +99,6 @@ export default function OnboardingPage() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [keywordResults, setKeywordResults] =
     useState<KeywordAnalysisResultsProps | null>(null);
-  const [scheduledQueries, setScheduledQueries] = useState<ScheduledQuery[]>([]);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -215,70 +194,10 @@ export default function OnboardingPage() {
     checkAuth();
   }, [onboardingStep]);
 
-  useEffect(() => {
-    const checkQueries = async () => {
-      const { data, error } = await supabase.from("scheduled_queries").select("*").eq("user_id", user?.id || "");
-      if (error) {
-        console.error("Error fetching scheduled queries:", error);
-      }
-      if (data) {
-        setScheduledQueries(data as ScheduledQuery[]);
-      }
-    };
-    checkQueries();
-  }, [user, keywordResults]);
-
-  // Email validation functions
-  const isPersonalEmail = (email: string): boolean => {
-    const domain = email.split("@")[1]?.toLowerCase();
-    return PERSONAL_EMAIL_DOMAINS.includes(domain);
-  };
-
-  const extractDomain = (email: string): string => {
-    const domain = email.split("@")[1];
-    return domain ? `https://${domain}` : "";
-  };
-
-  const validateWorkEmail = (
-    email: string
-  ): { isValid: boolean; message?: string } => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-    if (!emailRegex.test(email)) {
-      return { isValid: false, message: "Please enter a valid email address" };
-    }
-
-    if (isPersonalEmail(email)) {
-      return {
-        isValid: false,
-        message: "Please use your work email address (not gmail, yahoo, etc.)",
-      };
-    }
-
-    return { isValid: true };
-  };
-
-  // Handle work email validation (step 0)
-  const handleEmailValidation = () => {
-    const validation = validateWorkEmail(workEmail);
-    if (!validation.isValid) {
-      toast.error(validation.message);
-      return;
-    }
-
-    // Extract domain and set up for next step
-    const domain = extractDomain(workEmail);
-    setEmailDomain(domain);
-    setValidatedEmail(workEmail);
-    setBrandWebsite(domain); // Pre-fill website with domain
-
-    toast.success("Work email validated! Now let's create your account.");
-    setOnboardingStep(1); // Move to registration step
-  };
 
   // Handle user registration (step 1)
   const handleUserRegistration = async () => {
-    if (!fullName || !password || !validatedEmail) {
+    if (!email || !password) {
       toast.error("Please fill in all required fields");
       return;
     }
@@ -293,12 +212,12 @@ export default function OnboardingPage() {
 
       // Sign up with email confirmation disabled
       const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: validatedEmail,
+        email: email,
         password: password,
         options: {
           emailRedirectTo: undefined, // Skip email confirmation
           data: {
-            full_name: fullName,
+            full_name: email,
             user_type: "brand",
           },
         },
@@ -312,8 +231,8 @@ export default function OnboardingPage() {
         // Create user record
         const { error: userError } = await supabase.from("users").insert({
           id: authData.user.id,
-          email: validatedEmail,
-          full_name: fullName,
+          email: email,
+          full_name: email,
           plan_type: "free",
           created_at: new Date().toISOString(),
           user_type: "brand",
@@ -549,7 +468,6 @@ export default function OnboardingPage() {
     "gpt-5": OpenAI,
   };
 
-  const usedQueries = scheduledQueries.filter((query) => query.user_id === user?.id).map((query) => query.query);
 
   return (
     <div className="flex items-center justify-center min-h-[60vh]">
@@ -565,7 +483,7 @@ export default function OnboardingPage() {
           />
         </div>
         <div className="flex justify-between mb-16">
-          {[1, 2, 3, 4, 5].map((step) => (
+          {[1, 2, 3, 4].map((step) => (
             <div key={step} className="flex flex-col items-center">
               <div
                 className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 ${
@@ -578,12 +496,10 @@ export default function OnboardingPage() {
               </div>
               <span className="text-sm text-gray-400">
                 {step === 1
-                  ? "Email"
-                  : step === 2
                   ? "Account"
-                  : step === 3
+                  : step === 2
                   ? "Brand"
-                  : step === 4
+                  : step === 3
                   ? "Keywords"
                   : "Payment"}
               </span>
@@ -592,50 +508,6 @@ export default function OnboardingPage() {
         </div>
 
         {onboardingStep === 0 && (
-          <div className="text-center">
-            <h2 className="text-3xl font-bold text-gray-200 mb-2">
-              Get your free interactive report & AI Keyword research
-            </h2>
-            <p className="text-gray-400 mb-8 max-w-2xl mx-auto">
-              Enter your work email (30s) - your work domain will be used to
-              analyze the report
-            </p>
-
-            <div className="max-w-md mx-auto mb-8">
-              <div className="space-y-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="work-email">Work Email</Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                    <Input
-                      id="work-email"
-                      type="email"
-                      value={workEmail}
-                      placeholder="john@yourcompany.com"
-                      onChange={(e) => setWorkEmail(e.target.value)}
-                      className="bg-zinc-800 pl-10"
-                      required
-                    />
-                  </div>
-                  <p className="text-xs text-gray-500">
-                    We don&apos;t accept personal emails (gmail, yahoo, etc.).
-                    If you have a personal email, please proceed to signup.
-                  </p>
-                </div>
-              </div>
-
-              <Button
-                onClick={handleEmailValidation}
-                disabled={!workEmail}
-                className="w-full bg-blue-600 hover:bg-blue-700 mt-6"
-              >
-                Validate Work Email
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {onboardingStep === 1 && (
           <div className="text-center">
             <h2 className="text-3xl font-bold text-gray-200 mb-2">
               Create Your Account
@@ -651,20 +523,20 @@ export default function OnboardingPage() {
                   <Input
                     id="email-display"
                     type="email"
-                    value={validatedEmail}
+                    value={email || ""}
                     disabled
                     className="bg-zinc-700 text-gray-300"
                   />
                 </div>
 
                 <div className="grid gap-2">
-                  <Label htmlFor="full-name">Full Name</Label>
+                  <Label htmlFor="full-name">Company Website</Label>
                   <Input
                     id="full-name"
                     type="text"
-                    value={fullName}
-                    placeholder="John Doe"
-                    onChange={(e) => setFullName(e.target.value)}
+                    value={domain || ""}
+                    placeholder="Acme Corporation"
+                    disabled
                     className="bg-zinc-800"
                     required
                   />
@@ -686,26 +558,16 @@ export default function OnboardingPage() {
 
               <Button
                 onClick={handleUserRegistration}
-                disabled={submitting || !fullName || !password}
+                disabled={submitting || !password}
                 className="w-full bg-blue-600 hover:bg-blue-700 mt-6"
               >
                 {submitting ? "Creating Account..." : "Create Account"}
               </Button>
-
-              <div className="flex justify-start mt-4">
-                <Button
-                  variant="ghost"
-                  onClick={() => setOnboardingStep(0)}
-                  disabled={submitting}
-                >
-                  ← Back
-                </Button>
-              </div>
             </div>
           </div>
         )}
 
-        {onboardingStep === 2 && (
+        {onboardingStep === 1 && (
           <div className="text-center">
             {!isAnalyzing && (
               <div className="text-center">
@@ -944,7 +806,7 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {onboardingStep === 3 && (
+        {onboardingStep === 2 && (
           <div className="text-center">
             <h2 className="text-3xl font-bold text-gray-200 mb-2">
               Select Keywords to Monitor
@@ -965,7 +827,6 @@ export default function OnboardingPage() {
                     keywords={keywordResults.keywords}
                     metadata={keywordResults.metadata}
                     limit={10}
-                    usedQuery={usedQueries}
                   />
                 </div>
 
@@ -987,7 +848,7 @@ export default function OnboardingPage() {
             ) : (
               <div className="text-center">
                 <p className="text-gray-400 mb-4">
-                  No keyword results available. Please go back and try again.
+                  Keyword research is available only if you create a brand. So go back to the previous step to create your brand and get keywords
                 </p>
                 <div className="flex justify-center gap-5">
                   <Button
@@ -1009,7 +870,7 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {onboardingStep === 4 && (
+        {onboardingStep === 3 && (
           <div className="text-center">
             <h2 className="text-3xl font-bold text-gray-200 mb-2">
               Choose Your Plan
@@ -1093,14 +954,14 @@ export default function OnboardingPage() {
             <div className="flex justify-between mt-8">
               <Button
                 variant="outline"
-                onClick={() => setOnboardingStep(3)}
+                onClick={() => setOnboardingStep(2)}
                 disabled={isAnalyzing}
               >
                 Back
               </Button>
               <Button
                 className="bg-blue-600 hover:bg-blue-700"
-                onClick={() => setOnboardingStep(5)}
+                onClick={() => setOnboardingStep(4)}
                 disabled={!selectedPlan}
               >
                 Continue
@@ -1109,7 +970,7 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {onboardingStep === 5 && (
+        {onboardingStep === 4 && (
           <div className="text-center items-center flex flex-col">
             <h2 className="text-3xl font-bold text-gray-300 mb-4">
               Setup Monitoring & Payment
@@ -1142,7 +1003,7 @@ export default function OnboardingPage() {
             </div>
 
             <div className="max-w-md mx-auto flex gap-4">
-              <Button variant="outline" className="rounded-full" onClick={() => setOnboardingStep(4)}>Change Plan</Button>
+              <Button variant="outline" className="rounded-full" onClick={() => setOnboardingStep(3)}>Change Plan</Button>
               <CheckoutButton
                 priceId={selectedPlan || ""}
                 userId={user?.id || ""}

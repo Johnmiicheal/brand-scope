@@ -1,17 +1,19 @@
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { Input } from "../ui/input";
-import { ChevronRight, CircleUserRound, Sparkles, Menu } from "lucide-react";
+import { CircleUserRound, Sparkles, Menu } from "lucide-react";
 import { Button } from "../ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "../ui/sheet";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
+import EmailInput from "./blocks/email-input";
 
-export default function Hero({ isAuthenticated }: { isAuthenticated: boolean }) {
-  const router = useRouter();
-  const [email, setEmail] = useState("");
+export default function Hero({
+  isAuthenticated,
+}: {
+  isAuthenticated: boolean;
+}) {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
+
   const navLinks = [
     {
       label: "Features",
@@ -34,6 +36,9 @@ export default function Hero({ isAuthenticated }: { isAuthenticated: boolean }) 
       href: "/request",
     },
   ];
+
+  // Email validation functions
+
   return (
     <div className="flex flex-col items-center justify-center bg-[url('/assets/air-bg-hero.webp')] bg-cover bg-center bg-no-repeat overflow-hidden h-[100vh]">
       <header className="container mx-auto px-4 py-6 flex justify-between items-center fixed top-0 z-50 w-full">
@@ -46,13 +51,15 @@ export default function Hero({ isAuthenticated }: { isAuthenticated: boolean }) 
             className="w-20 h-20 md:w-[120px] md:h-[120px]"
           />
         </div>
-        
+
         {/* Desktop Navigation */}
         <div className="hidden md:flex items-center gap-6">
           <div className="flex items-center gap-12">
             {navLinks.map((link) => (
               <Link href={link.href} key={link.label}>
-                <span className="text-sm font-medium hover:text-blue-400 transition-colors">{link.label}</span>
+                <span className="text-sm font-medium hover:text-blue-400 transition-colors">
+                  {link.label}
+                </span>
               </Link>
             ))}
           </div>
@@ -100,11 +107,14 @@ export default function Hero({ isAuthenticated }: { isAuthenticated: boolean }) 
                 <Menu className="w-5 h-5" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-80 bg-black/95 border-gray-800">
+            <SheetContent
+              side="right"
+              className="w-80 bg-black/95 border-gray-800"
+            >
               <div className="flex flex-col gap-6 mt-8 p-4">
                 {navLinks.map((link) => (
-                  <Link 
-                    href={link.href} 
+                  <Link
+                    href={link.href}
                     key={link.label}
                     onClick={() => setIsSheetOpen(false)}
                     className="text-white text-lg font-medium hover:text-blue-400 transition-colors py-2"
@@ -114,7 +124,10 @@ export default function Hero({ isAuthenticated }: { isAuthenticated: boolean }) 
                 ))}
                 <div className="flex flex-col gap-4 mt-6">
                   {isAuthenticated ? (
-                    <Link href="/dashboard" onClick={() => setIsSheetOpen(false)}>
+                    <Link
+                      href="/dashboard"
+                      onClick={() => setIsSheetOpen(false)}
+                    >
                       <Button variant="outline" className="w-full">
                         Dashboard
                       </Button>
@@ -127,7 +140,10 @@ export default function Hero({ isAuthenticated }: { isAuthenticated: boolean }) 
                           Sign in
                         </Button>
                       </Link>
-                      <Link href="/onboarding" onClick={() => setIsSheetOpen(false)}>
+                      <Link
+                        href="/onboarding"
+                        onClick={() => setIsSheetOpen(false)}
+                      >
                         <Button className="bg-blue-600 text-white rounded-lg w-full">
                           <Sparkles className="w-4 h-4" />
                           Get Analysis
@@ -159,23 +175,8 @@ export default function Hero({ isAuthenticated }: { isAuthenticated: boolean }) 
           Monitor mentions and performance across the world&apos;s most-used AI
           platforms
         </motion.p>
+        <EmailInput />
 
-        <div className="flex flex-col md:flex-row items-center gap-4 md:gap-2 mt-8 sm:border border-accent sm:bg-white/10 rounded-full sm:p-2">
-          <Input
-            placeholder="Enter your company email"
-            className="w-96 h-12 md:h-14 rounded-full border-none bg-transparent text-center md:text-left"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-          <Button 
-            className="bg-blue-600 text-black rounded-full h-12 md:h-14 w-full md:w-auto px-6" 
-            onClick={() => router.push("/onboarding?email=" + email)}
-          >
-            <span className="hidden md:inline">Get a free analysis</span>
-            <span className="md:hidden">Get Analysis</span>
-            <ChevronRight className="w-4 h-4" />
-          </Button>
-        </div>
         <Image
           src="/assets/hero-image.png"
           alt="Hero Image"

@@ -45,6 +45,7 @@ import {
   TextSearch,
   Filter,
   WholeWord,
+  BarChart,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -409,18 +410,51 @@ function IndustryRankingsTable({
                     </TableCell>
                   </TableRow>
                 ) : (
-                  brands.map((entity, index) => (
-                    <TableRow
-                      key={index}
-                      className="dark:text-white text-black border-[#e2e2e2]/40 dark:border-accent cursor-pointer"
-                      onClick={() => {
-                        setSelectedBrand(new Set([entity.brand_name]));
-                        toastSonner.info(
-                          `You have selected ${entity.brand_name}`
-                        );
-                      }}
-                    >
-                      <TableCell className="font-medium">{index + 1}</TableCell>
+                  (() => {
+                    // Calculate visibility scores and sort brands
+                    const brandsWithScores = brands.map((entity) => ({
+                      ...entity,
+                      visibilityScore: (
+                        (100 *
+                          (Number(getCoverageRatio(entity, "count")) +
+                            getMentionsIndex(entity))) /
+                        2
+                      )
+                    }));
+
+                    // Sort by visibility score in descending order
+                    brandsWithScores.sort((a, b) => b.visibilityScore - a.visibilityScore);
+
+                    // Calculate ranks with ties
+                    let currentRank = 1;
+                    let previousScore = null;
+                    let rankCounter = 0;
+
+                    const brandsWithRanks = brandsWithScores.map((entity) => {
+                      rankCounter++;
+                      if (previousScore !== null && entity.visibilityScore !== previousScore) {
+                        currentRank = rankCounter;
+                      }
+                      previousScore = entity.visibilityScore;
+                      
+                      return {
+                        ...entity,
+                        rank: currentRank
+                      };
+                    });
+
+                    return brandsWithRanks.map((entity, index) => (
+                      <TableRow
+                        key={index}
+                        className="dark:text-white text-black border-[#e2e2e2]/40 dark:border-accent cursor-pointer"
+                        onClick={() => {
+                          setSelectedBrand(new Set([entity.brand_name]));
+                          toastSonner.info(
+                            `You have selected ${entity.brand_name}`
+                          );
+                        }}
+                      >
+                        <TableCell className="font-medium">{entity.rank}</TableCell>
                       <TableCell className="flex items-center gap-2">
                         <div className="whitespace-normal break-words max-w-[150px] flex items-center">
                           {/* {brandFetch.find((brand) =>
@@ -456,17 +490,12 @@ function IndustryRankingsTable({
                         ⌀ {getCoverageRatio(entity, "ratio")}
                       </TableCell>
                       <TableCell>
-                        {(
-                          (100 *
-                            (Number(getCoverageRatio(entity, "count")) +
-                              getMentionsIndex(entity))) /
-                          2
-                        ).toFixed(1)}
-                        %
+                        {entity.visibilityScore.toFixed(1)}%
                       </TableCell>
-                      <TableCell>{entity.total_mentions}</TableCell>
-                    </TableRow>
-                  ))
+                        <TableCell>{entity.total_mentions}</TableCell>
+                      </TableRow>
+                    ));
+                  })()
                 )}
               </TableBody>
             </Table>
@@ -3994,7 +4023,10 @@ function DashboardContent() {
                         <em className="text-white">
                           &quot;{selectedQuery?.query}&quot;&nbsp;
                         </em>
-                        from <span className="font-semibold">&nbsp;{analysis_models.length} Models Analysis</span>
+                      </p>
+                      <p className="text-muted-foreground items-center flex">
+                      <BarChart className="w-4 h-4 mr-2" />
+                      <span className="font-regular">&nbsp;{analysis_models.length} Models Analysis found {brandMentionsInSummaries.length} entities</span>
                       </p>
                       <AnimatePresence>
                         {isExpanded && (
@@ -4190,28 +4222,6 @@ function DashboardContent() {
                         brand={currentBrand}
                         orientation={"horizontal"}
                       />
-                      {/* <Tabs defaultValue="keywords" className="w-full">
-                        <TabsList className="grid w-full grid-cols-2 bg-muted/20">
-                          <TabsTrigger
-                            value="keywords"
-                            className="data-[state=active]:bg-blue-500/10"
-                          >
-                            Keywords
-                          </TabsTrigger>
-                          <TabsTrigger
-                            value="steps"
-                            className="data-[state=active]:bg-blue-500/10"
-                          >
-                            Steps
-                          </TabsTrigger>
-                        </TabsList>
-                        <TabsContent value="keywords">
-                          <KeywordAnalysisCard />
-                        </TabsContent>
-                        <TabsContent value="steps">
-                        
-                        </TabsContent>
-                      </Tabs> */}
                     </TabsContent>
                     <TabsContent value="response">
                       <div className="flex gap-4 items-center">
@@ -4300,6 +4310,73 @@ function DashboardContent() {
                       })()}
                     </TabsContent>
                     <TabsContent value="citations">
+                    <div className="flex gap-4 items-center mb-5">
+                        {/* Date Range Selection */}
+                        {new Date(selectedQuery.results[0]?.analysis_date).toLocaleString(undefined, {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          second: '2-digit',
+                          timeZoneName: 'short'
+                        })}
+
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="outline"
+                                className="w-full !border !border-accent md:w-fit"
+                              >
+                                {selectedModel.size === 0
+                                  ? "All Models"
+                                  : selectedModel.size === 1
+                                  ? Array.from(selectedModel)[0]
+                                  : `${selectedModel.size} models selected`}
+                                <span>
+                                  <ChevronDown className="w-4 h-4 opacity-40" />
+                                </span>
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent className="w-56">
+                              <DropdownMenuLabel>
+                                Filter by Model
+                              </DropdownMenuLabel>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuCheckboxItem
+                                checked={selectedModel.size === 0}
+                                onCheckedChange={(checked) => {
+                                  if (checked) {
+                                    setSelectedModel(new Set<string>([]));
+                                  }
+                                }}
+                              >
+                                All Models
+                              </DropdownMenuCheckboxItem>
+                              <ScrollArea className="max-h-[200px]">
+                                {analysis_models?.map((model: string) => (
+                                  <DropdownMenuCheckboxItem
+                                    key={model}
+                                    checked={selectedModel.has(model)}
+                                    onCheckedChange={(checked) => {
+                                      setSelectedModel((prev) => {
+                                        const newSelection = new Set(prev);
+                                        if (checked) {
+                                          newSelection.add(model);
+                                        } else {
+                                          newSelection.delete(model);
+                                        }
+                                        return newSelection;
+                                      });
+                                    }}
+                                  >
+                                    {model}
+                                  </DropdownMenuCheckboxItem>
+                                ))}
+                              </ScrollArea>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                      </div>
                       <CitationsCard
                         results={results || []}
                         selectedDateRange={selectedDateRange}

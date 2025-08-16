@@ -50,7 +50,7 @@ function MetricCard({
               <TooltipTrigger>
                 <Info className="w-4 h-4" />
               </TooltipTrigger>
-              <TooltipContent className="max-w-sm w-full">
+              <TooltipContent className="max-w-sm w-full bg-blue-600">
                 {tooltipLabel}
               </TooltipContent>
             </Tooltip>
@@ -1056,9 +1056,72 @@ export function MetricsHeader({
   const coverageRatioTrend = getCoverageRatioTrend();
   const mentionsTrend = getMentionsTrend();
 
+  // Calculate average rank from temporal brand data
+  const calculateAverageRank = () => {
+    if (!temporalBrands || temporalBrands.length === 0) return 0;
+    
+    const selectedBrandNames = Array.from(selectedBrand).map(name => name.toLowerCase());
+    
+    // Group temporal data by analysis_date
+    const dateGroups: { [date: string]: TemporalBrand[] } = {};
+    temporalBrands.forEach(item => {
+      if (!dateGroups[item.analysis_date]) {
+        dateGroups[item.analysis_date] = [];
+      }
+      dateGroups[item.analysis_date].push(item);
+    });
+    
+    let totalRank = 0;
+    let rankCount = 0;
+    
+    // For each date, calculate ranks and get average rank for selected brands
+    Object.values(dateGroups).forEach(dayData => {
+      // Sort brands by total_mentions descending to calculate ranks
+      const sortedBrands = [...dayData].sort((a, b) => b.total_mentions - a.total_mentions);
+      
+      // Calculate ranks (handling ties)
+      let currentRank = 1;
+      let previousMentions: number | null = null;
+      let rankCounter = 0;
+      
+      const brandsWithRanks = sortedBrands.map(brand => {
+        rankCounter++;
+        if (previousMentions !== null && brand.total_mentions !== previousMentions) {
+          currentRank = rankCounter;
+        }
+        previousMentions = brand.total_mentions;
+        
+        return {
+          ...brand,
+          rank: currentRank
+        };
+      });
+      
+      // Get ranks for selected brands on this date
+      brandsWithRanks.forEach(brand => {
+        if (selectedBrandNames.includes(brand.brand_name.toLowerCase())) {
+          totalRank += brand.rank;
+          rankCount++;
+        }
+      });
+    });
+    
+    return rankCount > 0 ? totalRank / rankCount : 0;
+  };
+
+  const averageRank = calculateAverageRank();
+
   return (
       <div className={`${className}  w-full`}>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 border rounded-t-lg overflow-hidden dark:border-accent border-[#e2e2e2]/70">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 border rounded-t-lg overflow-hidden dark:border-accent border-[#e2e2e2]/70">
+      <MetricCard
+          title="Average Position"
+          value={`${averageRank.toFixed(1)}`}
+          trend={undefined}
+          trendLabel="vs previous analysis"
+          className="border-b-4 !border-b-purple-500"
+          tooltipLabel="The average position rank is a measure of the position of the brand in the prompt analysis across all dates and models."
+        />
         <MetricCard
           title="Visibility Score"
           value={`${(
