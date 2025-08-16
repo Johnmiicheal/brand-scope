@@ -7,6 +7,7 @@ import { z } from "zod";
 import { countries } from "@/lib/countries";
 import { updateCreditUsage } from "@/lib/creditUsage";
 import { getAvailableModels, getConstraints } from "@/lib/constraints";
+import { posthogServer } from "@/lib/posthog-server";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -367,13 +368,27 @@ const StoredResultsSchema = z
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get("authorization");
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    await posthogServer.capture('cron-system', 'cron_unauthorized_access', {
+      endpoint: '/api/cron-process-query',
+      timestamp: new Date().toISOString(),
+    });
     return new Response("Unauthorized", {
       status: 401,
     });
   }
 
+  const cronStartTime = Date.now();
+  
   try {
     const now = new Date().toISOString();
+    
+    // Track cron job start
+    await posthogServer.capture('cron-system', 'cron_job_started', {
+      endpoint: '/api/cron-process-query',
+      timestamp: now,
+      batch_size: BATCH_SIZE,
+      concurrency_limit: CONCURRENCY_LIMIT,
+    });
     
     // Step 1: Get the total count of queries that need processing
     const { count, error: countError } = await supabase
@@ -384,6 +399,11 @@ export async function GET(req: NextRequest) {
 
     if (countError) {
       console.error("Error getting query count:", countError);
+      await posthogServer.captureError('cron-system', new Error(`Failed to get query count: ${countError.message}`), {
+        endpoint: '/api/cron-process-query',
+        error_code: countError.code,
+        error_details: countError.details,
+      });
       return NextResponse.json(
         { error: "Failed to get query count" },
         { status: 500 }
@@ -391,6 +411,12 @@ export async function GET(req: NextRequest) {
     }
 
     console.log(`Total queries to process: ${count}`);
+    
+    // Track query count metrics
+    await posthogServer.capture('cron-system', 'cron_queries_counted', {
+      total_queries: count || 0,
+      timestamp: now,
+    });
     
     // Step 2: Fetch just the first batch
     const { data: queries, error } = await supabase
@@ -403,6 +429,11 @@ export async function GET(req: NextRequest) {
 
     if (error) {
       console.error("Error fetching queries:", error);
+      await posthogServer.captureError('cron-system', new Error(`Failed to fetch queries: ${error.message}`), {
+        endpoint: '/api/cron-process-query',
+        error_code: error.code,
+        error_details: error.details,
+      });
       return NextResponse.json(
         { error: "Failed to fetch queries" },
         { status: 500 }
@@ -410,6 +441,13 @@ export async function GET(req: NextRequest) {
     }
 
     console.log(`Processing batch of ${queries.length} queries`);
+    
+    // Track batch processing start
+    await posthogServer.capture('cron-system', 'cron_batch_started', {
+      batch_size: queries.length,
+      total_remaining: count || 0,
+      unique_users: [...new Set(queries.map(q => q.user_id))].length,
+    });
 
     // Step 3: Process queries with concurrency control
     const results = [];
@@ -502,6 +540,26 @@ export async function GET(req: NextRequest) {
     console.log(`  ⚠️ Failed: ${failed}`);
     console.log(`  ❌ Errors: ${errors}`);
 
+    const cronDuration = Date.now() - cronStartTime;
+    
+    // Track comprehensive cron job completion
+    await posthogServer.capture('cron-system', 'cron_job_completed', {
+      endpoint: '/api/cron-process-query',
+      duration_ms: cronDuration,
+      total_queries: count || 0,
+      processed_queries: queries.length,
+      remaining_queries: count ? count - queries.length : 0,
+      successful_queries: successful,
+      paused_queries: paused,
+      failed_queries: failed,
+      error_queries: errors,
+      success_rate: queries.length > 0 ? (successful / queries.length * 100).toFixed(2) : 0,
+      unique_users_processed: [...new Set(queries.map(q => q.user_id))].length,
+      batch_size: BATCH_SIZE,
+      concurrency_limit: CONCURRENCY_LIMIT,
+      avg_processing_time_per_query: queries.length > 0 ? (cronDuration / queries.length).toFixed(2) : 0,
+    });
+
     return NextResponse.json({
       message: `Processed ${queries.length} queries`,
       total: count,
@@ -517,6 +575,15 @@ export async function GET(req: NextRequest) {
     });
   } catch (error: any) {
     console.error("Cron job error:", error);
+    const cronDuration = Date.now() - cronStartTime;
+    
+    // Track cron job failure
+    await posthogServer.captureError('cron-system', error, {
+      endpoint: '/api/cron-process-query',
+      duration_ms: cronDuration,
+      failure_point: 'cron_job_execution',
+    });
+    
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
@@ -528,6 +595,7 @@ async function processQueryDirectly(query: any) {
   // without making HTTP requests to your own API
 
   const now = new Date().toISOString();
+  const queryStartTime = Date.now();
   
   try {
     console.log(
@@ -535,6 +603,19 @@ async function processQueryDirectly(query: any) {
         query.mode || "Default"
       }`
     );
+    
+    // Track individual query processing start
+    await posthogServer.capture(query.user_id, 'cron_query_started', {
+      query_id: query.id,
+      query_text: query.query,
+      mode: query.mode || 'Default',
+      frequency: query.frequency,
+      location: query.location,
+      selected_models: query.selected_models,
+      credits_per_run: query.credits_per_run,
+      include_google_search: query.include_google_search,
+      timestamp: now,
+    });
 
     // Check if user has enough credits before processing
     console.log(`💳 Checking credits for user ${query.user_id}...`);
@@ -579,10 +660,29 @@ async function processQueryDirectly(query: any) {
     console.log(`  - Max credits: ${userConstraints.max_credits}`);
     console.log(`  - Credits required: ${creditsRequired}`);
     console.log(`  - Remaining: ${userConstraints.max_credits - currentUsage}`);
+    
+    // Track credit check details
+    await posthogServer.capture(query.user_id, 'cron_credit_check', {
+      query_id: query.id,
+      current_usage: currentUsage,
+      max_credits: userConstraints.max_credits,
+      credits_required: creditsRequired,
+      remaining_credits: userConstraints.max_credits - currentUsage,
+      product_name: productName,
+      subscription_status: subscription.status,
+    });
 
     // Check if user has enough credits
     if (currentUsage + creditsRequired > userConstraints.max_credits) {
       console.warn(`⚠️ User ${query.user_id} has insufficient credits. Pausing query ${query.id}`);
+      
+      // Track insufficient credits event
+      await posthogServer.capture(query.user_id, 'cron_query_paused_insufficient_credits', {
+        query_id: query.id,
+        current_usage: currentUsage,
+        max_credits: userConstraints.max_credits,
+        credits_required: creditsRequired,
+      });
       
       // Pause the query instead of processing it
       const { error: pauseError } = await supabase
@@ -614,6 +714,13 @@ async function processQueryDirectly(query: any) {
     // Check if subscription is active
     if (subscription.status !== 'active') {
       console.warn(`⚠️ User ${query.user_id} subscription is not active (${subscription.status}). Pausing query ${query.id}`);
+      
+      // Track inactive subscription event
+      await posthogServer.capture(query.user_id, 'cron_query_paused_inactive_subscription', {
+        query_id: query.id,
+        subscription_status: subscription.status,
+        product_name: productName,
+      });
       
       // Pause the query
       const { error: pauseError } = await supabase
@@ -1148,6 +1255,22 @@ async function processQueryDirectly(query: any) {
       throw new Error(`Failed to update query record: ${updateError.message}`);
     }
     
+    const queryDuration = Date.now() - queryStartTime;
+    
+    // Track successful query completion
+    await posthogServer.capture(query.user_id, 'cron_query_completed_successfully', {
+      query_id: query.id,
+      query_text: query.query,
+      duration_ms: queryDuration,
+      credits_used: query.credits_per_run || 1,
+      models_processed: selectedModels.length,
+      next_scheduled: nextAnalysisDate.toISOString(),
+      successful_models: finalModelResultsForDB.filter(r => r.status === 'fulfilled').length,
+      failed_models: finalModelResultsForDB.filter(r => r.status === 'rejected').length,
+      include_google_search: query.include_google_search,
+      mode: query.mode || 'Default',
+    });
+    
     return { 
       success: true, 
       queryId: query.id,
@@ -1157,6 +1280,17 @@ async function processQueryDirectly(query: any) {
     };
   } catch (error: any) {
     console.error(`Error in processQueryDirectly for query ${query.id}:`, error);
+    const queryDuration = Date.now() - queryStartTime;
+    
+    // Track query processing error
+    await posthogServer.captureError(query.user_id, error, {
+      query_id: query.id,
+      query_text: query.query,
+      duration_ms: queryDuration,
+      failure_point: 'query_processing',
+      mode: query.mode || 'Default',
+    });
+    
     throw error;
   }
 }

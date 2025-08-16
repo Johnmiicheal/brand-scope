@@ -8,6 +8,7 @@ import { NextResponse } from "next/server";
 import { countries } from "@/lib/countries";
 import { updateCreditUsage } from "@/lib/creditUsage";
 import { calculateCreditsRequired, getAvailableModels, getConstraints } from "@/lib/constraints";
+import { posthogServer } from "@/lib/posthog-server";
 
 // --- Supabase and AI Clients ---
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -1373,6 +1374,13 @@ async function processQuery(
 export async function POST(req: Request) {
   const now = new Date().toISOString();
   console.log(`POST /api/schedule-query received at ${now}`);
+  
+  // Track API endpoint usage
+  await posthogServer.capture('system', 'schedule_query_request', {
+    endpoint: '/api/schedule-query',
+    method: 'POST',
+    timestamp: now,
+  });
 
   try {
     const body = await req.json();
@@ -1441,6 +1449,14 @@ export async function POST(req: Request) {
       console.warn(
         `Attempt to add duplicate query "${query}" for user ${user_id}`
       );
+      
+      // Track duplicate query attempt
+      await posthogServer.capture(user_id, 'schedule_query_duplicate_attempt', {
+        query_text: query,
+        location: location || 'global',
+        existing_query_id: existingQuery.id,
+      });
+      
       return NextResponse.json(
         { error: `Query "${query}" already exists for this user.` },
         { status: 409 }
@@ -1488,8 +1504,28 @@ export async function POST(req: Request) {
       );
     }
 
+    // Track successful query creation
+    await posthogServer.capture(user_id, 'schedule_query_created', {
+      query_id: newQueryData.id,
+      query_text: query,
+      frequency: frequency,
+      mode: mode || 'Default',
+      location: location || 'global',
+      selected_models: modelsToUse,
+      credits_per_run: creditsRequired,
+      include_google_search: include_google_search,
+      attached_brand_name: attached_brand_name || null,
+    });
+
     // --- Process New Query Immediately ---
     console.log(`Running initial analysis for new query ${newQueryData.id}...`);
+    
+    // Track initial analysis start
+    await posthogServer.capture(user_id, 'schedule_query_initial_analysis_started', {
+      query_id: newQueryData.id,
+      query_text: query,
+    });
+    
     try {
       // Pass the essential parts of the new query data
       const {
@@ -1523,6 +1559,14 @@ export async function POST(req: Request) {
         now,
       );
       console.log(`Initial analysis complete for query ${newQueryData.id}`);
+      
+      // Track successful initial analysis
+      await posthogServer.capture(user_id, 'schedule_query_initial_analysis_completed', {
+        query_id: newQueryData.id,
+        query_text: query,
+        credits_used: creditsRequired,
+        models_count: modelsToUse.length,
+      });
 
       // Return success with the initial analysis results
       return NextResponse.json(
@@ -1538,6 +1582,15 @@ export async function POST(req: Request) {
         `Initial analysis failed for query ${newQueryData.id}:`,
         analysisError
       );
+      
+      // Track failed initial analysis
+      await posthogServer.captureError(user_id, analysisError, {
+        query_id: newQueryData.id,
+        query_text: query,
+        failure_point: 'initial_analysis',
+        credits_allocated: creditsRequired,
+      });
+      
       // Query was created, but analysis failed. Return a success but with a warning.
       return NextResponse.json(
         {
@@ -1550,6 +1603,15 @@ export async function POST(req: Request) {
     }
   } catch (error: any) {
     console.error("Error processing POST request:", error);
+    
+    // Track general API errors
+    await posthogServer.captureError('system', error, {
+      endpoint: '/api/schedule-query',
+      method: 'POST',
+      failure_point: 'request_processing',
+      error_type: error instanceof SyntaxError ? 'syntax_error' : 'general_error',
+    });
+    
     // Handle JSON parsing errors or other unexpected issues
     if (error instanceof SyntaxError) {
       return NextResponse.json(

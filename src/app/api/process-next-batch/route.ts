@@ -8,6 +8,7 @@ import { z } from "zod";
 import { countries } from "@/lib/countries";
 import { updateCreditUsage } from "@/lib/creditUsage";
 import { getAvailableModels, getConstraints } from "@/lib/constraints";
+import { posthogServer } from "@/lib/posthog-server";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -612,10 +613,16 @@ export async function POST(req: NextRequest) {
   // Verify authorization
   const authHeader = req.headers.get("authorization");
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    await posthogServer.capture('cron-system', 'next_batch_unauthorized_access', {
+      endpoint: '/api/process-next-batch',
+      timestamp: new Date().toISOString(),
+    });
     return new Response("Unauthorized", {
       status: 401,
     });
   }
+
+  const batchStartTime = Date.now();
 
   try {
     // Parse request body
@@ -623,6 +630,15 @@ export async function POST(req: NextRequest) {
     const { batchSize = 10, offset = 0 } = body;
 
     const now = new Date().toISOString();
+    
+    // Track next batch processing start
+    await posthogServer.capture('cron-system', 'next_batch_started', {
+      endpoint: '/api/process-next-batch',
+      batch_size: batchSize,
+      offset: offset,
+      timestamp: now,
+      concurrency_limit: CONCURRENCY_LIMIT,
+    });
     
     // Fetch the next batch of queries
     const { data: queries, error } = await supabase
@@ -635,6 +651,13 @@ export async function POST(req: NextRequest) {
 
     if (error) {
       console.error("Error fetching next batch of queries:", error);
+      await posthogServer.captureError('cron-system', new Error(`Failed to fetch next batch queries: ${error.message}`), {
+        endpoint: '/api/process-next-batch',
+        batch_size: batchSize,
+        offset: offset,
+        error_code: error.code,
+        error_details: error.details,
+      });
       return NextResponse.json(
         { error: "Failed to fetch queries" },
         { status: 500 }
@@ -642,6 +665,14 @@ export async function POST(req: NextRequest) {
     }
 
     console.log(`Processing next batch of ${queries.length} queries`);
+    
+    // Track batch metrics
+    await posthogServer.capture('cron-system', 'next_batch_queries_fetched', {
+      batch_size: queries.length,
+      requested_batch_size: batchSize,
+      offset: offset,
+      unique_users: [...new Set(queries.map(q => q.user_id))].length,
+    });
 
     // Process queries with concurrency control
     const results = [];
@@ -681,8 +712,33 @@ export async function POST(req: NextRequest) {
       .lte("next_analysis_at", now)
       .eq("status", "active");
 
+    const batchDuration = Date.now() - batchStartTime;
+    const successful = results.filter(r => r.status === "success").length;
+    const errors = results.filter(r => r.status === "error").length;
+    
+    // Track batch completion
+    await posthogServer.capture('cron-system', 'next_batch_completed', {
+      endpoint: '/api/process-next-batch',
+      duration_ms: batchDuration,
+      batch_size: queries.length,
+      offset: offset,
+      successful_queries: successful,
+      error_queries: errors,
+      success_rate: queries.length > 0 ? (successful / queries.length * 100).toFixed(2) : 0,
+      unique_users_processed: [...new Set(queries.map(q => q.user_id))].length,
+      concurrency_limit: CONCURRENCY_LIMIT,
+      avg_processing_time_per_query: queries.length > 0 ? (batchDuration / queries.length).toFixed(2) : 0,
+    });
+    
     if (!countError && count && count > offset + batchSize) {
       console.log(`Scheduling next batch. ${count - (offset + batchSize)} queries remaining.`);
+      
+      // Track scheduling of next batch
+      await posthogServer.capture('cron-system', 'next_batch_chained', {
+        remaining_queries: count - (offset + batchSize),
+        next_offset: offset + batchSize,
+        batch_size: batchSize,
+      });
       
       // Trigger the next batch asynchronously
       fetch(`${process.env.BASE_SYSTEM_URL || "http://localhost:3000" }/api/process-next-batch`, {
@@ -697,6 +753,11 @@ export async function POST(req: NextRequest) {
         }),
       }).catch(error => {
         console.error("Failed to schedule next batch:", error);
+        // Track chain failure
+        posthogServer.captureError('cron-system', error, {
+          failure_point: 'next_batch_chain',
+          intended_offset: offset + batchSize,
+        });
       });
     }
 
@@ -707,6 +768,15 @@ export async function POST(req: NextRequest) {
     });
   } catch (error: any) {
     console.error("Error processing next batch:", error);
+    const batchDuration = Date.now() - batchStartTime;
+    
+    // Track next batch processing failure
+    await posthogServer.captureError('cron-system', error, {
+      endpoint: '/api/process-next-batch',
+      duration_ms: batchDuration,
+      failure_point: 'next_batch_execution',
+    });
+    
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
@@ -714,6 +784,7 @@ export async function POST(req: NextRequest) {
 // This function processes a query directly
 async function processQueryDirectly(query: any) {
   const now = new Date().toISOString();
+  const queryStartTime = Date.now();
   
   try {
     console.log(
@@ -721,6 +792,20 @@ async function processQueryDirectly(query: any) {
         query.mode || "Default"
       }`
     );
+    
+    // Track individual query processing start in next batch
+    await posthogServer.capture(query.user_id, 'next_batch_query_started', {
+      query_id: query.id,
+      query_text: query.query,
+      mode: query.mode || 'Default',
+      frequency: query.frequency,
+      location: query.location,
+      selected_models: query.selected_models,
+      credits_per_run: query.credits_per_run,
+      include_google_search: query.include_google_search,
+      timestamp: now,
+      source: 'next_batch_processing',
+    });
 
     // Check if user has enough credits before processing
     console.log(`💳 Checking credits for user ${query.user_id}...`);
@@ -765,10 +850,31 @@ async function processQueryDirectly(query: any) {
     console.log(`  - Max credits: ${userConstraints.max_credits}`);
     console.log(`  - Credits required: ${creditsRequired}`);
     console.log(`  - Remaining: ${userConstraints.max_credits - currentUsage}`);
+    
+    // Track credit check details
+    await posthogServer.capture(query.user_id, 'next_batch_credit_check', {
+      query_id: query.id,
+      current_usage: currentUsage,
+      max_credits: userConstraints.max_credits,
+      credits_required: creditsRequired,
+      remaining_credits: userConstraints.max_credits - currentUsage,
+      product_name: productName,
+      subscription_status: subscription.status,
+      source: 'next_batch_processing',
+    });
 
     // Check if user has enough credits
     if (currentUsage + creditsRequired > userConstraints.max_credits) {
       console.warn(`⚠️ User ${query.user_id} has insufficient credits. Pausing query ${query.id}`);
+      
+      // Track insufficient credits event in next batch
+      await posthogServer.capture(query.user_id, 'next_batch_query_paused_insufficient_credits', {
+        query_id: query.id,
+        current_usage: currentUsage,
+        max_credits: userConstraints.max_credits,
+        credits_required: creditsRequired,
+        source: 'next_batch_processing',
+      });
       
       // Pause the query instead of processing it
       const { error: pauseError } = await supabase
@@ -800,6 +906,14 @@ async function processQueryDirectly(query: any) {
     // Check if subscription is active
     if (subscription.status !== 'active') {
       console.warn(`⚠️ User ${query.user_id} subscription is not active (${subscription.status}). Pausing query ${query.id}`);
+      
+      // Track inactive subscription event in next batch
+      await posthogServer.capture(query.user_id, 'next_batch_query_paused_inactive_subscription', {
+        query_id: query.id,
+        subscription_status: subscription.status,
+        product_name: productName,
+        source: 'next_batch_processing',
+      });
       
       // Pause the query
       const { error: pauseError } = await supabase
@@ -1331,6 +1445,23 @@ async function processQueryDirectly(query: any) {
       throw new Error(`Failed to update query record: ${updateError.message}`);
     }
     
+    const queryDuration = Date.now() - queryStartTime;
+    
+    // Track successful query completion in next batch
+    await posthogServer.capture(query.user_id, 'next_batch_query_completed_successfully', {
+      query_id: query.id,
+      query_text: query.query,
+      duration_ms: queryDuration,
+      credits_used: query.credits_per_run || 1,
+      models_processed: selectedModels.length,
+      next_scheduled: nextAnalysisDate.toISOString(),
+      successful_models: finalModelResultsForDB.filter(r => r.status === 'fulfilled').length,
+      failed_models: finalModelResultsForDB.filter(r => r.status === 'rejected').length,
+      include_google_search: query.include_google_search,
+      mode: query.mode || 'Default',
+      source: 'next_batch_processing',
+    });
+    
     return { 
       success: true, 
       queryId: query.id,
@@ -1340,6 +1471,18 @@ async function processQueryDirectly(query: any) {
     };
   } catch (error: any) {
     console.error(`Error in processQueryDirectly for query ${query.id}:`, error);
+    const queryDuration = Date.now() - queryStartTime;
+    
+    // Track query processing error in next batch
+    await posthogServer.captureError(query.user_id, error, {
+      query_id: query.id,
+      query_text: query.query,
+      duration_ms: queryDuration,
+      failure_point: 'next_batch_query_processing',
+      mode: query.mode || 'Default',
+      source: 'next_batch_processing',
+    });
+    
     throw error;
   }
 }
