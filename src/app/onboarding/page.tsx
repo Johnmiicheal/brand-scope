@@ -101,6 +101,10 @@ export default function OnboardingPage() {
     useState<KeywordAnalysisResultsProps | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [manualKeyword, setManualKeyword] = useState("");
+  const [manualLanguage, setManualLanguage] = useState("");
+  const [manualLocation, setManualLocation] = useState("");
+  const [isManualAnalyzing, setIsManualAnalyzing] = useState(false);
 
 
   // Update time every second
@@ -116,7 +120,7 @@ export default function OnboardingPage() {
   useEffect(() => {
     let interval: NodeJS.Timeout | undefined = undefined;
 
-    if (isAnalyzing) {
+    if (isAnalyzing || isManualAnalyzing) {
       interval = setInterval(() => {
         setElapsedSeconds((prevSeconds) => prevSeconds + 1);
       }, 1000);
@@ -129,7 +133,7 @@ export default function OnboardingPage() {
         clearInterval(interval);
       }
     };
-  }, [isAnalyzing]);
+  }, [isAnalyzing, isManualAnalyzing]);
 
   const formatTime = (totalSeconds: number): string => {
     if (totalSeconds < 0) return "0s";
@@ -185,8 +189,8 @@ export default function OnboardingPage() {
         setSessionKey(session.access_token || "");
         setUser(session.user);
         // If user is logged in and still on step 0 or 1, move to step 2 (brand creation)
-        if (onboardingStep === 0 || onboardingStep === 1) {
-          setOnboardingStep(2);
+        if (onboardingStep === 0 ) {
+          setOnboardingStep(1);
         }
         setSubLoading(false);
       }
@@ -244,7 +248,7 @@ export default function OnboardingPage() {
 
         setUser(authData.user);
         setSessionKey(authData.session?.access_token || "");
-        setOnboardingStep(2); // Move to brand creation
+        setOnboardingStep(1); // Move to brand creation
         toast.success("Account created! Now let's set up your brand.");
       }
     } catch (error: unknown) {
@@ -265,6 +269,10 @@ export default function OnboardingPage() {
   const handleSkip = () => {
     if (onboardingStep === 0) {
       setSelectedPlan("free");
+    } else if (onboardingStep === 4) {
+      // Skip payment step - redirect directly to dashboard
+      router.push('/dashboard');
+      return;
     }
     setOnboardingStep((prev) => prev + 1);
   };
@@ -389,6 +397,54 @@ export default function OnboardingPage() {
       console.error("Keyword analysis error:", err);
     } finally {
       setIsAnalyzing(false);
+    }
+  };
+
+  const handleManualKeywordAnalysis = async () => {
+    if (!manualKeyword.trim()) {
+      toast.error("Please enter a keyword to analyze");
+      return;
+    }
+
+    setIsManualAnalyzing(true);
+
+    try {
+      const response = await fetch("/api/keywords-analysis", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          businessBrief: "",
+          keyword: manualKeyword.trim(),
+          website: "",
+          language: manualLanguage,
+          user: user,
+          location: manualLocation,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        toast.error(
+          data.error || `Request failed with status ${response.status}`
+        );
+        return;
+      }
+
+      if (data.success && data.data) {
+        setKeywordResults(data.data);
+        toast.success(`Keyword analysis completed!`);
+        // Stay on step 2 to show the keyword results - user will manually proceed
+      } else {
+        toast.error("Invalid response format from analysis service");
+      }
+    } catch (err: unknown) {
+      const errorMessage =
+        err instanceof Error ? err.message : "An unexpected error occurred.";
+      toast.error(errorMessage);
+      console.error("Keyword analysis error:", err);
+    } finally {
+      setIsManualAnalyzing(false);
     }
   };
 
@@ -847,22 +903,116 @@ export default function OnboardingPage() {
               </div>
             ) : (
               <div className="text-center">
-                <p className="text-gray-400 mb-4">
-                  Keyword research is available only if you create a brand. So go back to the previous step to create your brand and get keywords
+                <p className="text-gray-400 mb-6">
+                  Since you skipped brand creation, you can manually enter a keyword to analyze
                 </p>
-                <div className="flex justify-center gap-5">
+                
+                {!isManualAnalyzing ? (
+                  <div className="max-w-md mx-auto mb-8">
+                    <div className="space-y-4">
+                      <div className="grid gap-2">
+                        <Label htmlFor="manual-keyword">Enter a keyword to analyze</Label>
+                        <Input
+                          id="manual-keyword"
+                          type="text"
+                          value={manualKeyword}
+                          onChange={(e) => setManualKeyword(e.target.value)}
+                          placeholder="e.g., digital marketing, AI tools, fitness apps"
+                          className="bg-zinc-800"
+                          onKeyPress={(e) => {
+                            if (e.key === 'Enter') {
+                              handleManualKeywordAnalysis();
+                            }
+                          }}
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="manual-language">Language</Label>
+                        <Select
+                          value={manualLanguage}
+                          onValueChange={(value) => setManualLanguage(value)}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Select a language" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="en">English</SelectItem>
+                            <SelectItem value="es">Spanish</SelectItem>
+                            <SelectItem value="fr">French</SelectItem>
+                            <SelectItem value="de">German</SelectItem>
+                            <SelectItem value="it">Italian</SelectItem>
+                            <SelectItem value="pt">Portuguese</SelectItem>
+                            <SelectItem value="ru">Russian</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="manual-location">Location</Label>
+                        <Input
+                          id="manual-location"
+                          type="text"
+                          value={manualLocation}
+                          onChange={(e) => setManualLocation(e.target.value)}
+                          placeholder="e.g., United States, Mexico"
+                          className="bg-zinc-800"
+                        />
+                      </div>
+                    </div>
+                    
+                    
+                    <Button
+                      onClick={handleManualKeywordAnalysis}
+                      disabled={!manualKeyword.trim()}
+                      className="w-full bg-blue-600 hover:bg-blue-700 mt-6"
+                    >
+                      Analyze Keyword
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center min-h-[300px]">
+                    <div className="w-full items-center justify-center flex flex-col max-w-3xl">
+                      <Image
+                        src="/icons/air-icon-light.svg"
+                        alt="Loading"
+                        width={70}
+                        height={70}
+                        className="mb-6 animate-[spin_4s_linear_infinite]"
+                      />
+                      <h1 className="text-2xl font-bold mb-6 text-center">
+                        Analyzing &quot;{manualKeyword}&quot;
+                      </h1>
+                      <p className="!text-[#b5b5b5a4] mb-3 max-w-lg mx-auto">
+                        We are finding relevant keywords and analyzing their potential for your use case.
+                      </p>
+                      <ShinyText
+                        text="This will only take a few seconds..."
+                        disabled={false}
+                        speed={3}
+                        className="font-medium text-sm"
+                      />
+                      <div className="text-xs text-gray-500 my-3 flex items-center bg-zinc-800/50 rounded-full p-2">
+                        <Clock className="w-4 h-4 mr-2" />
+                        {formatTime(elapsedSeconds)}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                <div className="flex justify-center gap-5 mt-6">
                   <Button
-                    onClick={() => setOnboardingStep(2)}
+                    onClick={() => setOnboardingStep(1)}
                     variant="outline"
+                    disabled={isManualAnalyzing}
                   >
                     Go Back
                   </Button>
                   <Button
-                    onClick={() => setOnboardingStep(4)}
+                    onClick={() => setOnboardingStep(3)}
                     variant="outline"
                     className="rounded-full"
+                    disabled={isManualAnalyzing}
                   >
-                    Jump to payments
+                    Skip to Plan Selection
                   </Button>
                 </div>
               </div>
@@ -975,9 +1125,11 @@ export default function OnboardingPage() {
             <h2 className="text-3xl font-bold text-gray-300 mb-4">
               Setup Monitoring & Payment
             </h2>
-            <p className="text-gray-500 mb-8 max-w-2xl mx-auto">
+            <p className="text-gray-500 mb-4 max-w-2xl mx-auto">
               Complete your setup and view your monitored keywords by activating your subscription.
             </p>
+            
+           
 
             <div className="mb-8">
               <SubsCard
@@ -1001,6 +1153,23 @@ export default function OnboardingPage() {
                 settings.
               </p>
             </div>
+            <div className="bg-zinc-800/30 border border-zinc-800 rounded-lg p-4 mb-6 max-w-2xl mx-auto">
+              <h4 className="text-sm font-semibold text-gray-300 mb-2">What you get with a subscription:</h4>
+              <div className="grid grid-cols-2 gap-3 text-sm text-gray-400 text-start">
+                <div className="space-y-1">
+                  <div>• Ongoing keyword monitoring and alerts</div>
+                  <div>• Advanced brand analysis and insights</div>
+                  <div>• Competitor tracking and analysis</div>
+                </div>
+                <div className="space-y-1">
+                  <div>• Access to premium AI models</div>
+                  <div>• Priority support and updates</div>
+                </div>
+              </div>
+              <p className="text-xs text-gray-500 mt-3">
+                <strong>Skip payment?</strong> You can explore the dashboard with limited access and upgrade anytime from settings.
+              </p>
+            </div>
 
             <div className="max-w-md mx-auto flex gap-4">
               <Button variant="outline" className="rounded-full" onClick={() => setOnboardingStep(3)}>Change Plan</Button>
@@ -1009,6 +1178,16 @@ export default function OnboardingPage() {
                 userId={user?.id || ""}
                 buttonText="Complete Payment & Access Dashboard"
               />
+            </div>
+            
+            <div className="mt-6">
+              <Button
+                variant="ghost"
+                onClick={handleSkip}
+                className="text-gray-400 hover:text-gray-200"
+              >
+                Skip for now - View dashboard with limited access
+              </Button>
             </div>
           </div>
         )}

@@ -723,13 +723,12 @@ function DashboardContent() {
           );
         }
 
-        const data = await response.json();
-        const filteredDataByMyBrand = data.monitoring.filter((item: any) =>
-          item?.attached_brand_id?.includes(currentBrand?.id)
-        );
-        console.log("filteredDataByMyBrand: ", filteredDataByMyBrand);
+        const data = await response.json();        
 
         if (data && data.monitoring) {
+          const filteredDataByMyBrand = data.monitoring.filter((item: any) =>
+            item?.attached_brand_id?.includes(currentBrand?.id)
+          );
           if (currentBrand) {
             setQueries(filteredDataByMyBrand);
             // If we have a selectedQueryId from URL, find and select that query
@@ -753,6 +752,7 @@ function DashboardContent() {
               setSelectedQuery(data.monitoring[0]);
             }
           }
+          console.log("filteredDataByMyBrand: ", filteredDataByMyBrand);
           setIsLoading(false);
         } else {
           setQueries([]);
@@ -3181,9 +3181,16 @@ function DashboardContent() {
             (image, index) => (
               <div
                 key={index}
-                className="flex md:w-[580px] h-[320px] border rounded-[25px] p-2 flex-col items-start gap-2 justify-start group"
+                onClick={() => {
+                  if (index === 0) {
+                    window.location.assign("/dashboard/search?monitoring=true");
+                  } else {
+                    window.location.assign("/dashboard/keywords");
+                  }
+                }}
+                className="flex md:w-[580px] h-[420px] p-2 flex-col items-start gap-2 justify-start group cursor-pointer"
               >
-                <div className="overflow-hidden rounded-[20px] border w-full h-full transition-all duration:300">
+                <div className="overflow-hidden  border w-full h-full transition-all duration:300">
                   <Image
                     key={index}
                     src={image}
@@ -3193,7 +3200,7 @@ function DashboardContent() {
                     className="grayscale object-cover group-hover:grayscale-0 group-hover:scale-95 transition-all duration-300"
                   />
                 </div>
-                <div className="p-2">
+                <div>
                   <h2 className="text-lg font-medium">
                     {index === 0 ? "Search and Monitor" : "Keyword Analysis"}
                   </h2>

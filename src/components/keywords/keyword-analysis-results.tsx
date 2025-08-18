@@ -716,6 +716,7 @@ export function KeywordAnalysisResults({
                   </div>
 
                   {/* Brand Selection */}
+                  {availableBrands.length > 0 && (
                   <div className="space-y-2 w-full">
                     <label className="text-sm font-medium">Brand</label>
                     <Select
@@ -732,7 +733,7 @@ export function KeywordAnalysisResults({
                       </SelectTrigger>
                       <SelectContent>
                         {availableBrands.length === 0 ? (
-                          <SelectItem value="" disabled>
+                          <SelectItem value="N/A" disabled>
                             No brands available
                           </SelectItem>
                         ) : (
@@ -745,6 +746,7 @@ export function KeywordAnalysisResults({
                       </SelectContent>
                     </Select>
                   </div>
+                  )}
 
                   <div className="flex gap-5 w-full items-center justify-between">
                     <div className="space-y-2 w-full">
