@@ -5,7 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { v4 as uuidv4 } from "uuid";
 import { useEffect, useRef, useState } from "react";
 
-import { Check, Clock } from "lucide-react";
+import { Check, Clock, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRouter, useSearchParams } from "next/navigation";
 import { UserSubscription } from "@/hooks/useAuth";
@@ -39,7 +39,7 @@ import {
   Kimi,
 } from "@lobehub/icons";
 import { countries } from "@/lib/countries";
-import { plans } from "@/lib/utils";
+import { cn, plans } from "@/lib/utils";
 import { INDUSTRIES } from "@/lib/utils";
 import ShinyText from "@/components/ui/shiny-text";
 import { KeywordAnalysisResults } from "@/components/keywords/keyword-analysis-results";
@@ -71,12 +71,40 @@ type KeywordAnalysisResultsProps = {
   metadata: Array<{ language: string; country: string }>;
 };
 
+type AutofillData = {
+  logoUrl: string;
+  industry: string;
+  businessSubcategory: string;
+  brandVoice: string;
+  businessEntity: {
+    type: string;
+    description: string;
+    offering: string;
+  };
+  mainLanguage: string;
+  mainCountry: string;
+  otherCountries: string[];
+  competitors: string[];
+  brandName: string;
+  brandNameVariations: string[];
+  brandWebsiteUrl: string;
+  brandCallToAction: string;
+  brandSocialMediaUrl: {
+    linkedin: string;
+    youtube: string;
+    meta: string;
+    instagram: string;
+    x: string;
+    tiktok: string;
+  };
+};
+
 export default function OnboardingPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const email = searchParams.get("email");  
   const domain = searchParams.get("domain");
-  const step = searchParams.get("step");
+  const step = searchParams.get("step") || "0";
   const [onboardingStep, setOnboardingStep] = useState(parseInt(step!));
   const [selectedPlan, setSelectedPlan] = useState("");
   const [password, setPassword] = useState("");
@@ -105,6 +133,8 @@ export default function OnboardingPage() {
   const [manualLanguage, setManualLanguage] = useState("");
   const [manualLocation, setManualLocation] = useState("");
   const [isManualAnalyzing, setIsManualAnalyzing] = useState(false);
+  const [autofillData, setAutofillData] = useState<AutofillData | null>(null);
+  const [isLoadingAutofill, setIsLoadingAutofill] = useState(false);
 
 
   // Update time every second
@@ -250,6 +280,11 @@ export default function OnboardingPage() {
         setSessionKey(authData.session?.access_token || "");
         setOnboardingStep(1); // Move to brand creation
         toast.success("Account created! Now let's set up your brand.");
+
+        // Fetch autofill data using domain from email
+        if (domain) {
+          await fetchAutofillData(`${domain}`);
+        }
       }
     } catch (error: unknown) {
       const errorMessage =
@@ -264,6 +299,59 @@ export default function OnboardingPage() {
 
   const handleNextStep = () => {
     setOnboardingStep((prev) => prev + 1);
+  };
+
+  // Function to fetch autofill data from our API
+  const fetchAutofillData = async (websiteUrl: string) => {
+    if (!websiteUrl) return;
+
+    setIsLoadingAutofill(true);
+    try {
+      const response = await fetch("/api/onboarding-autofill", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          website: websiteUrl,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        setAutofillData(result.data);
+        // Auto-fill form fields
+        if (result.data.brandName) setBrandName(result.data.brandName);
+        if (result.data.brandWebsiteUrl) setBrandWebsite(result.data.brandWebsiteUrl);
+        if (result.data.industry) setBrandIndustry(result.data.industry);
+        if (result.data.mainCountry) setBrandLocation(result.data.mainCountry);
+        if (result.data.mainLanguage) {
+          // Map full language names to language codes
+          const languageMap: { [key: string]: string } = {
+            "English": "en",
+            "Spanish": "es",
+            "French": "fr",
+            "German": "de",
+            "Italian": "it",
+            "Portuguese": "pt",
+            "Russian": "ru"
+          };
+          setBrandLanguage(languageMap[result.data.mainLanguage] || "en");
+        }
+        if (result.data.logoUrl) setBrandLogoPreview(result.data.logoUrl);
+        
+        toast.success("Brand information auto-filled!");
+      } else {
+        console.error("Failed to fetch autofill data:", result.error);
+        toast.error("Failed to auto-fill brand information");
+      }
+    } catch (error) {
+      console.error("Error fetching autofill data:", error);
+      toast.error("Failed to auto-fill brand information");
+    } finally {
+      setIsLoadingAutofill(false);
+    }
   };
 
   const handleSkip = () => {
@@ -667,8 +755,8 @@ export default function OnboardingPage() {
                 </div>
               </div>
             ) : (
-              <div className="max-w-md mx-auto mb-8 flex items-center justify-center">
-                <div className="sm:max-w-[500px] border-accent">
+              <div className="max-w-xl mx-auto mb-8 flex flex-col items-center justify-center">
+                <div className={cn("sm:max-w-[500px] border-accent transition-all duration-400", isLoadingAutofill && "opacity-30 cursor-not-allowed pointer-events-none hidden")}>
                   <div className="space-y-4 w-full">
                     <div className="grid gap-6">
                       <div className="grid gap-2">
@@ -840,13 +928,140 @@ export default function OnboardingPage() {
                     {submitting ? "Creating..." : "Create Brand"}
                   </Button>
                 </div>
+
+                {/* Additional Information from Autofill */}
+                {(isLoadingAutofill || autofillData) && (
+                  <div className="max-w-5xl w-full mx-auto mt-8 px-6 flex flex-col items-center justify-center">
+                    {isLoadingAutofill ? (
+                      <div className="text-center items-center gap-4 flex flex-col">
+                        <Loader2 className="animate-spin w-6 h-6 text-blue-500" />
+                        <p className="text-gray-400 shiny-text">Fetching brand information...</p>
+                      </div>
+                    ) : autofillData && (
+                      <div className="space-y-6">
+                        <h3 className="text-xl font-semibold text-gray-200 mb-4">Additional Brand Information</h3>
+                        
+                        {/* Company Description */}
+                        {autofillData.businessEntity?.description && (
+                          <div>
+                            <h4 className="text-sm font-medium text-gray-300 mb-2">Company Description</h4>
+                            <p className="text-gray-400 text-sm leading-relaxed">
+                              {autofillData.businessEntity.description}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Social Media Links */}
+                        {autofillData.brandSocialMediaUrl && Object.values(autofillData.brandSocialMediaUrl).some(url => url) && (
+                          <div>
+                            <h4 className="text-sm font-medium text-gray-300 mb-2">Social Media</h4>
+                            <div className="flex items-center justify-center flex-wrap gap-2">
+                              {autofillData.brandSocialMediaUrl.linkedin && (
+                                <a 
+                                  href={autofillData.brandSocialMediaUrl.linkedin} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="bg-zinc-700 px-3 py-1 rounded-full text-xs text-blue-400 hover:bg-zinc-600 transition-colors"
+                                >
+                                  LinkedIn
+                                </a>
+                              )}
+                              {autofillData.brandSocialMediaUrl.x && (
+                                <a 
+                                  href={autofillData.brandSocialMediaUrl.x} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="bg-zinc-700 px-3 py-1 rounded-full text-xs text-blue-400 hover:bg-zinc-600 transition-colors"
+                                >
+                                  X (Twitter)
+                                </a>
+                              )}
+                              {autofillData.brandSocialMediaUrl.youtube && (
+                                <a 
+                                  href={autofillData.brandSocialMediaUrl.youtube} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="bg-zinc-700 px-3 py-1 rounded-full text-xs text-blue-400 hover:bg-zinc-600 transition-colors"
+                                >
+                                  YouTube
+                                </a>
+                              )}
+                              {autofillData.brandSocialMediaUrl.meta && (
+                                <a 
+                                  href={autofillData.brandSocialMediaUrl.meta} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="bg-zinc-700 px-3 py-1 rounded-full text-xs text-blue-400 hover:bg-zinc-600 transition-colors"
+                                >
+                                  Facebook
+                                </a>
+                              )}
+                              {autofillData.brandSocialMediaUrl.instagram && (
+                                <a 
+                                  href={autofillData.brandSocialMediaUrl.instagram} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="bg-zinc-700 px-3 py-1 rounded-full text-xs text-blue-400 hover:bg-zinc-600 transition-colors"
+                                >
+                                  Instagram
+                                </a>
+                              )}
+                              {autofillData.brandSocialMediaUrl.tiktok && (
+                                <a 
+                                  href={autofillData.brandSocialMediaUrl.tiktok} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="bg-zinc-700 px-3 py-1 rounded-full text-xs text-blue-400 hover:bg-zinc-600 transition-colors"
+                                >
+                                  TikTok
+                                </a>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Competitors */}
+                        {autofillData.competitors && autofillData.competitors.length > 0 && (
+                          <div>
+                            <h4 className="text-sm font-medium text-gray-300 mb-2">Competitors</h4>
+                            <div className="flex items-center justify-center flex-wrap gap-2">
+                              {autofillData.competitors.slice(0, 8).map((competitor, index) => (
+                                <span 
+                                  key={index}
+                                  className="bg-zinc-700 px-3 py-1 rounded-full text-xs text-gray-300"
+                                >
+                                  {competitor}
+                                </span>
+                              ))}
+                              {autofillData.competitors.length > 8 && (
+                                <span className="bg-zinc-700 px-3 py-1 rounded-full text-xs text-gray-400">
+                                  +{autofillData.competitors.length - 8} more
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Brand Voice */}
+                        {autofillData.brandVoice && (
+                          <div>
+                            <h4 className="text-sm font-medium text-gray-300 mb-2">Brand Voice</h4>
+                            <p className="text-gray-400 text-sm leading-relaxed">
+                              {autofillData.brandVoice}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
             <div className="flex justify-between mt-8">
               <Button
                 variant="ghost"
-                onClick={() => setOnboardingStep(1)}
+                onClick={() => setOnboardingStep(0)}
                 disabled={isAnalyzing}
               >
                 ← Back

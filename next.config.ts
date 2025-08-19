@@ -11,6 +11,11 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'cdn.brandfetch.io',
         pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'image-save-1029-final.s3.amazonaws.com',
+        pathname: '/**',
       }
     ],
   },
