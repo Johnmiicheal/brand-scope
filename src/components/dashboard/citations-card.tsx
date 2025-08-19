@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
-import { Claude, DeepMind, Gemini, OpenAI, Perplexity } from "@lobehub/icons";
+import { Claude, DeepMind, Gemini, Google, OpenAI, Perplexity } from "@lobehub/icons";
 import { safeGetHostname } from "@/lib/utils";
 
 interface Citation {
@@ -59,9 +59,11 @@ const modelIcons: Record<
   "GPT 4.1": OpenAI,
   "GPT 4o Web Search": OpenAI,
   "Claude 3.5 Sonnet": Claude,
-  "Perplexity Sonar": Perplexity,
-  "Gemini 2.0 Flash": Gemini,
-  "Google AI Overview": Gemini.Color,
+  "Claude 4.0 Sonnet": Claude.Color,
+  "Perplexity Sonar": Perplexity.Color,
+  "Gemini 2.0 Flash": Gemini.Color,
+  "Gemini 2.5 Flash": Gemini.Color,
+  "Google AI Overview": Google.Color,
   "Google AI Mode": DeepMind.Color,
 };
 

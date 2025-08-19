@@ -11,7 +11,8 @@ import {
   Loader2,
   FileText,
   Globe,
-  Target
+  Target,
+  Languages
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -178,7 +179,6 @@ export default function KeywordAnalysisDetailPage() {
           >
             <ArrowLeft className="w-4 h-4" />
           </Button>
-          <Bot className="w-8 h-8 text-primary" />
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Keyword Analysis Results</h1>
             <p className="text-muted-foreground">
@@ -198,7 +198,7 @@ export default function KeywordAnalysisDetailPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
               {analysis.keyword_input && (
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -216,6 +216,26 @@ export default function KeywordAnalysisDetailPage() {
                     <span>Website</span>
                   </div>
                   <p className="font-medium truncate">{analysis.website}</p>
+                </div>
+              )}
+
+              {analysis.location && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Globe className="w-4 h-4" />
+                    <span>Location</span>
+                  </div>
+                  <p className="font-medium">{analysis.location}</p>
+                </div>
+              )}
+
+              {analysis.language && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Languages className="w-4 h-4" />
+                    <span>Language</span>
+                  </div>
+                  <p className="font-medium uppercase">{analysis.language}</p>
                 </div>
               )}
               
@@ -251,6 +271,7 @@ export default function KeywordAnalysisDetailPage() {
           transition={{ duration: 0.5 }}
         >
           <KeywordAnalysisResults
+          displaySummary={false}
             keywords={analysis.keywords_data.reduce((acc, keyword, index) => {
               acc[index.toString()] = keyword;
               return acc;

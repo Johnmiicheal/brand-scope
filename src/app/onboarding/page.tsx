@@ -77,7 +77,7 @@ export default function OnboardingPage() {
   const email = searchParams.get("email");  
   const domain = searchParams.get("domain");
   const step = searchParams.get("step");
-  const [onboardingStep, setOnboardingStep] = useState(0);
+  const [onboardingStep, setOnboardingStep] = useState(parseInt(step!));
   const [selectedPlan, setSelectedPlan] = useState("");
   const [password, setPassword] = useState("");
   const [brandName, setBrandName] = useState("");

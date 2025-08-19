@@ -428,13 +428,18 @@ function IndustryRankingsTable({
                     // Calculate ranks with ties
                     let currentRank = 1;
                     let previousScore = null;
-                    let rankCounter = 0;
+                    let isFirstInTieGroup = true;
 
                     const brandsWithRanks = brandsWithScores.map((entity) => {
-                      rankCounter++;
                       if (previousScore !== null && entity.visibilityScore !== previousScore) {
-                        currentRank = rankCounter;
+                        // New score group - increment rank and mark as first in group
+                        currentRank++;
+                        isFirstInTieGroup = true;
+                      } else if (previousScore !== null && entity.visibilityScore === previousScore) {
+                        // Same score as previous - this is a tie, not first in group
+                        isFirstInTieGroup = false;
                       }
+                      
                       previousScore = entity.visibilityScore;
                       
                       return {

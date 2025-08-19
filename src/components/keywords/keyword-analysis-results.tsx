@@ -76,6 +76,7 @@ type KeywordAnalysisResultsProps = {
   keywords: Record<string, KeywordData>;
   metadata: Array<{ language: string; country: string }>;
   limit?: number;
+  displaySummary?: boolean;
 };
 
 const fadeIn = {
@@ -95,8 +96,9 @@ export function KeywordAnalysisResults({
   keywords,
   metadata,
   limit = 50,
+  displaySummary = true,
 }: KeywordAnalysisResultsProps) {
-  const { user } = useAuth();
+  const { user, subscription } = useAuth();
   const [selectedKeyword, setSelectedKeyword] = useState<KeywordData | null>(
     null
   );
@@ -169,6 +171,7 @@ export function KeywordAnalysisResults({
         const monitoredQueries = (data?.map((item) => item.query) ||
           []) as string[];
         setMonitoredKeywords(monitoredQueries);
+        console.log("subscription: ", subscription);
       } catch (error) {
         console.error("Error fetching monitored keywords:", error);
       }
@@ -256,6 +259,12 @@ export function KeywordAnalysisResults({
     );
 
     try {
+      if (subscription?.price_id === null && monitoredKeywords.length >= 1) {
+        toast.error(
+          "You have reached the limit of 1 monitored keyword. Please upgrade to a paid plan to monitor more keywords."
+        );
+        return;
+      }
       const response = await fetch("/api/schedule-query", {
         method: "POST",
         headers: {
@@ -304,11 +313,18 @@ export function KeywordAnalysisResults({
   };
 
   const openScheduleModal = (keyword: KeywordData) => {
-    setSelectedKeyword(keyword);
-    // Reset to defaults when opening modal
-    setScheduleMode("Explorer");
-    setScheduleBrand(availableBrands.length > 0 ? availableBrands[0] : null);
-    setIsScheduleModalOpen(true);
+    if (subscription?.price_id === null && monitoredKeywords.length >= 1) {
+      toast.error(
+        "You have reached the limit of 1 monitored keyword. Please upgrade to a paid plan to monitor more keywords."
+      );
+      return;
+    } else {
+      setSelectedKeyword(keyword);
+      // Reset to defaults when opening modal
+      setScheduleMode("Explorer");
+      setScheduleBrand(availableBrands.length > 0 ? availableBrands[0] : null);
+      setIsScheduleModalOpen(true);
+    }
   };
 
   const exportToCSV = () => {
@@ -385,28 +401,30 @@ export function KeywordAnalysisResults({
         variants={fadeIn}
       >
         {/* Metadata Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Eye className="w-5 h-5" />
-              Analysis Overview
-            </CardTitle>
-            <CardDescription>
-              Found {keywordEntries.length} keyword opportunities
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex gap-4 text-sm text-muted-foreground">
-              {metadata &&
-                metadata.map((meta, index) => (
-                  <div key={index} className="flex items-center gap-1">
-                    <MapPin className="w-4 h-4" />
-                    {meta.language.toUpperCase()} • {meta.country}
-                  </div>
-                ))}
-            </div>
-          </CardContent>
-        </Card>
+        {displaySummary && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Eye className="w-5 h-5" />
+                Analysis Overview
+              </CardTitle>
+              <CardDescription>
+                Found {keywordEntries.length} keyword opportunities
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex gap-4 text-sm text-muted-foreground">
+                {metadata &&
+                  metadata.map((meta, index) => (
+                    <div key={index} className="flex items-center gap-1">
+                      <MapPin className="w-4 h-4" />
+                      {meta.language.toUpperCase()} • {meta.country}
+                    </div>
+                  ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Keywords Table */}
         <Card>
@@ -457,14 +475,14 @@ export function KeywordAnalysisResults({
                         variants={fadeIn}
                         className={`transition-colors ${
                           isMonitored
-                            ? "!opacity-50 !cursor-not-allowed"
+                            ? "!cursor-not-allowed"
                             : "cursor-pointer hover:bg-muted/50"
                         }`}
                         onClick={() =>
                           !isMonitored && openScheduleModal(keyword)
                         }
                       >
-                        <TableCell className="font-medium">
+                        <TableCell className="font-medium ">
                           <div className="text-start">
                             <div className="font-semibold text-sm">
                               {keyword.conversational_keyword}
@@ -538,21 +556,34 @@ export function KeywordAnalysisResults({
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (!isMonitored) {
-                                openScheduleModal(keyword);
-                              }
-                            }}
-                            disabled={isMonitored}
-                            className="flex items-center gap-1"
-                          >
-                            <Monitor className="w-4 h-4" />
-                            {isMonitored ? "Monitored" : "Monitor"}
-                          </Button>
+                            {isMonitored ? (
+                              <Button
+                                size="sm"
+                                className="w-fit bg-blue-700 text-white"
+                                onClick={() => {
+                                  window.location.assign(`/dashboard`);
+                                }}
+                              >
+                                <Eye className="w-4 h-4" />
+                                View Report
+                              </Button>
+                            ) : (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (!isMonitored) {
+                                    openScheduleModal(keyword);
+                                  }
+                                }}
+                                disabled={isMonitored}
+                                className="flex items-center gap-1"
+                              >
+                                <Monitor className="w-4 h-4" />
+                                {isMonitored ? "Monitored" : "Monitor"}
+                              </Button>
+                            )}
                         </TableCell>
                       </motion.tr>
                     );
@@ -560,20 +591,13 @@ export function KeywordAnalysisResults({
                     return isMonitored ? (
                       <Tooltip key={id}>
                         <TooltipTrigger asChild>{tableRow}</TooltipTrigger>
-                        <TooltipContent
-                          side="top"
-                          className="p-3 bg-blue-600"
-                        >
-                          <p className="font-medium mb-2">🔍 Already Monitored</p>
+                        <TooltipContent side="top" className="p-3 bg-blue-600">
+                          <p className="font-medium mb-2">
+                            🔍 Already Monitored
+                          </p>
                           <p className="text-xs opacity-90">
                             This keyword is currently being tracked
                           </p>
-                          <Button size="sm" className="w-full mt-2 bg-blue-700 text-white" onClick={() => {
-                            window.open(`/dashboard/library`);
-                          }}>
-                            <Eye className="w-4 h-4" />
-                            View Report
-                          </Button>
                         </TooltipContent>
                       </Tooltip>
                     ) : (
@@ -717,35 +741,35 @@ export function KeywordAnalysisResults({
 
                   {/* Brand Selection */}
                   {availableBrands.length > 0 && (
-                  <div className="space-y-2 w-full">
-                    <label className="text-sm font-medium">Brand</label>
-                    <Select
-                      value={scheduleBrand?.id || ""}
-                      onValueChange={(value: string) => {
-                        const selected = availableBrands.find(
-                          (b) => b.id === value
-                        );
-                        setScheduleBrand(selected || null);
-                      }}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select a brand" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {availableBrands.length === 0 ? (
-                          <SelectItem value="N/A" disabled>
-                            No brands available
-                          </SelectItem>
-                        ) : (
-                          availableBrands.map((brand) => (
-                            <SelectItem key={brand.id} value={brand.id}>
-                              {brand.name}
+                    <div className="space-y-2 w-full">
+                      <label className="text-sm font-medium">Brand</label>
+                      <Select
+                        value={scheduleBrand?.id || ""}
+                        onValueChange={(value: string) => {
+                          const selected = availableBrands.find(
+                            (b) => b.id === value
+                          );
+                          setScheduleBrand(selected || null);
+                        }}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select a brand" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableBrands.length === 0 ? (
+                            <SelectItem value="N/A" disabled>
+                              No brands available
                             </SelectItem>
-                          ))
-                        )}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                          ) : (
+                            availableBrands.map((brand) => (
+                              <SelectItem key={brand.id} value={brand.id}>
+                                {brand.name}
+                              </SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   )}
 
                   <div className="flex gap-5 w-full items-center justify-between">

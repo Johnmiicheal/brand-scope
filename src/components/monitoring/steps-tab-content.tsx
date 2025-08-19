@@ -38,8 +38,11 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { countries } from "@/lib/countries";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
+import { TextLoop } from "../ui/text-loop";
+import ShinyText from "../ui/shiny-text";
+
 
 interface CitationData {
   url_citation?: {
@@ -122,6 +125,8 @@ export function StepsTabContent({
   brand,
   orientation = "vertical",
 }: StepsTabContentProps) {
+  const { user, subscription } = useAuth();
+
   const [stepsData, setStepsData] = useState<StepsData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -142,16 +147,77 @@ export function StepsTabContent({
   const [scheduleMode, setScheduleMode] = useState<AnalysisMode>("Explorer");
   const [scheduleBrand, setScheduleBrand] = useState<Brand | null>(null);
   const [availableBrands, setAvailableBrands] = useState<Brand[]>([]);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [monitoredKeywords, setMonitoredKeywords] = useState<string[]>([]);
 
-  // Safely get user with error handling
-  let user = null;
-  try {
-    const authResult = useAuth();
-    user = authResult?.user;
-  } catch (authError) {
-    console.error("Auth error in StepsTabContent:", authError);
-    setError("Authentication error. Please refresh the page.");
-  }
+  // const keywordEntries = Object.entries(prompt);
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout | undefined = undefined;
+
+    if (isScheduling) {
+      interval = setInterval(() => {
+        setElapsedSeconds((prevSeconds) => prevSeconds + 1);
+      }, 1000);
+    } else {
+      setElapsedSeconds(0);
+    }
+
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
+  }, [isScheduling]);
+
+  const formatTime = (totalSeconds: number): string => {
+    if (totalSeconds < 0) return "0s";
+    if (totalSeconds === 0) return "0s";
+
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+
+    const parts: string[] = [];
+
+    if (hours > 0) parts.push(`${hours}h`);
+    if (minutes > 0) parts.push(`${minutes}m`);
+    if (seconds > 0 || parts.length === 0) {
+      if (seconds > 0 || (hours === 0 && minutes === 0)) {
+        parts.push(`${seconds}s`);
+      }
+    }
+    return parts.join(" ");
+  };
+
+  // Fetch monitored keywords
+  useEffect(() => {
+    const fetchMonitoredKeywords = async () => {
+      if (!user?.id) return;
+      try {
+        const { data, error } = await supabase
+          .from("scheduled_queries")
+          .select("query")
+          .eq("user_id", user.id)
+          .eq("status", "active");
+
+        if (error) {
+          console.error("Error fetching monitored keywords:", error);
+          return;
+        }
+
+        const monitoredQueries = (data?.map((item) => item.query) ||
+          []) as string[];
+        setMonitoredKeywords(monitoredQueries);
+        console.log("subscription: ", subscription);
+      } catch (error) {
+        console.error("Error fetching monitored keywords:", error);
+      }
+    };
+
+    fetchMonitoredKeywords();
+  }, [user?.id]);
+
 
   // Fetch available brands for selection
   useEffect(() => {
@@ -262,12 +328,15 @@ export function StepsTabContent({
     if (!selectedKeyword || !user?.id) return;
 
     setIsScheduling(true);
-    toast({
-      title: "Monitoring Started",
-      description: `Monitoring "${selectedKeyword.conversational_keyword}" has started. You can now close this modal and continue with your work.`,
-    });
+    toast.info( `Monitoring "${selectedKeyword.conversational_keyword}" has started. This may take some time`);
 
     try {
+      if (subscription?.price_id === null && monitoredKeywords.length >= 1) {
+        toast.error(
+          "You have reached the limit of 1 monitored keyword. Please upgrade to a paid plan to monitor more keywords."
+        );
+        return;
+      }
       const response = await fetch("/api/schedule-query", {
         method: "POST",
         headers: {
@@ -293,19 +362,12 @@ export function StepsTabContent({
         throw new Error("Failed to schedule keyword");
       }
 
-      toast({
-        title: "Keyword Monitoring Completed",
-        description: `"${selectedKeyword.conversational_keyword}" has been scheduled for ${scheduleFrequency} monitoring.`,
-      });
+      toast.success(`"${selectedKeyword.conversational_keyword}" has been scheduled for ${scheduleFrequency} monitoring.`);
 
       setShowScheduleModal(false);
       setSelectedKeyword(null);
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to schedule keyword monitoring. Please try again.",
-        variant: "destructive",
-      });
+      toast.error("Failed to schedule keyword monitoring. Please try again.");
       console.error(error);
     } finally {
       setIsScheduling(false);
@@ -313,12 +375,20 @@ export function StepsTabContent({
   };
 
   const openScheduleModal = (keyword: KeywordData) => {
-    setSelectedKeyword(keyword);
-    setEditedKeyword(keyword.conversational_keyword);
-    // Reset to defaults when opening modal
-    setScheduleMode("Explorer");
-    setScheduleBrand(brand || (availableBrands.length > 0 ? availableBrands[0] : null));
-    setShowScheduleModal(true);
+    if (subscription?.price_id === null && monitoredKeywords.length >= 1) {
+      toast.error(
+        "You have reached the limit of 1 monitored keyword. Please upgrade to a paid plan to monitor more keywords."
+      );
+      return;
+    } else{
+
+      setSelectedKeyword(keyword);
+      setEditedKeyword(keyword.conversational_keyword);
+      // Reset to defaults when opening modal
+      setScheduleMode("Explorer");
+      setScheduleBrand(brand || (availableBrands.length > 0 ? availableBrands[0] : null));
+      setShowScheduleModal(true);
+    }
   };
 
   const generateSteps = async () => {
@@ -813,7 +883,81 @@ export function StepsTabContent({
               </div>
             )}
 
-            <div className="space-y-3 w-full">
+{isScheduling ? (
+                <div className="flex flex-col items-center justify-center p-4">
+                  <div className="w-full ">
+                    <div className="flex flex-col items-center space-y-3">
+                      <div className="flex items-center space-x-2">
+                        <span
+                          className={cn(
+                            "px-2 py-1 text-xs rounded-full",
+                            scheduleMode === "Voyager" &&
+                              "bg-orange-500/20 text-orange-400",
+                            scheduleMode === "Explorer" &&
+                              "bg-green-500/20 text-green-400"
+                          )}
+                        >
+                          {scheduleMode}
+                        </span>
+                        <span
+                          className={cn(
+                            "px-2 py-1 text-xs rounded-full",
+                            "bg-blue-500/20 text-blue-400"
+                          )}
+                        >
+                          Monitor
+                        </span>
+
+                        <span className="text-xs text-muted-foreground">
+                          thought for {formatTime(elapsedSeconds)}
+                        </span>
+                      </div>
+                      <h1 className="text-2xl font-bold mb-3 text-center text-foreground dark:text-white">
+                        Analyzing Your Search Query
+                      </h1>
+                    </div>
+                    <p className="text-muted-foreground mb-10 text-center">
+                      We&apos;re gathering data and insights about{" "}
+                      {selectedKeyword?.conversational_keyword || "your query"}
+                      This may take a few moments.
+                    </p>
+                    <div className="flex flex-col justify-center items-start gap-4">
+                      <div className="space-y-2">
+                        <p className="text-sm text-neutral-500">
+                          Processing with
+                        </p>
+                        <TextLoop interval={1.5}>
+                          <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
+                            🔍 Retrieving relevant information...
+                          </p>
+                          <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
+                            📚 Processing search results...
+                          </p>
+                          <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
+                            🤖 Generating response...
+                          </p>
+                          <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
+                            ✨ Enhancing with context...
+                          </p>
+                        </TextLoop>
+                      </div>
+                      <div className="space-y-2">
+                        <p className="text-sm text-neutral-500">
+                          Generating response
+                        </p>
+                        <ShinyText
+                          text="Combining insights from multiple sources for a comprehensive answer..."
+                          disabled={false}
+                          speed={3}
+                          className="font-medium text-sm"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-3 w-full">
               <label className="text-sm font-medium">Keyword</label>
               <Input
                 value={
@@ -843,6 +987,7 @@ export function StepsTabContent({
               </div>
 
               {/* Brand Selection */}
+              {availableBrands.length > 0 && (
               <div className="space-y-2 w-full">
                 <label className="text-sm font-medium">Brand</label>
                 <Select
@@ -857,7 +1002,7 @@ export function StepsTabContent({
                   </SelectTrigger>
                   <SelectContent>
                     {availableBrands.length === 0 ? (
-                      <SelectItem value="" disabled>
+                      <SelectItem value="N/A" disabled>
                         No brands available
                       </SelectItem>
                     ) : (
@@ -870,6 +1015,7 @@ export function StepsTabContent({
                   </SelectContent>
                 </Select>
               </div>
+              )}
 
               <div className="flex gap-5 w-full items-center justify-between">
                 <div className="space-y-2 w-full">
@@ -915,6 +1061,10 @@ export function StepsTabContent({
                 </div>
               </div>
             </div>
+                </>
+              )}
+
+          
 
             <div className="flex gap-2 pt-4">
               <Button
