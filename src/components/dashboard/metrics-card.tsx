@@ -1056,57 +1056,47 @@ export function MetricsHeader({
   const coverageRatioTrend = getCoverageRatioTrend();
   const mentionsTrend = getMentionsTrend();
 
-  // Calculate average rank from temporal brand data
+  // Calculate average rank from current brand data
   const calculateAverageRank = () => {
-    if (!temporalBrands || temporalBrands.length === 0) return 0;
+    if (!brands || brands.length === 0) return 0;
     
     const selectedBrandNames = Array.from(selectedBrand).map(name => name.toLowerCase());
     
-    // Group temporal data by analysis_date
-    const dateGroups: { [date: string]: TemporalBrand[] } = {};
-    temporalBrands.forEach(item => {
-      if (!dateGroups[item.analysis_date]) {
-        dateGroups[item.analysis_date] = [];
+    // Sort brands by total_mentions descending to calculate ranks
+    const sortedBrands = [...brands].sort((a, b) => b.total_mentions - a.total_mentions);
+    
+    // Calculate ranks (handling ties)
+    let currentRank = 1;
+    let previousMentions: number | null = null;
+    let isFirstInTieGroup = true;
+    
+    const brandsWithRanks = sortedBrands.map(brand => {
+      if (previousMentions !== null && brand.total_mentions !== previousMentions) {
+        // New score group - increment rank and mark as first in group
+        currentRank++;
+        isFirstInTieGroup = true;
+      } else if (previousMentions !== null && brand.total_mentions === previousMentions) {
+        // Same score as previous - this is a tie, not first in group
+        isFirstInTieGroup = false;
       }
-      dateGroups[item.analysis_date].push(item);
+      
+      previousMentions = brand.total_mentions;
+      
+      return {
+        ...brand,
+        rank: isFirstInTieGroup ? currentRank : currentRank // For average calculation, use the same rank for ties
+      };
     });
     
-    let totalRank = 0;
-    let rankCount = 0;
+    // Get ranks for selected brands
+    const selectedBrandRanks = brandsWithRanks.filter(brand => 
+      selectedBrandNames.includes(brand.brand_name.toLowerCase())
+    ).map(brand => brand.rank);
     
-    // For each date, calculate ranks and get average rank for selected brands
-    Object.values(dateGroups).forEach(dayData => {
-      // Sort brands by total_mentions descending to calculate ranks
-      const sortedBrands = [...dayData].sort((a, b) => b.total_mentions - a.total_mentions);
-      
-      // Calculate ranks (handling ties)
-      let currentRank = 1;
-      let previousMentions: number | null = null;
-      let rankCounter = 0;
-      
-      const brandsWithRanks = sortedBrands.map(brand => {
-        rankCounter++;
-        if (previousMentions !== null && brand.total_mentions !== previousMentions) {
-          currentRank = rankCounter;
-        }
-        previousMentions = brand.total_mentions;
-        
-        return {
-          ...brand,
-          rank: currentRank
-        };
-      });
-      
-      // Get ranks for selected brands on this date
-      brandsWithRanks.forEach(brand => {
-        if (selectedBrandNames.includes(brand.brand_name.toLowerCase())) {
-          totalRank += brand.rank;
-          rankCount++;
-        }
-      });
-    });
+    if (selectedBrandRanks.length === 0) return 0;
     
-    return rankCount > 0 ? totalRank / rankCount : 0;
+    // Return average rank of selected brands
+    return selectedBrandRanks.reduce((sum, rank) => sum + rank, 0) / selectedBrandRanks.length;
   };
 
   const averageRank = calculateAverageRank();
