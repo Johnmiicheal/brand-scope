@@ -728,8 +728,11 @@ export function StepsTabContent({
               <Table>
                 <TableHeader>
                   <TableRow className="border-b border-muted">
+                    <TableHead className="font-semibold text-foreground w-2/3">
+                      AI Prompt
+                    </TableHead>
                     <TableHead className="font-semibold text-foreground">
-                      Keyword
+                      Google Seed Keyword
                     </TableHead>
                     <TableHead className="font-semibold text-foreground">
                       Intent
@@ -767,14 +770,17 @@ export function StepsTabContent({
                       >
                         <TableCell className="py-4">
                           <div>
-                            <p className="font-medium text-sm text-foreground mb-1 hover:text-blue-500 transition-colors">
+                            <p className="font-medium text-sm text-foreground mb-1 hover:text-blue-500 transition-colors break-words whitespace-normal">
                               {keyword.conversational_keyword}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              Seed: {keyword.google_seed_keyword}
                             </p>
                           </div>
                         </TableCell>
+                        <TableCell>
+                        <div className=" text-foreground text-sm">
+                                {keyword.google_seed_keyword}
+                            </div>
+                        </TableCell>
+
                         <TableCell className="py-4">
                           <div>
                             <Badge

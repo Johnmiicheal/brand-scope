@@ -34,6 +34,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { keywordLanguages } from "@/lib/utils";
 
 type FormData = {
   businessBrief: string;
@@ -437,13 +438,11 @@ export default function KeywordAnalysisPage() {
                             <SelectValue placeholder="Select a language" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="en">English</SelectItem>
-                            <SelectItem value="es">Spanish</SelectItem>
-                            <SelectItem value="fr">French</SelectItem>
-                            <SelectItem value="de">German</SelectItem>
-                            <SelectItem value="it">Italian</SelectItem>
-                            <SelectItem value="pt">Portuguese</SelectItem>
-                            <SelectItem value="ru">Russian</SelectItem>
+                            {keywordLanguages.map((language: { name: string; code: string; id: number }) => (
+                              <SelectItem key={language.id} value={language.code}>
+                                {language.name}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                         {!formData.language && (

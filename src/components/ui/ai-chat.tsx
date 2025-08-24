@@ -16,6 +16,7 @@ import {
   MapPin,
   Paperclip,
   Zap,
+  ChevronRight,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "@/components/ui/use-toast";
@@ -54,6 +55,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Claude,
   DeepSeek,
   Gemini,
@@ -68,6 +76,7 @@ import {
   DeepMind,
   Kimi,
 } from "@lobehub/icons";
+import { toast as toastSonner } from "sonner";
 
 interface UseAutoResizeTextareaProps {
   minHeight: number;
@@ -187,6 +196,10 @@ export function AIChatInterface({
   const [open, setOpen] = useState(false);
   const [openModal, setOpenModal] = useState(false);
   const [location, setLocation] = useState("");
+  // Inactivity modal states
+  const [showInactivityModal, setShowInactivityModal] = useState(false);
+  const [lastTypingTime, setLastTypingTime] = useState<number>(Date.now());
+  const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Model to icon mapping
   const modelIcons: Record<
@@ -349,6 +362,33 @@ export function AIChatInterface({
       }
     };
   }, [isAnalyzing]);
+
+  // Inactivity timer for modal
+  useEffect(() => {
+    const checkInactivity = () => {
+      const now = Date.now();
+      const timeSinceLastTyping = now - lastTypingTime;
+      
+      // Show modal if user hasn't typed for 10 seconds and input is empty
+      if (timeSinceLastTyping >= 40000 && !value.trim() && !showInactivityModal && !isAnalyzing) {
+        setShowInactivityModal(true);
+      }
+    };
+
+    // Clear existing timer
+    if (inactivityTimerRef.current) {
+      clearTimeout(inactivityTimerRef.current);
+    }
+
+    // Set new timer to check every second
+    inactivityTimerRef.current = setInterval(checkInactivity, 1000);
+
+    return () => {
+      if (inactivityTimerRef.current) {
+        clearInterval(inactivityTimerRef.current);
+      }
+    };
+  }, [lastTypingTime, value, showInactivityModal, isAnalyzing]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -739,6 +779,9 @@ export function AIChatInterface({
               onChange={(e) => {
                 setValue(e.target.value);
                 adjustHeight();
+                // Reset inactivity timer when user types
+                setLastTypingTime(Date.now());
+                setShowInactivityModal(false);
               }}
               onKeyDown={handleKeyDown}
               placeholder={
@@ -1248,6 +1291,39 @@ export function AIChatInterface({
           </div>
         </div>
       </div>
+      
+      {/* Inactivity Modal */}
+      <Dialog open={showInactivityModal} onOpenChange={() => {
+        setShowInactivityModal(false);
+        setLastTypingTime(Date.now());
+      }}>
+        <DialogContent className="sm:max-w-xl p-12 bg-gradient-to-b from-background to-blue-600 rounded-2xl outline-2 outline-blue-600">
+          <DialogHeader>
+            <DialogTitle className="text-center text-3xl font-bold">
+              Not sure what to search and monitor?
+            </DialogTitle>
+            <DialogDescription className="text-center text-white text-base mt-2">
+              Let&apos;s give you <span className="font-black text-primary">50 Prompts</span> with monthly demand, trends, intent and cpc
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-center mt-6">
+            <Button 
+              onClick={() => {
+                setShowInactivityModal(false);
+                toastSonner.success("Redirecting to keywords...")
+                setTimeout(() => {
+                  router.push("/dashboard/keywords")
+                }, 1000)
+              }}
+              className="w-full rounded-full sm:w-auto h-14 !px-10 bg-gradient-to-b from-blue-600 to-background/50 hover:bg-blue-600 transition-all duration-300 text-primary-foreground font-bold"
+            >
+              Let&apos;s Go
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      
       <AttachBrandModal
         showBrandModal={openModal}
         setShowBrandModal={setOpenModal}

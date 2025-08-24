@@ -474,18 +474,19 @@ export function KeywordAnalysisResults({
           </CardHeader>
           <CardContent>
             <motion.div variants={staggerContainer}>
-              <Table>
+              <Table className="table-fixed">
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Keyword</TableHead>
-                    <TableHead>Intent</TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead>Search Volume</TableHead>
-                    <TableHead>Competition</TableHead>
-                    <TableHead>CPC (USD)</TableHead>
-                    <TableHead>Trends</TableHead>
-                    <TableHead>Relevance</TableHead>
-                    <TableHead>Actions</TableHead>
+                    <TableHead className="w-[200px]">AI Prompt</TableHead>
+                    <TableHead className="w-[180px]">Google Seed Keyword</TableHead>
+                    <TableHead className="w-[120px]">Intent</TableHead>
+                    <TableHead className="w-[120px]">Category</TableHead>
+                    <TableHead className="w-[140px]">Search Volume</TableHead>
+                    <TableHead className="w-[140px]">Competition</TableHead>
+                    <TableHead className="w-[120px]">CPC (USD)</TableHead>
+                    <TableHead className="w-[140px]">Trends</TableHead>
+                    <TableHead className="w-[100px]">Relevance</TableHead>
+                    <TableHead className="w-[120px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -507,15 +508,15 @@ export function KeywordAnalysisResults({
                           !isMonitored && openScheduleModal(keyword)
                         }
                       >
-                        <TableCell className="font-medium ">
-                          <div className="text-start">
-                            <div className="font-semibold text-sm">
+                        <TableCell className="font-medium">
+                            <div className="font-semibold text-sm break-words whitespace-normal">
                               {keyword.conversational_keyword}
                             </div>
-                            <div className="text-xs text-muted-foreground">
-                              Seed: {keyword.google_seed_keyword}
+                        </TableCell>
+                        <TableCell>
+                        <div className="text-foreground text-sm break-words whitespace-normal">
+                                {keyword.google_seed_keyword}
                             </div>
-                          </div>
                         </TableCell>
                         <TableCell>
                           <Badge
