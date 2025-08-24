@@ -34,11 +34,21 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await response.json();
+    
+    // The external API returns an array with an object containing output
+    // Format: [{"output": {...}}]
+    if (!Array.isArray(data) || data.length === 0 || !data[0].output) {
+      console.error("Unexpected response format:", data);
+      return NextResponse.json(
+        { error: "Invalid response format from external API" },
+        { status: 500 }
+      );
+    }
 
     // Return the autofill data
     return NextResponse.json({
       success: true,
-      data: data.output,
+      data: data[0].output,
     });
   } catch (error) {
     console.error("Onboarding autofill error:", error);

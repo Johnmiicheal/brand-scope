@@ -209,7 +209,6 @@ export function StepsTabContent({
         const monitoredQueries = (data?.map((item) => item.query) ||
           []) as string[];
         setMonitoredKeywords(monitoredQueries);
-        console.log("subscription: ", subscription);
       } catch (error) {
         console.error("Error fetching monitored keywords:", error);
       }
@@ -688,7 +687,7 @@ export function StepsTabContent({
                   }}
                   className="text-sm text-muted-foreground italic"
                 >
-                  Search analysis steps completed
+                  Search analysis steps completed. Target these keywords for monitoring.
                 </motion.div>
               </motion.div>
             </div>
@@ -696,18 +695,24 @@ export function StepsTabContent({
         </Card>
 
         {/* Keywords Analysis */}
-        <Card className="border-none">
+        <Card className={cn(orientation === "horizontal" ? "!border-l border-accent border-0 rounded-none" : "border-none")}>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              Keyword Analysis
-              <Badge variant="outline" className="ml-auto">
+            <CardTitle className="flex items-center gap-2 justify-between w-full">
+              <div className="flex flex-col gap-2">
+                <p> 
+                  Keyword Analysis
+                </p>
+                <p className="text-xs text-muted-foreground italic">
+                  🧠 LLMs split 1 prompt into multiple searches on Google/Bing. To rank on ChatGPT, Gemini, Perplexity, you need to rank first on these keywords on Google/Bing
+                </p>
+              <Badge variant="outline" className="w-fit">
                 {Object.keys(stepsData?.output?.keywords || {}).length} keywords
               </Badge>
+              </div>
               <Button
                 onClick={() => exportKeywordsToCSV(stepsData?.output?.keywords || {})}
                 size="sm"
                 variant="outline"
-                className="ml-2"
               >
                 <Download className="w-4 h-4 mr-2" />
                 Export CSV

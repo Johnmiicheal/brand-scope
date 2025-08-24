@@ -20,6 +20,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/useAuth";
 import { KeywordAnalysisResults } from "@/components/keywords/keyword-analysis-results";
 
+type MonthlySearchVolume = {
+  month: string;
+  year: string;
+  monthlySearches: string;
+};
+
 type KeywordAnalysis = {
   id: string;
   created_at: string;
@@ -34,14 +40,30 @@ type KeywordAnalysis = {
     category: string;
     search_volume: number;
     competition_index: number;
-    low_cpc: string;
+    competition?: string | null;
+    low_cpc?: string | null;
+    high_cpc?: string | null;
+    low_cpc_usd?: string | null;
+    high_cpc_usd?: string | null;
+    trend_3m?: string;
     trend_6m: string;
+    trend_11m?: string;
     relevance_score: number;
+    monthly_search_volumes?: MonthlySearchVolume[];
   }>;
   top_keywords?: Array<unknown>;
   stats?: Record<string, unknown>;
   language?: string;
   location?: string;
+  // Enhanced analysis session metrics
+  avg_search_volume?: number;
+  total_monthly_searches?: number;
+  high_competition_count?: number;
+  avg_competition_index?: number;
+  avg_low_cpc_usd?: number;
+  avg_high_cpc_usd?: number;
+  high_value_keywords_count?: number;
+  analysis_summary?: string;
 };
 
 const fadeIn = {
@@ -246,6 +268,49 @@ export default function KeywordAnalysisDetailPage() {
                 </div>
                 <p className="font-medium">{analysis.total_keywords || 0} keywords</p>
               </div>
+
+              {/* Enhanced metrics */}
+              {analysis.avg_search_volume !== undefined && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Target className="w-4 h-4" />
+                    <span>Avg. Search Volume</span>
+                  </div>
+                  <p className="font-medium">{analysis.avg_search_volume.toLocaleString()}/month</p>
+                </div>
+              )}
+
+              {analysis.high_competition_count !== undefined && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <TrendingUp className="w-4 h-4" />
+                    <span>High Competition</span>
+                  </div>
+                  <p className="font-medium">{analysis.high_competition_count} keywords</p>
+                </div>
+              )}
+
+              {analysis.avg_low_cpc_usd !== undefined && analysis.avg_high_cpc_usd !== undefined && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <FileText className="w-4 h-4" />
+                    <span>Avg. CPC Range (USD)</span>
+                  </div>
+                  <p className="font-medium font-mono">
+                    ${analysis.avg_low_cpc_usd.toFixed(2)} - ${analysis.avg_high_cpc_usd.toFixed(2)}
+                  </p>
+                </div>
+              )}
+
+              {analysis.high_value_keywords_count !== undefined && analysis.high_value_keywords_count > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <TrendingUp className="w-4 h-4" />
+                    <span>High-Value Keywords</span>
+                  </div>
+                  <p className="font-medium text-green-600">{analysis.high_value_keywords_count} keywords ({'>'}$5 USD)</p>
+                </div>
+              )}
             </div>
             
             {analysis.business_brief && (
@@ -256,6 +321,18 @@ export default function KeywordAnalysisDetailPage() {
                 </div>
                 <p className="text-sm bg-muted/50 p-3 rounded-lg">
                   {analysis.business_brief}
+                </p>
+              </div>
+            )}
+
+            {analysis.analysis_summary && (
+              <div className="mt-6 space-y-2">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Bot className="w-4 h-4" />
+                  <span>AI Analysis Summary</span>
+                </div>
+                <p className="text-sm bg-blue-50 dark:bg-blue-950/20 p-3 rounded-lg border border-blue-200 dark:border-blue-800">
+                  {analysis.analysis_summary}
                 </p>
               </div>
             )}
@@ -271,9 +348,26 @@ export default function KeywordAnalysisDetailPage() {
           transition={{ duration: 0.5 }}
         >
           <KeywordAnalysisResults
-          displaySummary={false}
+            displaySummary={false}
             keywords={analysis.keywords_data.reduce((acc, keyword, index) => {
-              acc[index.toString()] = keyword;
+              acc[index.toString()] = {
+                conversational_keyword: keyword.conversational_keyword,
+                intent: keyword.intent,
+                google_seed_keyword: keyword.google_seed_keyword,
+                category: keyword.category,
+                search_volume: keyword.search_volume,
+                competition_index: keyword.competition_index,
+                competition: keyword.competition,
+                low_cpc: keyword.low_cpc,
+                high_cpc: keyword.high_cpc,
+                low_cpc_usd: keyword.low_cpc_usd,
+                high_cpc_usd: keyword.high_cpc_usd,
+                trend_3m: keyword.trend_3m,
+                trend_6m: keyword.trend_6m,
+                trend_11m: keyword.trend_11m,
+                relevance_score: keyword.relevance_score,
+                monthly_search_volumes: keyword.monthly_search_volumes,
+              };
               return acc;
             }, {} as Record<string, {
               conversational_keyword: string;
@@ -282,12 +376,18 @@ export default function KeywordAnalysisDetailPage() {
               category: string;
               search_volume: number;
               competition_index: number;
-              low_cpc: string;
+              competition?: string | null;
+              low_cpc?: string | null;
+              high_cpc?: string | null;
+              low_cpc_usd?: string | null;
+              high_cpc_usd?: string | null;
+              trend_3m?: string;
               trend_6m: string;
+              trend_11m?: string;
               relevance_score: number;
+              monthly_search_volumes?: MonthlySearchVolume[];
             }>)}
             metadata={[{ language: analysis.language || 'en', country: analysis.location || 'Global' }]}
-
           />
         </motion.div>
       ) : (

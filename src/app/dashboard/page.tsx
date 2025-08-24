@@ -128,6 +128,8 @@ import {
   Legend,
 } from "chart.js";
 import { SummaryTabContent } from "@/components/dashboard/summary-tab-content";
+import { AlertDashboardMessage } from "@/components/dashboard/alert-dashboard-message";
+import { getConstraints } from "@/lib/constraints";
 
 const INDUSTRIES = [
   "Technology",
@@ -668,9 +670,9 @@ function DashboardContent() {
           toastSonner.error(
             "No subscription found. Redirecting to onboarding..."
           );
-          setTimeout(() => {
-            router.push("/onboarding");
-          }, 1000);
+          // setTimeout(() => {
+          //   router.push("/onboarding");
+          // }, 1000);
         }
 
         if (subscriptionError) {
@@ -3149,27 +3151,27 @@ function DashboardContent() {
   //   }
   // };
 
-  if (!subsLoading && !subscription && !loading) {
-    return (
-      <div className="flex flex-col items-center justify-center h-screen gap-2">
-        <Blocks className="w-6 h-6 text-blue-500" />
-        <div className="text-center text-blue-500 mb-2">
-          No Subscriptions Found
-        </div>
-        <p>
-          You have no subscriptions. Please get a subscription to start
-          monitoring your keywords and brands.
-        </p>
-        <Button
-          variant="outline"
-          className="mt-5"
-          onClick={() => window.location.assign("/onboarding")}
-        >
-          Get Subscription
-        </Button>
-      </div>
-    );
-  }
+  // if (!subsLoading && !subscription && !loading) {
+  //   return (
+  //     <div className="flex flex-col items-center justify-center h-screen gap-2">
+  //       <Blocks className="w-6 h-6 text-blue-500" />
+  //       <div className="text-center text-blue-500 mb-2">
+  //         No Subscriptions Found
+  //       </div>
+  //       <p>
+  //         You have no subscriptions. Please get a subscription to start
+  //         monitoring your keywords and brands.
+  //       </p>
+  //       <Button
+  //         variant="outline"
+  //         className="mt-5"
+  //         onClick={() => window.location.assign("/onboarding")}
+  //       >
+  //         Get Subscription
+  //       </Button>
+  //     </div>
+  //   );
+  // }
 
   if (error && queries.length <= 0) {
     return (
@@ -3248,9 +3250,33 @@ function DashboardContent() {
       </div>
     );
   }
+  // Calculate usage percentage for alerts
+  const constraints = product ? getConstraints(product.name) : null;
+  const usedCredits = subscription?.query_count || 0;
+  const maxCredits = constraints?.max_credits || 0;
+  const usagePercentage = maxCredits > 0 ? (usedCredits / maxCredits) * 100 : 0;
+
   return (
     <div className="flex flex-col h-full">
       <CheckoutSuccess />
+      {!subsLoading && !subscription?.stripe_subscription_id && !loading && (
+        <AlertDashboardMessage message="You have no active subscription. Please upgrade to continue monitoring your brands and keywords." type="error" />
+      )}
+      
+      {/* Usage alerts */}
+      {subscription && constraints && usagePercentage >= 100 && (
+        <AlertDashboardMessage 
+          message="You have reached 100% of your subscription limit. Upgrade your plan or purchase additional credits to continue using our services without restrictions." 
+          type="error" 
+        />
+      )}
+      
+      {subscription && constraints && usagePercentage >= 80 && usagePercentage < 100 && (
+        <AlertDashboardMessage 
+          message={`You have used ${Math.round(usagePercentage)}% of your subscription credits. Consider upgrading your plan or purchasing additional credits to avoid service interruptions.`}
+          type="warning" 
+        />
+      )}
 
       <div className="w-full mx-auto px-4 py-4">
         <div className="w-full flex md:flex-row flex-col md:justify-between justify-start md:items-center gap-4">

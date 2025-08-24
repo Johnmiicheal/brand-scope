@@ -63,6 +63,9 @@ interface KeywordRecommendation {
   intent: string;
   relevance_score: number;
   search_volume: number;
+  competition?: string;
+  low_cpc_usd?: string;
+  high_cpc_usd?: string;
 }
 
 interface AnalysisSession {
@@ -86,6 +89,11 @@ interface KeywordSummary {
   avg_relevance_score: number;
   high_volume_keywords: number;
   last_analysis_date: string | null;
+  // Enhanced metrics
+  avg_search_volume?: number;
+  avg_competition_index?: number;
+  avg_cpc_usd?: number;
+  high_value_keywords_count?: number;
 }
 
 export function KeywordAnalysisCard() {
@@ -390,6 +398,38 @@ export function KeywordAnalysisCard() {
                 </div>
               </div>
 
+              {/* Enhanced metrics row */}
+              {(summary.avg_search_volume || summary.avg_cpc_usd || summary.high_value_keywords_count) && (
+                <div className="grid grid-cols-1 gap-2 mb-4">
+                  {summary.avg_search_volume && (
+                    <div className="bg-white/30 dark:bg-muted/10 rounded-lg p-2 border border-dashed">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">Avg. Search Volume</span>
+                        <span className="font-medium">{summary.avg_search_volume.toLocaleString()}/mo</span>
+                      </div>
+                    </div>
+                  )}
+                  {summary.avg_cpc_usd && (
+                    <div className="bg-white/30 dark:bg-muted/10 rounded-lg p-2 border border-dashed">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">Avg. CPC (USD)</span>
+                        <span className="font-medium font-mono">${summary.avg_cpc_usd.toFixed(2)}</span>
+                      </div>
+                    </div>
+                  )}
+                  {summary.high_value_keywords_count && summary.high_value_keywords_count > 0 && (
+                    <div className="bg-green-50 dark:bg-green-950/20 rounded-lg p-2 border border-green-200 dark:border-green-800">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-green-600 dark:text-green-400">High-Value Keywords</span>
+                        <span className="font-medium text-green-700 dark:text-green-300">
+                          {summary.high_value_keywords_count} ({'>'}$5)
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Recent Analysis */}
               {recentSession && (
                 <div className="space-y-3">
@@ -550,6 +590,14 @@ export function KeywordAnalysisCard() {
                   </div>
                   <div>Intent: {selectedKeyword.intent}</div>
                   <div>Relevance: {selectedKeyword.relevance_score}/10</div>
+                  {selectedKeyword.competition && (
+                    <div>Competition: {selectedKeyword.competition}</div>
+                  )}
+                  {selectedKeyword.low_cpc_usd && selectedKeyword.high_cpc_usd && (
+                    <div className="col-span-2">
+                      CPC Range (USD): {selectedKeyword.low_cpc_usd} - {selectedKeyword.high_cpc_usd}
+                    </div>
+                  )}
                 </div>
               </div>
             )}

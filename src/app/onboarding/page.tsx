@@ -13,7 +13,8 @@ import { User } from "@supabase/supabase-js";
 import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Mail } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Mail, X, Plus } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -44,7 +45,6 @@ import { INDUSTRIES } from "@/lib/utils";
 import ShinyText from "@/components/ui/shiny-text";
 import { KeywordAnalysisResults } from "@/components/keywords/keyword-analysis-results";
 import SubsCard from "@/components/fancy-web/subs-card";
-
 
 type FormData = {
   businessBrief: string;
@@ -102,7 +102,7 @@ type AutofillData = {
 export default function OnboardingPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const email = searchParams.get("email");  
+  const email = searchParams.get("email");
   const domain = searchParams.get("domain");
   const step = searchParams.get("step") || "0";
   const [onboardingStep, setOnboardingStep] = useState(parseInt(step!));
@@ -135,7 +135,24 @@ export default function OnboardingPage() {
   const [isManualAnalyzing, setIsManualAnalyzing] = useState(false);
   const [autofillData, setAutofillData] = useState<AutofillData | null>(null);
   const [isLoadingAutofill, setIsLoadingAutofill] = useState(false);
-
+  
+  // Autofill form fields
+  const [businessSubcategory, setBusinessSubcategory] = useState("");
+  const [brandVoice, setBrandVoice] = useState("");
+  const [businessEntityType, setBusinessEntityType] = useState("");
+  const [businessEntityDescription, setBusinessEntityDescription] = useState("");
+  const [businessEntityOffering, setBusinessEntityOffering] = useState("");
+  const [mainCountry, setMainCountry] = useState("");
+  const [otherCountries, setOtherCountries] = useState<string[]>([]);
+  const [competitors, setCompetitors] = useState<string[]>([]);
+  const [brandNameVariations, setBrandNameVariations] = useState<string[]>([]);
+  const [brandCallToAction, setBrandCallToAction] = useState("");
+  const [socialMediaLinkedin, setSocialMediaLinkedin] = useState("");
+  const [socialMediaYoutube, setSocialMediaYoutube] = useState("");
+  const [socialMediaMeta, setSocialMediaMeta] = useState("");
+  const [socialMediaInstagram, setSocialMediaInstagram] = useState("");
+  const [socialMediaX, setSocialMediaX] = useState("");
+  const [socialMediaTiktok, setSocialMediaTiktok] = useState("");
 
   // Update time every second
   useEffect(() => {
@@ -185,7 +202,6 @@ export default function OnboardingPage() {
     return parts.join(" ");
   };
 
-
   const [formData, setFormData] = useState<FormData>({
     businessBrief: "",
     keyword: "",
@@ -193,8 +209,6 @@ export default function OnboardingPage() {
     language: "",
     location: "",
   });
-
-
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -219,7 +233,7 @@ export default function OnboardingPage() {
         setSessionKey(session.access_token || "");
         setUser(session.user);
         // If user is logged in and still on step 0 or 1, move to step 2 (brand creation)
-        if (onboardingStep === 0 ) {
+        if (onboardingStep === 0) {
           setOnboardingStep(1);
         }
         setSubLoading(false);
@@ -227,7 +241,6 @@ export default function OnboardingPage() {
     };
     checkAuth();
   }, [onboardingStep]);
-
 
   // Handle user registration (step 1)
   const handleUserRegistration = async () => {
@@ -323,24 +336,43 @@ export default function OnboardingPage() {
         setAutofillData(result.data);
         // Auto-fill form fields
         if (result.data.brandName) setBrandName(result.data.brandName);
-        if (result.data.brandWebsiteUrl) setBrandWebsite(result.data.brandWebsiteUrl);
+        if (result.data.brandWebsiteUrl)
+          setBrandWebsite(result.data.brandWebsiteUrl);
         if (result.data.industry) setBrandIndustry(result.data.industry);
         if (result.data.mainCountry) setBrandLocation(result.data.mainCountry);
         if (result.data.mainLanguage) {
           // Map full language names to language codes
           const languageMap: { [key: string]: string } = {
-            "English": "en",
-            "Spanish": "es",
-            "French": "fr",
-            "German": "de",
-            "Italian": "it",
-            "Portuguese": "pt",
-            "Russian": "ru"
+            English: "en",
+            Spanish: "es",
+            French: "fr",
+            German: "de",
+            Italian: "it",
+            Portuguese: "pt",
+            Russian: "ru",
           };
           setBrandLanguage(languageMap[result.data.mainLanguage] || "en");
         }
         if (result.data.logoUrl) setBrandLogoPreview(result.data.logoUrl);
         
+        // Auto-fill additional brand information
+        if (result.data.businessSubcategory) setBusinessSubcategory(result.data.businessSubcategory);
+        if (result.data.brandVoice) setBrandVoice(result.data.brandVoice);
+        if (result.data.businessEntity?.type) setBusinessEntityType(result.data.businessEntity.type);
+        if (result.data.businessEntity?.description) setBusinessEntityDescription(result.data.businessEntity.description);
+        if (result.data.businessEntity?.offering) setBusinessEntityOffering(result.data.businessEntity.offering);
+        if (result.data.mainCountry) setMainCountry(result.data.mainCountry);
+        if (result.data.otherCountries) setOtherCountries(result.data.otherCountries);
+        if (result.data.competitors) setCompetitors(result.data.competitors);
+        if (result.data.brandNameVariations) setBrandNameVariations(result.data.brandNameVariations);
+        if (result.data.brandCallToAction) setBrandCallToAction(result.data.brandCallToAction);
+        if (result.data.brandSocialMediaUrl?.linkedin) setSocialMediaLinkedin(result.data.brandSocialMediaUrl.linkedin);
+        if (result.data.brandSocialMediaUrl?.youtube) setSocialMediaYoutube(result.data.brandSocialMediaUrl.youtube);
+        if (result.data.brandSocialMediaUrl?.meta) setSocialMediaMeta(result.data.brandSocialMediaUrl.meta);
+        if (result.data.brandSocialMediaUrl?.instagram) setSocialMediaInstagram(result.data.brandSocialMediaUrl.instagram);
+        if (result.data.brandSocialMediaUrl?.x) setSocialMediaX(result.data.brandSocialMediaUrl.x);
+        if (result.data.brandSocialMediaUrl?.tiktok) setSocialMediaTiktok(result.data.brandSocialMediaUrl.tiktok);
+
         toast.success("Brand information auto-filled!");
       } else {
         console.error("Failed to fetch autofill data:", result.error);
@@ -359,10 +391,53 @@ export default function OnboardingPage() {
       setSelectedPlan("free");
     } else if (onboardingStep === 4) {
       // Skip payment step - redirect directly to dashboard
-      router.push('/dashboard');
+      router.push("/dashboard");
       return;
     }
     setOnboardingStep((prev) => prev + 1);
+  };
+
+  // Helper functions for array management
+  const addCompetitor = () => {
+    setCompetitors([...competitors, ""]);
+  };
+
+  const removeCompetitor = (index: number) => {
+    setCompetitors(competitors.filter((_, i) => i !== index));
+  };
+
+  const updateCompetitor = (index: number, value: string) => {
+    const newCompetitors = [...competitors];
+    newCompetitors[index] = value;
+    setCompetitors(newCompetitors);
+  };
+
+  const addBrandNameVariation = () => {
+    setBrandNameVariations([...brandNameVariations, ""]);
+  };
+
+  const removeBrandNameVariation = (index: number) => {
+    setBrandNameVariations(brandNameVariations.filter((_, i) => i !== index));
+  };
+
+  const updateBrandNameVariation = (index: number, value: string) => {
+    const newVariations = [...brandNameVariations];
+    newVariations[index] = value;
+    setBrandNameVariations(newVariations);
+  };
+
+  const addOtherCountry = () => {
+    setOtherCountries([...otherCountries, ""]);
+  };
+
+  const removeOtherCountry = (index: number) => {
+    setOtherCountries(otherCountries.filter((_, i) => i !== index));
+  };
+
+  const updateOtherCountry = (index: number, value: string) => {
+    const newCountries = [...otherCountries];
+    newCountries[index] = value;
+    setOtherCountries(newCountries);
   };
 
   const handleCreateBrand = async () => {
@@ -406,6 +481,23 @@ export default function OnboardingPage() {
             user_id: user.id,
             location: brandLocation,
             language: brandLanguage,
+            // Add autofill data from form state
+            business_subcategory: businessSubcategory || null,
+            brand_voice: brandVoice || null,
+            business_entity_type: businessEntityType || null,
+            business_entity_description: businessEntityDescription || null,
+            business_entity_offering: businessEntityOffering || null,
+            main_country: mainCountry || null,
+            other_countries: otherCountries.length > 0 ? otherCountries : null,
+            competitors: competitors.length > 0 ? competitors : null,
+            brand_name_variations: brandNameVariations.length > 0 ? brandNameVariations : null,
+            brand_call_to_action: brandCallToAction || null,
+            social_media_linkedin: socialMediaLinkedin || null,
+            social_media_youtube: socialMediaYoutube || null,
+            social_media_meta: socialMediaMeta || null,
+            social_media_instagram: socialMediaInstagram || null,
+            social_media_x: socialMediaX || null,
+            social_media_tiktok: socialMediaTiktok || null,
           },
         ])
         .select();
@@ -439,6 +531,23 @@ export default function OnboardingPage() {
       setBrandIndustry("");
       setBrandLogo(null);
       setBrandLogoPreview(null);
+      // Clear autofill fields
+      setBusinessSubcategory("");
+      setBrandVoice("");
+      setBusinessEntityType("");
+      setBusinessEntityDescription("");
+      setBusinessEntityOffering("");
+      setMainCountry("");
+      setOtherCountries([]);
+      setCompetitors([]);
+      setBrandNameVariations([]);
+      setBrandCallToAction("");
+      setSocialMediaLinkedin("");
+      setSocialMediaYoutube("");
+      setSocialMediaMeta("");
+      setSocialMediaInstagram("");
+      setSocialMediaX("");
+      setSocialMediaTiktok("");
     } catch (error) {
       console.error("Error:", error);
       setSubmitting(false);
@@ -612,7 +721,6 @@ export default function OnboardingPage() {
     "gpt-5": OpenAI,
   };
 
-
   return (
     <div className="flex items-center justify-center min-h-[60vh]">
       <div className="w-full max-w-7xl p-8 bg-transparent rounded-lg shadow-lg">
@@ -755,8 +863,14 @@ export default function OnboardingPage() {
                 </div>
               </div>
             ) : (
-              <div className="max-w-xl mx-auto mb-8 flex flex-col items-center justify-center">
-                <div className={cn("sm:max-w-[500px] border-accent transition-all duration-400", isLoadingAutofill && "opacity-30 cursor-not-allowed pointer-events-none hidden")}>
+              <div className="max-w-2xl w-full mx-auto mb-8 flex flex-col items-center justify-center">
+                <div
+                  className={cn(
+                    "sm:max-w-[500px] w-full border-accent transition-all duration-400",
+                    isLoadingAutofill &&
+                      "opacity-30 cursor-not-allowed pointer-events-none hidden"
+                  )}
+                >
                   <div className="space-y-4 w-full">
                     <div className="grid gap-6">
                       <div className="grid gap-2">
@@ -930,127 +1044,325 @@ export default function OnboardingPage() {
                 </div>
 
                 {/* Additional Information from Autofill */}
-                {(isLoadingAutofill || autofillData) && (
-                  <div className="max-w-5xl w-full mx-auto mt-8 px-6 flex flex-col items-center justify-center">
+                {(isLoadingAutofill || businessSubcategory || brandVoice || businessEntityDescription || competitors.length > 0 || socialMediaLinkedin || socialMediaYoutube || socialMediaMeta || socialMediaInstagram || socialMediaX || socialMediaTiktok) && (
+                  <div className="max-w-5xl w-full mx-auto mt-8 px-6">
                     {isLoadingAutofill ? (
                       <div className="text-center items-center gap-4 flex flex-col">
                         <Loader2 className="animate-spin w-6 h-6 text-blue-500" />
-                        <p className="text-gray-400 shiny-text">Fetching brand information...</p>
+                        <p className="text-gray-400 shiny-text">
+                          Fetching brand information...
+                        </p>
                       </div>
-                    ) : autofillData && (
-                      <div className="space-y-6">
-                        <h3 className="text-xl font-semibold text-gray-200 mb-4">Additional Brand Information</h3>
-                        
-                        {/* Company Description */}
-                        {autofillData.businessEntity?.description && (
-                          <div>
-                            <h4 className="text-sm font-medium text-gray-300 mb-2">Company Description</h4>
-                            <p className="text-gray-400 text-sm leading-relaxed">
-                              {autofillData.businessEntity.description}
-                            </p>
-                          </div>
-                        )}
+                    ) : (
+                      <div className="space-y-8">
+                        <h3 className="text-xl font-semibold text-gray-200 mb-6 text-center">
+                          Additional Brand Information
+                        </h3>
 
-                        {/* Social Media Links */}
-                        {autofillData.brandSocialMediaUrl && Object.values(autofillData.brandSocialMediaUrl).some(url => url) && (
-                          <div>
-                            <h4 className="text-sm font-medium text-gray-300 mb-2">Social Media</h4>
-                            <div className="flex items-center justify-center flex-wrap gap-2">
-                              {autofillData.brandSocialMediaUrl.linkedin && (
-                                <a 
-                                  href={autofillData.brandSocialMediaUrl.linkedin} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer"
-                                  className="bg-zinc-700 px-3 py-1 rounded-full text-xs text-blue-400 hover:bg-zinc-600 transition-colors"
-                                >
-                                  LinkedIn
-                                </a>
-                              )}
-                              {autofillData.brandSocialMediaUrl.x && (
-                                <a 
-                                  href={autofillData.brandSocialMediaUrl.x} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer"
-                                  className="bg-zinc-700 px-3 py-1 rounded-full text-xs text-blue-400 hover:bg-zinc-600 transition-colors"
-                                >
-                                  X (Twitter)
-                                </a>
-                              )}
-                              {autofillData.brandSocialMediaUrl.youtube && (
-                                <a 
-                                  href={autofillData.brandSocialMediaUrl.youtube} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer"
-                                  className="bg-zinc-700 px-3 py-1 rounded-full text-xs text-blue-400 hover:bg-zinc-600 transition-colors"
-                                >
-                                  YouTube
-                                </a>
-                              )}
-                              {autofillData.brandSocialMediaUrl.meta && (
-                                <a 
-                                  href={autofillData.brandSocialMediaUrl.meta} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer"
-                                  className="bg-zinc-700 px-3 py-1 rounded-full text-xs text-blue-400 hover:bg-zinc-600 transition-colors"
-                                >
-                                  Facebook
-                                </a>
-                              )}
-                              {autofillData.brandSocialMediaUrl.instagram && (
-                                <a 
-                                  href={autofillData.brandSocialMediaUrl.instagram} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer"
-                                  className="bg-zinc-700 px-3 py-1 rounded-full text-xs text-blue-400 hover:bg-zinc-600 transition-colors"
-                                >
-                                  Instagram
-                                </a>
-                              )}
-                              {autofillData.brandSocialMediaUrl.tiktok && (
-                                <a 
-                                  href={autofillData.brandSocialMediaUrl.tiktok} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer"
-                                  className="bg-zinc-700 px-3 py-1 rounded-full text-xs text-blue-400 hover:bg-zinc-600 transition-colors"
-                                >
-                                  TikTok
-                                </a>
-                              )}
+                        {/* Business Information Section */}
+                        <div className="bg-zinc-900/50 p-6 rounded-lg border border-zinc-800">
+                          <h4 className="text-lg font-medium text-gray-200 mb-4">
+                            📝 Business Information
+                          </h4>
+                          <div className="grid gap-4">
+                            <div className="flex gap-2 items-center w-full">
+                            <div className="grid gap-2 w-full">
+                              <Label htmlFor="businessSubcategory">Business Subcategory</Label>
+                              <Input
+                                id="businessSubcategory"
+                                value={businessSubcategory}
+                                onChange={(e) => setBusinessSubcategory(e.target.value)}
+                                className="bg-zinc-800"
+                                placeholder="e.g., AI Marketing and SEO"
+                              />
+                            </div>
+                            
+                            <div className="grid gap-2 w-full">
+                              <Label htmlFor="businessEntityType">Business Type</Label>
+                              <Input
+                                id="businessEntityType"
+                                value={businessEntityType}
+                                onChange={(e) => setBusinessEntityType(e.target.value)}
+                                className="bg-zinc-800"
+                                placeholder="e.g., Company, Startup, Enterprise"
+                              />
+                            </div>
+                            </div>
+
+                            <div className="grid gap-2">
+                              <Label htmlFor="businessEntityDescription">Business Description</Label>
+                              <Textarea
+                                id="businessEntityDescription"
+                                value={businessEntityDescription}
+                                onChange={(e) => setBusinessEntityDescription(e.target.value)}
+                                className="bg-zinc-800"
+                                placeholder="Describe what your business does..."
+                                rows={3}
+                              />
+                            </div>
+
+                            <div className="grid gap-2">
+                              <Label htmlFor="businessEntityOffering">Business Offering</Label>
+                              <Textarea
+                                id="businessEntityOffering"
+                                value={businessEntityOffering}
+                                onChange={(e) => setBusinessEntityOffering(e.target.value)}
+                                className="bg-zinc-800"
+                                placeholder="Describe your products/services and pricing..."
+                                rows={4}
+                              />
+                            </div>
+
+                            <div className="grid gap-2">
+                              <Label htmlFor="brandVoice">Brand Voice</Label>
+                              <Textarea
+                                id="brandVoice"
+                                value={brandVoice}
+                                onChange={(e) => setBrandVoice(e.target.value)}
+                                className="bg-zinc-800"
+                                placeholder="Describe your brand's tone and personality..."
+                                rows={3}
+                              />
+                            </div>
+
+                            <div className="grid gap-2">
+                              <Label htmlFor="brandCallToAction">Call to Action</Label>
+                              <Input
+                                id="brandCallToAction"
+                                value={brandCallToAction}
+                                onChange={(e) => setBrandCallToAction(e.target.value)}
+                                className="bg-zinc-800"
+                                placeholder="e.g., Get a free analysis, Request a demo"
+                              />
                             </div>
                           </div>
-                        )}
+                        </div>
 
-                        {/* Competitors */}
-                        {autofillData.competitors && autofillData.competitors.length > 0 && (
-                          <div>
-                            <h4 className="text-sm font-medium text-gray-300 mb-2">Competitors</h4>
-                            <div className="flex items-center justify-center flex-wrap gap-2">
-                              {autofillData.competitors.slice(0, 8).map((competitor, index) => (
-                                <span 
-                                  key={index}
-                                  className="bg-zinc-700 px-3 py-1 rounded-full text-xs text-gray-300"
+                        {/* Brand Identity Section */}
+                        <div className="bg-zinc-900/50 p-6 rounded-lg border border-zinc-800">
+                          <h4 className="text-lg font-medium text-gray-200 mb-4">
+                            🏷️ Brand Identity
+                          </h4>
+                          <div className="grid gap-4">
+                            <div className="grid gap-2">
+                              <Label>Brand Name Variations</Label>
+                              <div className="space-y-2 grid grid-cols-2 gap-2">
+                                {brandNameVariations.map((variation, index) => (
+                                  <div key={index} className="flex gap-2">
+                                    <Input
+                                      value={variation}
+                                      onChange={(e) => updateBrandNameVariation(index, e.target.value)}
+                                      className="bg-zinc-800"
+                                      placeholder="Brand name variation"
+                                    />
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => removeBrandNameVariation(index)}
+                                      className="px-2"
+                                    >
+                                      <X className="w-4 h-4" />
+                                    </Button>
+                                  </div>
+                                ))}
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={addBrandNameVariation}
+                                  className="w-fit"
                                 >
-                                  {competitor}
-                                </span>
-                              ))}
-                              {autofillData.competitors.length > 8 && (
-                                <span className="bg-zinc-700 px-3 py-1 rounded-full text-xs text-gray-400">
-                                  +{autofillData.competitors.length - 8} more
-                                </span>
-                              )}
+                                  <Plus className="w-4 h-4 mr-2" />
+                                  Add Variation
+                                </Button>
+                              </div>
                             </div>
                           </div>
-                        )}
+                        </div>
 
-                        {/* Brand Voice */}
-                        {autofillData.brandVoice && (
-                          <div>
-                            <h4 className="text-sm font-medium text-gray-300 mb-2">Brand Voice</h4>
-                            <p className="text-gray-400 text-sm leading-relaxed">
-                              {autofillData.brandVoice}
-                            </p>
+                        {/* Location Information Section */}
+                        <div className="bg-zinc-900/50 p-6 rounded-lg border border-zinc-800">
+                          <h4 className="text-lg font-medium text-gray-200 mb-4">
+                            🌍 Location Information
+                          </h4>
+                          <div className="grid gap-4">
+                            <div className="grid gap-2">
+                              <Label htmlFor="mainCountry">Main Country</Label>
+                              <Select value={mainCountry} onValueChange={setMainCountry}>
+                                <SelectTrigger className="bg-zinc-800">
+                                  <SelectValue placeholder="Select main country" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="Global">Global</SelectItem>
+                                  {countries.map((country) => (
+                                    <SelectItem key={country.label} value={country.label}>
+                                      {country.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            
+                            <div className="grid gap-2">
+                              <Label>Other Countries</Label>
+                              <div className="space-y-2">
+                                {otherCountries.map((country, index) => (
+                                  <div key={index} className="flex gap-2">
+                                    <Select value={country} onValueChange={(value) => updateOtherCountry(index, value)}>
+                                      <SelectTrigger className="bg-zinc-800">
+                                        <SelectValue placeholder="Select country" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {countries.map((c) => (
+                                          <SelectItem key={c.label} value={c.label}>
+                                            {c.label}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => removeOtherCountry(index)}
+                                      className="px-2"
+                                    >
+                                      <X className="w-4 h-4" />
+                                    </Button>
+                                  </div>
+                                ))}
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={addOtherCountry}
+                                  className="w-fit"
+                                >
+                                  <Plus className="w-4 h-4 mr-2" />
+                                  Add Country
+                                </Button>
+                              </div>
+                            </div>
                           </div>
-                        )}
+                        </div>
+
+                        {/* Competitors Section */}
+                        <div className="bg-zinc-900/50 p-6 rounded-lg border border-zinc-800">
+                          <h4 className="text-lg font-medium text-gray-200 mb-4">
+                            🏢 Competitors
+                          </h4>
+                          <div className="grid gap-4">
+                            <div className="grid gap-2">
+                              <Label>Competitor List</Label>
+                              <div className="space-y-2 grid grid-cols-2 gap-2">
+                                {competitors.map((competitor, index) => (
+                                  <div key={index} className="flex gap-2">
+                                    <Input
+                                      value={competitor}
+                                      onChange={(e) => updateCompetitor(index, e.target.value)}
+                                      className="bg-zinc-800"
+                                      placeholder="Competitor name"
+                                    />
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => removeCompetitor(index)}
+                                      className="px-2"
+                                    >
+                                      <X className="w-4 h-4" />
+                                    </Button>
+                                  </div>
+                                ))}
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={addCompetitor}
+                                  className="w-fit"
+                                >
+                                  <Plus className="w-4 h-4 mr-2" />
+                                  Add Competitor
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Social Media Section */}
+                        <div className="bg-zinc-900/50 p-6 rounded-lg border border-zinc-800">
+                          <h4 className="text-lg font-medium text-gray-200 mb-4">
+                            📱 Social Media
+                          </h4>
+                          <div className="grid gap-4 md:grid-cols-2">
+                            <div className="grid gap-2">
+                              <Label htmlFor="socialMediaLinkedin">LinkedIn</Label>
+                              <Input
+                                id="socialMediaLinkedin"
+                                value={socialMediaLinkedin}
+                                onChange={(e) => setSocialMediaLinkedin(e.target.value)}
+                                className="bg-zinc-800"
+                                placeholder="https://linkedin.com/company/..."
+                              />
+                            </div>
+                            
+                            <div className="grid gap-2">
+                              <Label htmlFor="socialMediaX">X (Twitter)</Label>
+                              <Input
+                                id="socialMediaX"
+                                value={socialMediaX}
+                                onChange={(e) => setSocialMediaX(e.target.value)}
+                                className="bg-zinc-800"
+                                placeholder="https://x.com/..."
+                              />
+                            </div>
+                            
+                            <div className="grid gap-2">
+                              <Label htmlFor="socialMediaYoutube">YouTube</Label>
+                              <Input
+                                id="socialMediaYoutube"
+                                value={socialMediaYoutube}
+                                onChange={(e) => setSocialMediaYoutube(e.target.value)}
+                                className="bg-zinc-800"
+                                placeholder="https://youtube.com/@..."
+                              />
+                            </div>
+                            
+                            <div className="grid gap-2">
+                              <Label htmlFor="socialMediaMeta">Facebook</Label>
+                              <Input
+                                id="socialMediaMeta"
+                                value={socialMediaMeta}
+                                onChange={(e) => setSocialMediaMeta(e.target.value)}
+                                className="bg-zinc-800"
+                                placeholder="https://facebook.com/..."
+                              />
+                            </div>
+                            
+                            <div className="grid gap-2">
+                              <Label htmlFor="socialMediaInstagram">Instagram</Label>
+                              <Input
+                                id="socialMediaInstagram"
+                                value={socialMediaInstagram}
+                                onChange={(e) => setSocialMediaInstagram(e.target.value)}
+                                className="bg-zinc-800"
+                                placeholder="https://instagram.com/..."
+                              />
+                            </div>
+                            
+                            <div className="grid gap-2">
+                              <Label htmlFor="socialMediaTiktok">TikTok</Label>
+                              <Input
+                                id="socialMediaTiktok"
+                                value={socialMediaTiktok}
+                                onChange={(e) => setSocialMediaTiktok(e.target.value)}
+                                className="bg-zinc-800"
+                                placeholder="https://tiktok.com/@..."
+                              />
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -1083,8 +1395,10 @@ export default function OnboardingPage() {
               Select Keywords to Monitor
             </h2>
             <p className="text-gray-400 mb-8 max-w-2xl mx-auto">
-              Choose which keywords you&apos;d like to monitor from your
-              analysis results
+              We&apos;ll analyze Google data and return Al-ready prompts
+              tailored for Perplexity, Claude & ChatGPT including: Search
+              Volume, 6-month Trend, CPC, Competition, Intent, Category and
+              Option to monitor the prompt
             </p>
 
             {keywordResults ? (
@@ -1119,62 +1433,66 @@ export default function OnboardingPage() {
             ) : (
               <div className="text-center">
                 <p className="text-gray-400 mb-6">
-                  Since you skipped brand creation, you can manually enter a keyword to analyze
+                  (Since you skipped brand creation, you can manually enter a
+                  keyword to analyze)
                 </p>
-                
+
                 {!isManualAnalyzing ? (
                   <div className="max-w-md mx-auto mb-8">
                     <div className="space-y-4">
                       <div className="grid gap-2">
-                        <Label htmlFor="manual-keyword">Enter a keyword to analyze</Label>
+                        <Label htmlFor="manual-keyword">
+                          Enter a keyword/URL/Brief to analyze
+                        </Label>
                         <Input
                           id="manual-keyword"
                           type="text"
                           value={manualKeyword}
                           onChange={(e) => setManualKeyword(e.target.value)}
-                          placeholder="e.g., digital marketing, AI tools, fitness apps"
+                          placeholder="e.g., digital marketing or https://acme.com or best fitness apps"
                           className="bg-zinc-800"
                           onKeyPress={(e) => {
-                            if (e.key === 'Enter') {
+                            if (e.key === "Enter") {
                               handleManualKeywordAnalysis();
                             }
                           }}
                         />
                       </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor="manual-language">Language</Label>
-                        <Select
-                          value={manualLanguage}
-                          onValueChange={(value) => setManualLanguage(value)}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Select a language" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="en">English</SelectItem>
-                            <SelectItem value="es">Spanish</SelectItem>
-                            <SelectItem value="fr">French</SelectItem>
-                            <SelectItem value="de">German</SelectItem>
-                            <SelectItem value="it">Italian</SelectItem>
-                            <SelectItem value="pt">Portuguese</SelectItem>
-                            <SelectItem value="ru">Russian</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor="manual-location">Location</Label>
-                        <Input
-                          id="manual-location"
-                          type="text"
-                          value={manualLocation}
-                          onChange={(e) => setManualLocation(e.target.value)}
-                          placeholder="e.g., United States, Mexico"
-                          className="bg-zinc-800"
-                        />
+                      <div className="flex items-center gap-2 w-full">
+                        <div className="grid gap-2 w-full">
+                          <Label htmlFor="manual-language">Language</Label>
+                          <Select
+                            value={manualLanguage}
+                            onValueChange={(value) => setManualLanguage(value)}
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Select a language" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="en">English</SelectItem>
+                              <SelectItem value="es">Spanish</SelectItem>
+                              <SelectItem value="fr">French</SelectItem>
+                              <SelectItem value="de">German</SelectItem>
+                              <SelectItem value="it">Italian</SelectItem>
+                              <SelectItem value="pt">Portuguese</SelectItem>
+                              <SelectItem value="ru">Russian</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="grid gap-2 w-full">
+                          <Label htmlFor="manual-location">Location</Label>
+                          <Input
+                            id="manual-location"
+                            type="text"
+                            value={manualLocation}
+                            onChange={(e) => setManualLocation(e.target.value)}
+                            placeholder="e.g., United States, Mexico"
+                            className="bg-zinc-800"
+                          />
+                        </div>
                       </div>
                     </div>
-                    
-                    
+
                     <Button
                       onClick={handleManualKeywordAnalysis}
                       disabled={!manualKeyword.trim()}
@@ -1197,7 +1515,8 @@ export default function OnboardingPage() {
                         Analyzing &quot;{manualKeyword}&quot;
                       </h1>
                       <p className="!text-[#b5b5b5a4] mb-3 max-w-lg mx-auto">
-                        We are finding relevant keywords and analyzing their potential for your use case.
+                        We are finding relevant keywords and analyzing their
+                        potential for your use case.
                       </p>
                       <ShinyText
                         text="This will only take a few seconds..."
@@ -1212,7 +1531,7 @@ export default function OnboardingPage() {
                     </div>
                   </div>
                 )}
-                
+
                 <div className="flex justify-center gap-5 mt-6">
                   <Button
                     onClick={() => setOnboardingStep(1)}
@@ -1341,10 +1660,9 @@ export default function OnboardingPage() {
               Setup Monitoring & Payment
             </h2>
             <p className="text-gray-500 mb-4 max-w-2xl mx-auto">
-              Complete your setup and view your monitored keywords by activating your subscription.
+              Complete your setup and view your monitored keywords by activating
+              your subscription.
             </p>
-            
-           
 
             <div className="mb-8">
               <SubsCard
@@ -1369,7 +1687,9 @@ export default function OnboardingPage() {
               </p>
             </div>
             <div className="bg-zinc-800/30 border border-zinc-800 rounded-lg p-4 mb-6 max-w-2xl mx-auto">
-              <h4 className="text-sm font-semibold text-gray-300 mb-2">What you get with a subscription:</h4>
+              <h4 className="text-sm font-semibold text-gray-300 mb-2">
+                What you get with a subscription:
+              </h4>
               <div className="grid grid-cols-2 gap-3 text-sm text-gray-400 text-start">
                 <div className="space-y-1">
                   <div>• Ongoing keyword monitoring and alerts</div>
@@ -1382,19 +1702,26 @@ export default function OnboardingPage() {
                 </div>
               </div>
               <p className="text-xs text-gray-500 mt-3">
-                <strong>Skip payment?</strong> You can explore the dashboard with limited access and upgrade anytime from settings.
+                <strong>Skip payment?</strong> You can explore the dashboard
+                with limited access and upgrade anytime from settings.
               </p>
             </div>
 
             <div className="max-w-md mx-auto flex gap-4">
-              <Button variant="outline" className="rounded-full" onClick={() => setOnboardingStep(3)}>Change Plan</Button>
+              <Button
+                variant="outline"
+                className="rounded-full"
+                onClick={() => setOnboardingStep(3)}
+              >
+                Change Plan
+              </Button>
               <CheckoutButton
                 priceId={selectedPlan || ""}
                 userId={user?.id || ""}
                 buttonText="Complete Payment & Access Dashboard"
               />
             </div>
-            
+
             <div className="mt-6">
               <Button
                 variant="ghost"

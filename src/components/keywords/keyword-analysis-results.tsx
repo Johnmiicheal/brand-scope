@@ -60,6 +60,12 @@ import { cn } from "@/lib/utils";
 import { TextLoop } from "../ui/text-loop";
 import ShinyText from "../ui/shiny-text";
 
+type MonthlySearchVolume = {
+  month: string;
+  year: string;
+  monthlySearches: string;
+};
+
 type KeywordData = {
   conversational_keyword: string;
   intent: string;
@@ -67,9 +73,16 @@ type KeywordData = {
   category: string;
   search_volume: number;
   competition_index: number;
-  low_cpc: string;
+  competition?: string | null;
+  low_cpc?: string | null;
+  high_cpc?: string | null;
+  low_cpc_usd?: string | null;
+  high_cpc_usd?: string | null;
+  trend_3m?: string;
   trend_6m: string;
+  trend_11m?: string;
   relevance_score: number;
+  monthly_search_volumes?: MonthlySearchVolume[];
 };
 
 type KeywordAnalysisResultsProps = {
@@ -178,7 +191,7 @@ export function KeywordAnalysisResults({
     };
 
     fetchMonitoredKeywords();
-  }, [user?.id]);
+  }, [user?.id, subscription]);
 
   // Fetch available brands for selection
   useEffect(() => {
@@ -334,9 +347,15 @@ export function KeywordAnalysisResults({
       "Intent",
       "Category",
       "Search Volume",
+      "Competition Level",
       "Competition Index",
       "Low CPC",
+      "High CPC",
+      "Low CPC (USD)",
+      "High CPC (USD)",
+      "Trend (3M)",
       "Trend (6M)",
+      "Trend (11M)",
       "Relevance Score",
     ];
 
@@ -348,9 +367,15 @@ export function KeywordAnalysisResults({
         keyword.intent,
         keyword.category,
         keyword.search_volume,
+        keyword.competition || 'N/A',
         keyword.competition_index,
-        keyword.low_cpc,
+        keyword.low_cpc || 'N/A',
+        keyword.high_cpc || 'N/A',
+        keyword.low_cpc_usd || 'N/A',
+        keyword.high_cpc_usd || 'N/A',
+        keyword.trend_3m || 'N/A',
         keyword.trend_6m,
+        keyword.trend_11m || 'N/A',
         keyword.relevance_score,
       ]);
 
@@ -457,8 +482,8 @@ export function KeywordAnalysisResults({
                     <TableHead>Category</TableHead>
                     <TableHead>Search Volume</TableHead>
                     <TableHead>Competition</TableHead>
-                    <TableHead>CPC</TableHead>
-                    <TableHead>Trend (6M)</TableHead>
+                    <TableHead>CPC (USD)</TableHead>
+                    <TableHead>Trends</TableHead>
                     <TableHead>Relevance</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
@@ -515,30 +540,97 @@ export function KeywordAnalysisResults({
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-1">
-                            <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                            {keyword.competition_index.toFixed(1)}
+                          <div className="flex flex-col gap-1">
+                            {keyword.competition && (
+                              <Badge 
+                                variant="outline" 
+                                className={`text-xs ${
+                                  keyword.competition === 'HIGH' ? 'bg-red-500/10 text-red-600 border-red-500/20' :
+                                  keyword.competition === 'MEDIUM' ? 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20' :
+                                  keyword.competition === 'LOW' ? 'bg-green-500/10 text-green-600 border-green-500/20' :
+                                  'bg-gray-500/10 text-gray-600 border-gray-500/20'
+                                }`}
+                              >
+                                {keyword.competition}
+                              </Badge>
+                            )}
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                              <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                              {keyword.competition_index.toFixed(1)}
+                            </div>
                           </div>
                         </TableCell>
                         <TableCell>
-                          <span className="font-mono text-sm">
-                            {keyword.low_cpc}
-                          </span>
+                          <div className="flex flex-col gap-1">
+                            {keyword.low_cpc_usd && keyword.high_cpc_usd ? (
+                              <span className="font-mono text-sm">
+                                {keyword.low_cpc_usd} - {keyword.high_cpc_usd}
+                              </span>
+                            ) : keyword.low_cpc_usd ? (
+                              <span className="font-mono text-sm">
+                                {keyword.low_cpc_usd}+
+                              </span>
+                            ) : keyword.low_cpc ? (
+                              <span className="font-mono text-sm text-muted-foreground">
+                                {keyword.low_cpc}
+                              </span>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">N/A</span>
+                            )}
+                            {keyword.low_cpc_usd && keyword.low_cpc && keyword.low_cpc !== keyword.low_cpc_usd && (
+                              <span className="font-mono text-xs text-muted-foreground">
+                                ({keyword.low_cpc})
+                              </span>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-1">
-                            {getTrendIcon(keyword.trend_6m)}
-                            <span
-                              className={`text-sm ${
-                                keyword.trend_6m.startsWith("+")
-                                  ? "text-green-600"
-                                  : keyword.trend_6m.startsWith("-")
-                                  ? "text-red-600"
-                                  : "text-muted-foreground"
-                              }`}
-                            >
-                              {keyword.trend_6m}
-                            </span>
+                          <div className="flex flex-col gap-1">
+                            {/* Primary trend (6M) */}
+                            <div className="flex items-center gap-1">
+                              {getTrendIcon(keyword.trend_6m)}
+                              <span
+                                className={`text-sm font-medium ${
+                                  keyword.trend_6m.startsWith("+")
+                                    ? "text-green-600"
+                                    : keyword.trend_6m.startsWith("-")
+                                    ? "text-red-600"
+                                    : "text-muted-foreground"
+                                }`}
+                              >
+                                {keyword.trend_6m}
+                              </span>
+                              <span className="text-xs text-muted-foreground">6M</span>
+                            </div>
+                            {/* Additional trends */}
+                            <div className="flex items-center gap-2 text-xs">
+                              {keyword.trend_3m && (
+                                <span
+                                  className={`${
+                                    keyword.trend_3m.startsWith("+")
+                                      ? "text-green-500"
+                                      : keyword.trend_3m.startsWith("-")
+                                      ? "text-red-500"
+                                      : "text-muted-foreground"
+                                  }`}
+                                >
+                                  3M: {keyword.trend_3m}
+                                </span>
+                              )}
+                              {keyword.trend_11m && (
+                                <span
+                                  className={`${
+                                    keyword.trend_11m.startsWith("+")
+                                      ? "text-green-500"
+                                      : keyword.trend_11m.startsWith("-")
+                                      ? "text-red-500"
+                                      : "text-muted-foreground"
+                                  }`}
+                                >
+                                  11M: {keyword.trend_11m}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </TableCell>
                         <TableCell>

@@ -12,8 +12,18 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Keyword } from "@/contexts/brand-data-context"
 
+interface EnhancedKeyword {
+  keyword: string;
+  search_volume: number;
+  opportunity_score: number;
+  competition_index?: number;
+  competition?: string;
+  low_cpc_usd?: string;
+  relevance_score?: number;
+}
+
 interface KeywordCloudProps {
-  keywords: Array<Keyword>
+  keywords: Array<Keyword | EnhancedKeyword>
 }
 
 export function KeywordCloud({ keywords }: KeywordCloudProps) {
@@ -28,10 +38,26 @@ export function KeywordCloud({ keywords }: KeywordCloudProps) {
     { min: 1001, max: Number.POSITIVE_INFINITY, color: "hsl(48, 100%, 50%)", label: "1000+" },
   ]
 
-  // Function to get color based on search volume
-  const getColorByVolume = (volume: number) => {
-    const range = volumeRanges.find((range) => volume >= range.min && volume <= range.max)
-    return range ? range.color : "hsl(var(--muted-foreground))"
+  // Competition-based color variants
+  const competitionColors = {
+    HIGH: "hsl(0, 70%, 50%)",    // Red for high competition
+    MEDIUM: "hsl(39, 70%, 50%)", // Orange for medium competition  
+    LOW: "hsl(120, 70%, 40%)",   // Green for low competition
+  }
+
+  // Function to get color based on search volume and competition
+  const getKeywordColor = (keyword: Keyword | EnhancedKeyword) => {
+    // Enhanced keywords have competition data
+    const enhancedKeyword = keyword as EnhancedKeyword;
+    
+    if (enhancedKeyword.competition && competitionColors[enhancedKeyword.competition as keyof typeof competitionColors]) {
+      return competitionColors[enhancedKeyword.competition as keyof typeof competitionColors];
+    }
+    
+    // Fall back to volume-based coloring
+    const volume = keyword.search_volume;
+    const range = volumeRanges.find((range) => volume >= range.min && volume <= range.max);
+    return range ? range.color : "hsl(var(--muted-foreground))";
   }
 
   useEffect(() => {
@@ -47,13 +73,19 @@ export function KeywordCloud({ keywords }: KeywordCloudProps) {
     const sortedKeywords = [...keywords].sort((a, b) => b.search_volume - a.search_volume)
 
     // Prepare data for word cloud
-    const words = sortedKeywords.map((k) => ({
-      text: k.keyword,
-      size: 12 + Math.log(k.search_volume) * 3, // Logarithmic scaling for better size distribution
-      volume: k.search_volume,
-      relevance: k.opportunity_score,
-      color: getColorByVolume(k.search_volume),
-    }))
+    const words = sortedKeywords.map((k) => {
+      const enhancedKeyword = k as EnhancedKeyword;
+      return {
+        text: k.keyword,
+        size: 12 + Math.log(k.search_volume) * 3, // Logarithmic scaling for better size distribution
+        volume: k.search_volume,
+        relevance: enhancedKeyword.relevance_score || k.opportunity_score,
+        competition: enhancedKeyword.competition,
+        competition_index: enhancedKeyword.competition_index,
+        low_cpc_usd: enhancedKeyword.low_cpc_usd,
+        color: getKeywordColor(k),
+      };
+    })
 
     // Create layout
     const layout = cloud()
@@ -105,8 +137,11 @@ export function KeywordCloud({ keywords }: KeywordCloudProps) {
             .html(`
             <div>
               <div class="font-medium">${d.text}</div>
-              <div>Search Volume: ${d.volume}</div>
-              <div>Relevance: ${d.relevance}/10</div>
+              <div>Search Volume: ${d.volume.toLocaleString()}</div>
+              <div>Relevance: ${d.relevance.toFixed(1)}/10</div>
+              ${d.competition ? `<div>Competition: ${d.competition}</div>` : ''}
+              ${d.competition_index ? `<div>Competition Index: ${d.competition_index}</div>` : ''}
+              ${d.low_cpc_usd ? `<div>CPC (USD): ${d.low_cpc_usd}+</div>` : ''}
             </div>
           `)
             .style("left", event.pageX + 10 + "px")
@@ -137,12 +172,30 @@ export function KeywordCloud({ keywords }: KeywordCloudProps) {
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-4 mb-2 text-xs">
-            {volumeRanges.map((range, index) => (
-              <div key={index} className="flex items-center gap-1">
-                <span className="h-3 w-3 rounded-full" style={{ backgroundColor: range.color }}></span>
-                <span>{range.label} searches</span>
+            <div className="flex flex-wrap gap-2">
+              <span className="text-muted-foreground font-medium">Volume:</span>
+              {volumeRanges.map((range, index) => (
+                <div key={index} className="flex items-center gap-1">
+                  <span className="h-3 w-3 rounded-full" style={{ backgroundColor: range.color }}></span>
+                  <span>{range.label}</span>
+                </div>
+              ))}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <span className="text-muted-foreground font-medium">Competition:</span>
+              <div className="flex items-center gap-1">
+                <span className="h-3 w-3 rounded-full" style={{ backgroundColor: competitionColors.LOW }}></span>
+                <span>Low</span>
               </div>
-            ))}
+              <div className="flex items-center gap-1">
+                <span className="h-3 w-3 rounded-full" style={{ backgroundColor: competitionColors.MEDIUM }}></span>
+                <span>Medium</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="h-3 w-3 rounded-full" style={{ backgroundColor: competitionColors.HIGH }}></span>
+                <span>High</span>
+              </div>
+            </div>
           </div>
           <div className="h-[400px] w-full flex items-center justify-center">
             <svg ref={svgRef} width="100%" height="100%" />
