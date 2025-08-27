@@ -30,11 +30,13 @@ import { toast } from "sonner";
 interface CreateBrandModalProps {
   showBrandModal: boolean;
   setShowBrandModal: (show: boolean) => void;
+  onComplete?: () => void;
 }
 
 export const CreateBrandModal = ({
   showBrandModal,
   setShowBrandModal,
+  onComplete,
 }: CreateBrandModalProps) => {
   const [sessionKey, setSessionKey] = useState("");
 
@@ -169,9 +171,13 @@ export const CreateBrandModal = ({
        // Trigger brand analysis
       // await analyzeBrand(brandId);
       toast.success("Brand created successfully");
-      setTimeout(() => {
-        window.location.reload();
-      }, 1000);
+      if(onComplete){
+        onComplete();
+      }else{
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+      }
 
       setSubmitting(false);
     } catch (error) {

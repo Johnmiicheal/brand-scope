@@ -43,7 +43,6 @@ import { supabase } from "@/lib/supabase";
 import { TextLoop } from "../ui/text-loop";
 import ShinyText from "../ui/shiny-text";
 
-
 interface CitationData {
   url_citation?: {
     url: string;
@@ -217,7 +216,6 @@ export function StepsTabContent({
     fetchMonitoredKeywords();
   }, [user?.id]);
 
-
   // Fetch available brands for selection
   useEffect(() => {
     const fetchBrands = async () => {
@@ -228,15 +226,15 @@ export function StepsTabContent({
           .select("*")
           .eq("user_id", user.id)
           .order("created_at", { ascending: false });
-        
+
         if (error) {
           console.error("Error fetching brands:", error);
           return;
         }
-        
+
         setAvailableBrands((data as unknown as Brand[]) || []);
         // Set default to attached brand if available
-        if (brand && data?.some(b => b.id === brand.id)) {
+        if (brand && data?.some((b) => b.id === brand.id)) {
           setScheduleBrand(brand);
         } else if (data && data.length > 0) {
           setScheduleBrand(data[0] as unknown as Brand);
@@ -245,7 +243,7 @@ export function StepsTabContent({
         console.error("Error fetching brands:", error);
       }
     };
-    
+
     fetchBrands();
   }, [user?.id, brand]);
 
@@ -257,41 +255,48 @@ export function StepsTabContent({
     }
 
     // Convert keywords object to array and prepare CSV data
-    const keywordArray = Object.entries(keywords).map(([, keyword]: [string, KeywordData]) => ({
-      'Conversational Keyword': keyword.conversational_keyword || '',
-      'Seed Keyword': keyword.google_seed_keyword || '',
-      'Intent': keyword.intent || '',
-      'Search Volume': keyword.search_volume || 0,
-      'Competition Index': keyword.competition_index || 0,
-      'CPC': keyword.low_cpc || '',
-      'Trend (6M)': keyword.trend_6m || '',
-      'Relevance Score': keyword.relevance_score || 0,
-      'Category': keyword.category || '',
-    }));
+    const keywordArray = Object.entries(keywords).map(
+      ([, keyword]: [string, KeywordData]) => ({
+        "Conversational Keyword": keyword.conversational_keyword || "",
+        "Seed Keyword": keyword.google_seed_keyword || "",
+        Intent: keyword.intent || "",
+        "Search Volume": keyword.search_volume || 0,
+        "Competition Index": keyword.competition_index || 0,
+        CPC: keyword.low_cpc || "",
+        "Trend (6M)": keyword.trend_6m || "",
+        "Relevance Score": keyword.relevance_score || 0,
+        Category: keyword.category || "",
+      })
+    );
 
     // Create CSV headers
     const headers = Object.keys(keywordArray[0]);
-    
+
     // Create CSV content
     const csvContent = [
-      headers.join(','),
-      ...keywordArray.map(row => 
-        headers.map(header => {
-          const value = row[header as keyof typeof row];
-          // Escape commas and quotes in values
-          const escaped = String(value).replace(/"/g, '""');
-          return `"${escaped}"`;
-        }).join(',')
-      )
-    ].join('\n');
+      headers.join(","),
+      ...keywordArray.map((row) =>
+        headers
+          .map((header) => {
+            const value = row[header as keyof typeof row];
+            // Escape commas and quotes in values
+            const escaped = String(value).replace(/"/g, '""');
+            return `"${escaped}"`;
+          })
+          .join(",")
+      ),
+    ].join("\n");
 
     // Create and download the file
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `keyword-analysis-${new Date().toISOString().split('T')[0]}.csv`);
-    link.style.visibility = 'hidden';
+    link.setAttribute("href", url);
+    link.setAttribute(
+      "download",
+      `keyword-analysis-${new Date().toISOString().split("T")[0]}.csv`
+    );
+    link.style.visibility = "hidden";
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -327,7 +332,9 @@ export function StepsTabContent({
     if (!selectedKeyword || !user?.id) return;
 
     setIsScheduling(true);
-    toast.info( `Monitoring "${selectedKeyword.conversational_keyword}" has started. This may take some time`);
+    toast.info(
+      `Monitoring "${selectedKeyword.conversational_keyword}" has started. This may take some time`
+    );
 
     try {
       if (subscription?.price_id === null && monitoredKeywords.length >= 1) {
@@ -349,7 +356,9 @@ export function StepsTabContent({
           attached_brand_id: scheduleBrand ? [scheduleBrand.id] : [""],
           attached_brand_name: scheduleBrand ? scheduleBrand.name : "",
           attached_brand_industry: scheduleBrand ? scheduleBrand.industry : "",
-          attached_brand_logo_url: scheduleBrand ? scheduleBrand.logo_url || "" : "",
+          attached_brand_logo_url: scheduleBrand
+            ? scheduleBrand.logo_url || ""
+            : "",
           attached_brand_website: scheduleBrand ? scheduleBrand.website : "",
           attached_brand_language: scheduleBrand ? scheduleBrand.language : "",
           attached_brand_location: scheduleBrand ? scheduleBrand.location : "",
@@ -361,7 +370,9 @@ export function StepsTabContent({
         throw new Error("Failed to schedule keyword");
       }
 
-      toast.success(`"${selectedKeyword.conversational_keyword}" has been scheduled for ${scheduleFrequency} monitoring.`);
+      toast.success(
+        `"${selectedKeyword.conversational_keyword}" has been scheduled for ${scheduleFrequency} monitoring.`
+      );
 
       setShowScheduleModal(false);
       setSelectedKeyword(null);
@@ -379,13 +390,14 @@ export function StepsTabContent({
         "You have reached the limit of 1 monitored keyword. Please upgrade to a paid plan to monitor more keywords."
       );
       return;
-    } else{
-
+    } else {
       setSelectedKeyword(keyword);
       setEditedKeyword(keyword.conversational_keyword);
       // Reset to defaults when opening modal
       setScheduleMode("Explorer");
-      setScheduleBrand(brand || (availableBrands.length > 0 ? availableBrands[0] : null));
+      setScheduleBrand(
+        brand || (availableBrands.length > 0 ? availableBrands[0] : null)
+      );
       setShowScheduleModal(true);
     }
   };
@@ -575,9 +587,14 @@ export function StepsTabContent({
         {/* Search Categories with Stepper */}
         <Card className="border-none">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TbSearch className="w-5 h-5 text-primary" />
-              Search Analysis Steps
+            <CardTitle className="flex-col flex items-start gap-4">
+              <div className="flex gap-2">
+                <TbSearch className="w-5 h-5 text-primary" />
+                Steps and searches done by llms (Chain of thought/Query Fan out)
+              </div>
+              <p className="text-sm text-muted-foreground italic">
+                Cover this topic clusters:
+              </p>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -640,7 +657,7 @@ export function StepsTabContent({
                   {/* Step Content */}
                   <div className="flex-1">
                     <h4 className="font-semibold mb-3 text-foreground">
-                      {category.header}
+                      Cluster {index + 1}: {category.header}
                     </h4>
                     <div className="flex flex-wrap gap-2 mb-6">
                       {category.subsearches.map((search, searchIndex) => (
@@ -687,7 +704,7 @@ export function StepsTabContent({
                   }}
                   className="text-sm text-muted-foreground italic"
                 >
-                  Search analysis steps completed. Target these keywords for monitoring.
+                  Search analysis steps completed. Your Brand need to be mentioned on this searches in order to appear on llms.
                 </motion.div>
               </motion.div>
             </div>
@@ -695,22 +712,31 @@ export function StepsTabContent({
         </Card>
 
         {/* Keywords Analysis */}
-        <Card className={cn(orientation === "horizontal" ? "!border-l border-accent border-0 rounded-none" : "border-none")}>
+        <Card
+          className={cn(
+            orientation === "horizontal"
+              ? "!border-l border-accent border-0 rounded-none"
+              : "border-none"
+          )}
+        >
           <CardHeader>
             <CardTitle className="flex items-center gap-2 justify-between w-full">
               <div className="flex flex-col gap-2">
-                <p> 
-                  Keyword Analysis
-                </p>
+                <p>Keyword Analysis</p>
                 <p className="text-xs text-muted-foreground italic">
-                  🧠 LLMs split 1 prompt into multiple searches on Google/Bing. To rank on ChatGPT, Gemini, Perplexity, you need to rank first on these keywords on Google/Bing
+                  🧠 LLMs split 1 prompt into multiple searches on Google/Bing.
+                  To rank on ChatGPT, Gemini, Perplexity, you need to rank first
+                  on these keywords on Google/Bing
                 </p>
-              <Badge variant="outline" className="w-fit">
-                {Object.keys(stepsData?.output?.keywords || {}).length} keywords
-              </Badge>
+                <Badge variant="outline" className="w-fit">
+                  {Object.keys(stepsData?.output?.keywords || {}).length}{" "}
+                  keywords
+                </Badge>
               </div>
               <Button
-                onClick={() => exportKeywordsToCSV(stepsData?.output?.keywords || {})}
+                onClick={() =>
+                  exportKeywordsToCSV(stepsData?.output?.keywords || {})
+                }
                 size="sm"
                 variant="outline"
               >
@@ -776,9 +802,9 @@ export function StepsTabContent({
                           </div>
                         </TableCell>
                         <TableCell>
-                        <div className=" text-foreground text-sm">
-                                {keyword.google_seed_keyword}
-                            </div>
+                          <div className=" text-foreground text-sm">
+                            {keyword.google_seed_keyword}
+                          </div>
                         </TableCell>
 
                         <TableCell className="py-4">
@@ -894,188 +920,199 @@ export function StepsTabContent({
               </div>
             )}
 
-{isScheduling ? (
-                <div className="flex flex-col items-center justify-center p-4">
-                  <div className="w-full ">
-                    <div className="flex flex-col items-center space-y-3">
-                      <div className="flex items-center space-x-2">
-                        <span
-                          className={cn(
-                            "px-2 py-1 text-xs rounded-full",
-                            scheduleMode === "Voyager" &&
-                              "bg-orange-500/20 text-orange-400",
-                            scheduleMode === "Explorer" &&
-                              "bg-green-500/20 text-green-400"
-                          )}
-                        >
-                          {scheduleMode}
-                        </span>
-                        <span
-                          className={cn(
-                            "px-2 py-1 text-xs rounded-full",
-                            "bg-blue-500/20 text-blue-400"
-                          )}
-                        >
-                          Monitor
-                        </span>
+            {isScheduling ? (
+              <div className="flex flex-col items-center justify-center p-4">
+                <div className="w-full ">
+                  <div className="flex flex-col items-center space-y-3">
+                    <div className="flex items-center space-x-2">
+                      <span
+                        className={cn(
+                          "px-2 py-1 text-xs rounded-full",
+                          scheduleMode === "Voyager" &&
+                            "bg-orange-500/20 text-orange-400",
+                          scheduleMode === "Explorer" &&
+                            "bg-green-500/20 text-green-400"
+                        )}
+                      >
+                        {scheduleMode}
+                      </span>
+                      <span
+                        className={cn(
+                          "px-2 py-1 text-xs rounded-full",
+                          "bg-blue-500/20 text-blue-400"
+                        )}
+                      >
+                        Monitor
+                      </span>
 
-                        <span className="text-xs text-muted-foreground">
-                          thought for {formatTime(elapsedSeconds)}
-                        </span>
-                      </div>
-                      <h1 className="text-2xl font-bold mb-3 text-center text-foreground dark:text-white">
-                        Analyzing Your Search Query
-                      </h1>
+                      <span className="text-xs text-muted-foreground">
+                        thought for {formatTime(elapsedSeconds)}
+                      </span>
                     </div>
-                    <p className="text-muted-foreground mb-10 text-center">
-                      We&apos;re gathering data and insights about{" "}
-                      {selectedKeyword?.conversational_keyword || "your query"}
-                      This may take a few moments.
-                    </p>
-                    <div className="flex flex-col justify-center items-start gap-4">
-                      <div className="space-y-2">
-                        <p className="text-sm text-neutral-500">
-                          Processing with
+                    <h1 className="text-2xl font-bold mb-3 text-center text-foreground dark:text-white">
+                      Analyzing Your Search Query
+                    </h1>
+                  </div>
+                  <p className="text-muted-foreground mb-10 text-center">
+                    We&apos;re gathering data and insights about{" "}
+                    {selectedKeyword?.conversational_keyword || "your query"}
+                    This may take a few moments.
+                  </p>
+                  <div className="flex flex-col justify-center items-start gap-4">
+                    <div className="space-y-2">
+                      <p className="text-sm text-neutral-500">
+                        Processing with
+                      </p>
+                      <TextLoop interval={1.5}>
+                        <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
+                          🔍 Retrieving relevant information...
                         </p>
-                        <TextLoop interval={1.5}>
-                          <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
-                            🔍 Retrieving relevant information...
-                          </p>
-                          <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
-                            📚 Processing search results...
-                          </p>
-                          <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
-                            🤖 Generating response...
-                          </p>
-                          <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
-                            ✨ Enhancing with context...
-                          </p>
-                        </TextLoop>
-                      </div>
-                      <div className="space-y-2">
-                        <p className="text-sm text-neutral-500">
-                          Generating response
+                        <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
+                          📚 Processing search results...
                         </p>
-                        <ShinyText
-                          text="Combining insights from multiple sources for a comprehensive answer..."
-                          disabled={false}
-                          speed={3}
-                          className="font-medium text-sm"
-                        />
-                      </div>
+                        <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
+                          🤖 Generating response...
+                        </p>
+                        <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
+                          ✨ Enhancing with context...
+                        </p>
+                      </TextLoop>
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-sm text-neutral-500">
+                        Generating response
+                      </p>
+                      <ShinyText
+                        text="Combining insights from multiple sources for a comprehensive answer..."
+                        disabled={false}
+                        speed={3}
+                        className="font-medium text-sm"
+                      />
                     </div>
                   </div>
                 </div>
-              ) : (
-                <>
-                  <div className="space-y-3 w-full">
-              <label className="text-sm font-medium">Keyword</label>
-              <Input
-                value={
-                  editedKeyword || selectedKeyword?.conversational_keyword || ""
-                }
-                onChange={(e) => setEditedKeyword(e.target.value)}
-                className="w-full"
-              />
-            </div>
-
-            <div className="space-y-4">
-              {/* Analysis Mode Selection */}
-              <div className="space-y-2 w-full">
-                <label className="text-sm font-medium">Analysis Mode</label>
-                <Select
-                  value={scheduleMode}
-                  onValueChange={(value: AnalysisMode) => setScheduleMode(value)}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Explorer">Explorer - Comprehensive Analysis</SelectItem>
-                    <SelectItem value="Voyager">Voyager - Focused Analysis</SelectItem>
-                  </SelectContent>
-                </Select>
               </div>
-
-              {/* Brand Selection */}
-              {availableBrands.length > 0 && (
-              <div className="space-y-2 w-full">
-                <label className="text-sm font-medium">Brand</label>
-                <Select
-                  value={scheduleBrand?.id || ""}
-                  onValueChange={(value: string) => {
-                    const selected = availableBrands.find(b => b.id === value);
-                    setScheduleBrand(selected || null);
-                  }}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select a brand" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableBrands.length === 0 ? (
-                      <SelectItem value="N/A" disabled>
-                        No brands available
-                      </SelectItem>
-                    ) : (
-                      availableBrands.map((brand) => (
-                        <SelectItem key={brand.id} value={brand.id}>
-                          {brand.name}
-                        </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-              )}
-
-              <div className="flex gap-5 w-full items-center justify-between">
-                <div className="space-y-2 w-full">
-                  <label className="text-sm font-medium">
-                    Monitoring Frequency
-                  </label>
-                  <Select
-                    value={scheduleFrequency}
-                    onValueChange={(value: "daily" | "weekly") =>
-                      setScheduleFrequency(value)
+            ) : (
+              <>
+                <div className="space-y-3 w-full">
+                  <label className="text-sm font-medium">Keyword</label>
+                  <Input
+                    value={
+                      editedKeyword ||
+                      selectedKeyword?.conversational_keyword ||
+                      ""
                     }
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="daily">Daily</SelectItem>
-                      <SelectItem value="weekly">Weekly</SelectItem>
-                    </SelectContent>
-                  </Select>
+                    onChange={(e) => setEditedKeyword(e.target.value)}
+                    className="w-full"
+                  />
                 </div>
 
-                <div className="space-y-2 w-full">
-                  <label className="text-sm font-medium">Location</label>
-                  <Select
-                    value={scheduleCountry}
-                    onValueChange={setScheduleCountry}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="global" disabled>
-                        Select Location
-                      </SelectItem>
-                      {countries.map((country) => (
-                        <SelectItem key={country.value} value={country.label}>
-                          {country.label}
+                <div className="space-y-4">
+                  {/* Analysis Mode Selection */}
+                  <div className="space-y-2 w-full">
+                    <label className="text-sm font-medium">Analysis Mode</label>
+                    <Select
+                      value={scheduleMode}
+                      onValueChange={(value: AnalysisMode) =>
+                        setScheduleMode(value)
+                      }
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Explorer">
+                          Explorer - Comprehensive Analysis
                         </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </div>
-                </>
-              )}
+                        <SelectItem value="Voyager">
+                          Voyager - Focused Analysis
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-          
+                  {/* Brand Selection */}
+                  {availableBrands.length > 0 && (
+                    <div className="space-y-2 w-full">
+                      <label className="text-sm font-medium">Brand</label>
+                      <Select
+                        value={scheduleBrand?.id || ""}
+                        onValueChange={(value: string) => {
+                          const selected = availableBrands.find(
+                            (b) => b.id === value
+                          );
+                          setScheduleBrand(selected || null);
+                        }}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select a brand" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableBrands.length === 0 ? (
+                            <SelectItem value="N/A" disabled>
+                              No brands available
+                            </SelectItem>
+                          ) : (
+                            availableBrands.map((brand) => (
+                              <SelectItem key={brand.id} value={brand.id}>
+                                {brand.name}
+                              </SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  <div className="flex gap-5 w-full items-center justify-between">
+                    <div className="space-y-2 w-full">
+                      <label className="text-sm font-medium">
+                        Monitoring Frequency
+                      </label>
+                      <Select
+                        value={scheduleFrequency}
+                        onValueChange={(value: "daily" | "weekly") =>
+                          setScheduleFrequency(value)
+                        }
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="daily">Daily</SelectItem>
+                          <SelectItem value="weekly">Weekly</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2 w-full">
+                      <label className="text-sm font-medium">Location</label>
+                      <Select
+                        value={scheduleCountry}
+                        onValueChange={setScheduleCountry}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="global" disabled>
+                            Select Location
+                          </SelectItem>
+                          {countries.map((country) => (
+                            <SelectItem
+                              key={country.value}
+                              value={country.label}
+                            >
+                              {country.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
 
             <div className="flex gap-2 pt-4">
               <Button

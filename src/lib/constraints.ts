@@ -75,7 +75,7 @@ export const constraints = {
         { key: 'claude-sonnet-4', name: 'Claude Sonnet 4', credit_cost: 1 },
         { key: 'deepseek-r1', name: 'DeepSeek R1', credit_cost: 1 },
         { key: 'kimi-k2', name: 'Kimi K2', credit_cost: 1 },
-        { key: 'gpt-5', name: 'GPT-5', credit_cost: 2 },
+        { key: 'gpt-5', name: 'GPT-5', credit_cost: 1 },
         { key: 'llama-4-maverick', name: 'Llama 4 Maverick', credit_cost: 1 },
         { key: 'grok-4', name: 'Grok 4', credit_cost: 1 },
         { key: 'mistral-medium', name: 'Mistral Medium', credit_cost: 1 },

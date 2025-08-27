@@ -45,6 +45,8 @@ import { INDUSTRIES } from "@/lib/utils";
 import ShinyText from "@/components/ui/shiny-text";
 import { KeywordAnalysisResults } from "@/components/keywords/keyword-analysis-results";
 import SubsCard from "@/components/fancy-web/subs-card";
+import { AlertDialog, AlertDialogTitle, AlertDialogHeader, AlertDialogContent, AlertDialogDescription, AlertDialogFooter } from "@/components/ui/alert-dialog";
+import { CreateBrandModal } from "@/components/dashboard/create-brand-modal";
 
 type FormData = {
   businessBrief: string;
@@ -106,7 +108,11 @@ export default function OnboardingPage() {
   const domain = searchParams.get("domain");
   const step = searchParams.get("step") || "0";
   const [onboardingStep, setOnboardingStep] = useState(parseInt(step!));
+  const [hasBrandSetup, setHasBrandSetup] = useState(false);
+  const [handleNoBrandSetup, setHandleNoBrandSetup] = useState(true);
+  const [openCreateBrandModal, setOpenCreateBrandModal] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState("");
+  const [showLogo, setShowLogo] = useState(true);
   const [password, setPassword] = useState("");
   const [brandName, setBrandName] = useState("");
   const [brandWebsite, setBrandWebsite] = useState("");
@@ -390,7 +396,10 @@ export default function OnboardingPage() {
     if (onboardingStep === 0) {
       setSelectedPlan("free");
     } else if (onboardingStep === 4) {
-      // Skip payment step - redirect directly to dashboard
+      if(!hasBrandSetup){
+        setHandleNoBrandSetup(true);
+        return;
+      }
       router.push("/dashboard");
       return;
     }
@@ -469,7 +478,7 @@ export default function OnboardingPage() {
 
       // Create brand record
       const brandId = uuidv4();
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("brand_project")
         .insert([
           {
@@ -508,7 +517,7 @@ export default function OnboardingPage() {
         language: brandLanguage,
         location: brandLocation,
       });
-
+      setHandleNoBrandSetup(false);
       if (error) {
         console.error("Error creating brand:", error);
         setSubmitting(false);
@@ -965,8 +974,12 @@ export default function OnboardingPage() {
                         </Select>
                       </div>
 
+                     {showLogo && (
                       <div className="grid gap-2">
+                        <div className="flex justify-between items-center w-full">
                         <Label htmlFor="logo">Logo</Label>
+                        <Button variant="outline" className="rounded-full text-xs" onClick={() => setShowLogo(false)}>I don&apos;t have a Logo</Button>
+                        </div>
                         <div className="flex items-center gap-4">
                           <input
                             ref={fileInputRef}
@@ -1032,6 +1045,7 @@ export default function OnboardingPage() {
                           )}
                         </div>
                       </div>
+                     )}
                     </div>
                   </div>
                   <Button
@@ -1734,6 +1748,23 @@ export default function OnboardingPage() {
           </div>
         )}
       </div>
+      {onboardingStep === 4 && (
+      <AlertDialog open={handleNoBrandSetup} onOpenChange={setHandleNoBrandSetup}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>No Brand Setup?</AlertDialogTitle>
+          </AlertDialogHeader>
+          <AlertDialogDescription>
+          <span className="font-bold text-white/80">Are you sure you want to continue and skip this step?</span> You can always setup a brand later in the dashboard projects page.
+          </AlertDialogDescription>
+          <AlertDialogFooter>
+            <Button variant="outline" className="rounded-full" onClick={() => router.push("/dashboard")}>Yes, skip this step</Button>
+            <Button variant="outline" onClick={() => {setHandleNoBrandSetup(false); setOpenCreateBrandModal(true)}}>No, I&apos;ll setup a brand</Button>
+          </AlertDialogFooter>
+          </AlertDialogContent> 
+        </AlertDialog>
+      )}
+      <CreateBrandModal showBrandModal={openCreateBrandModal} setShowBrandModal={setOpenCreateBrandModal} onComplete={() => {setHandleNoBrandSetup(false); setOpenCreateBrandModal(false); setHasBrandSetup(true)}} />
     </div>
   );
 }
