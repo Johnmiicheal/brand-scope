@@ -19,7 +19,6 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { toast } from "@/components/ui/use-toast";
 import { AnalysisMode } from "@/types/search";
 import {
   Command,
@@ -408,11 +407,9 @@ export function AIChatInterface({
     });
 
     if (!updatedSubscription.ok) {
-      toast({
-        title: "Error",
-        description: "Failed to update query count. Please try again later.",
-        variant: "destructive",
-      });
+      toastSonner.error(
+        "Failed to update query count. Please try again later."
+      );
     }
   };
 
@@ -439,86 +436,48 @@ export function AIChatInterface({
 
   const handleSubmit = async () => {
     if (!value.trim()) {
-      toast({
-        title: "Error",
-        description: `Please enter a query or keyword to ${
+      toastSonner.error(
+        `Please enter a query or keyword to ${
           isMonitoringMode ? "monitor" : "search"
-        }.`,
-        variant: "destructive",
-      });
+        }.`
+      );
       return;
     }
 
     if (!user?.id) {
-      toast({
-        title: "Error",
-        description: "Please sign in to continue",
-        variant: "destructive",
-      });
+      toastSonner.error("Please sign in to continue");
       return;
     }
 
     if (!subscription) {
-      toast({
-        title: "Error",
-        description:
-          "Subscription plan could not be found. Please contact support or try again later.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (subscription.status !== "active") {
-      toast({
-        title: "Error",
-        description:
-          "Your subscription is not active or has expired. Please upgrade to continue.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!product) {
-      toast({
-        title: "Error",
-        description:
-          "Subscription plan could not be found. Please contact support or try again later.",
-        variant: "destructive",
-      });
+      toastSonner.error(
+        "Subscription could not be found. Please contact support or try again later."
+      );
       return;
     }
 
     if (selectedModels.length === 0) {
-      toast({
-        title: "Error",
-        description: "Please select at least one AI model for analysis.",
-        variant: "destructive",
-      });
+      toastSonner.error("Please select at least one AI model for analysis.");
       return;
     }
 
-    const userConstraint = getConstraints(product.name);
+    const userConstraint = getConstraints(product?.name || "");
 
-    if (subscription.query_count >= userConstraint.max_credits) {
-      toast({
-        title: "Error",
-        description:
-          "You have reached the maximum number of credits for your plan. Please upgrade to continue.",
-        variant: "destructive",
-      });
+    if (subscription?.query_count >= userConstraint.max_credits && subscription?.payg_credits === 0) {
+      toastSonner.error(
+        "You have reached the maximum number of credits for your plan. Please upgrade to continue."
+      );
       return;
     }
 
     if (
       isMonitoringMode &&
-      subscription.monitoring_count >= userConstraint.max_scheduled_queries
+      subscription?.monitoring_count >= userConstraint.max_scheduled_queries &&
+      subscription?.payg_credits === 0
     ) {
-      toast({
-        title: "Error",
-        description:
-          "You have reached the maximum number of scheduled queries for your plan. Please upgrade to continue.",
-        variant: "destructive",
-      });
+      toastSonner.error(
+        "You have reached the maximum number of scheduled queries for your plan. Please upgrade to continue."
+      );
       return;
     }
 
@@ -568,10 +527,9 @@ export function AIChatInterface({
           throw new Error(error.error || "Failed to schedule query");
         }
 
-        toast({
-          title: "Query Scheduled",
-          description: `Your query has been scheduled for ${monitorFrequency} monitoring with ${selectedModels.length} AI models (${creditsRequired} credits per run). Check the Monitoring tab for details.`,
-        });
+        toastSonner.success(
+          `Your query has been scheduled for ${monitorFrequency} monitoring with ${selectedModels.length} AI models (${creditsRequired} credits per run). Check the Monitoring tab for details.`
+        );
         updateQueryCount();
         setTimeout(() => {
           window.location.assign(`/dashboard/library`);
@@ -629,10 +587,9 @@ export function AIChatInterface({
 
         const { mode_id, credits_used } = JSON.parse(result);
 
-        toast({
-          title: "Analysis started",
-          description: `Your ${mode} analysis is processing using ${selectedModels.length} AI models (${credits_used} credits used). You'll be redirected to results when complete.`,
-        });
+        toastSonner.success(
+          `Your ${mode} analysis is processing using ${selectedModels.length} AI models (${credits_used} credits used). You'll be redirected to results when complete.`
+        );
 
         setIsAnalyzing(false);
         setTimeout(() => {
@@ -645,12 +602,9 @@ export function AIChatInterface({
     } catch (error) {
       console.error("Error submitting request:", error);
       setIsAnalyzing(false);
-      toast({
-        title: "Error",
-        description:
-          error instanceof Error ? error.message : "An unknown error occurred",
-        variant: "destructive",
-      });
+      toastSonner.error(
+        error instanceof Error ? error.message : "An unknown error occurred"
+      );
     } finally {
       setLoading(false);
       // Ensure analyzing is false unless explicitly set during submission
@@ -1140,7 +1094,7 @@ export function AIChatInterface({
                   loading || !value.trim() || selectedModels.length === 0
                 }
                 className={cn(
-                  "p-2 active:scale-95 rounded-full text-sm -rotate-45 cursor-pointer hover:rotate-0 transition-all ease-in-out duration-300 border hover:bg-muted flex items-center justify-center", // Centered icon
+                  "p-2 active:scale-95 disabled:opacity-50 rounded-full text-sm -rotate-45 cursor-pointer hover:rotate-0 transition-all ease-in-out duration-300 border hover:bg-muted flex items-center justify-center", // Centered icon
                   value.trim() && selectedModels.length > 0
                     ? "bg-foreground text-background dark:bg-white dark:text-black border-foreground dark:border-zinc-700 hover:border-foreground/80 dark:hover:border-zinc-600"
                     : "text-muted-foreground dark:text-zinc-400 border-border dark:border-zinc-700"
