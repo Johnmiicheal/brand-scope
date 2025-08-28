@@ -10,6 +10,7 @@ import { User, Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import { toast } from '@/components/ui/use-toast'
 import { UserSubscription } from '@/hooks/useAuth'
+import { setLastLoginMethod } from '@/lib/lastLoginMethod'
 import Stripe from 'stripe'
 
 // Simple type for auth context
@@ -154,6 +155,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if(data){
         setUser(data.user);
         setSession(data.session)
+        // Store login method for "last used" feature
+        setLastLoginMethod('password')
+        
         const { data: subscriptionData } = await supabase
           .from('user_subscriptions')
           .select('*')
@@ -189,6 +193,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Sign in with Google
   const signInWithGoogle = async () => {
     try {
+      // Store login method before OAuth redirect
+      setLastLoginMethod('google')
+      
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -258,6 +265,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // Create user record in the users table
       if (authData.user) {
+        // Store login method for "last used" feature
+        setLastLoginMethod('password')
+        
         const { error: userError } = await supabase
           .from('users')
           .insert({

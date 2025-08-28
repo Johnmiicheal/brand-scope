@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { LastUsedMethod } from "@/components/auth/LastUsedMethod"
 
 export function SignupForm({
   className,
@@ -108,6 +109,7 @@ export function SignupForm({
                   </Link>
                 </div>
               </div>
+              <LastUsedMethod />
               <div className="flex flex-col gap-4">
                 {error && (
                   <div className="text-destructive text-sm">{error}</div>

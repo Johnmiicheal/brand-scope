@@ -272,7 +272,7 @@ export function KeywordAnalysisResults({
     );
 
     try {
-      if (subscription?.price_id === null && monitoredKeywords.length >= 1) {
+      if (subscription?.price_id === null && monitoredKeywords.length >= 1 && subscription.payg_credits === 0) {
         toast.error(
           "You have reached the limit of 1 monitored keyword. Please upgrade to a paid plan to monitor more keywords."
         );
@@ -326,7 +326,7 @@ export function KeywordAnalysisResults({
   };
 
   const openScheduleModal = (keyword: KeywordData) => {
-    if (subscription?.price_id === null && monitoredKeywords.length >= 1) {
+    if (subscription?.price_id === null && monitoredKeywords.length >= 1 && subscription.payg_credits === 0) {
       toast.error(
         "You have reached the limit of 1 monitored keyword. Please upgrade to a paid plan to monitor more keywords."
       );

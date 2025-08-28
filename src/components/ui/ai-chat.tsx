@@ -55,13 +55,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
   Claude,
   DeepSeek,
   Gemini,
@@ -173,9 +166,7 @@ export function AIChatInterface({
   const [mode, setMode] = useState<AnalysisMode>("Explorer");
   const [loading, setLoading] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [isMonitoringMode, setIsMonitoringMode] = useState(
-    true
-  );
+  const [isMonitoringMode, setIsMonitoringMode] = useState(true);
   const [attachedBrand, setAttachedBrand] = useState<Brand | null>(
     attachedBrandId
       ? ({
@@ -368,9 +359,14 @@ export function AIChatInterface({
     const checkInactivity = () => {
       const now = Date.now();
       const timeSinceLastTyping = now - lastTypingTime;
-      
+
       // Show modal if user hasn't typed for 10 seconds and input is empty
-      if (timeSinceLastTyping >= 40000 && !value.trim() && !showInactivityModal && !isAnalyzing) {
+      if (
+        timeSinceLastTyping >= 40000 &&
+        !value.trim() &&
+        !showInactivityModal &&
+        !isAnalyzing
+      ) {
         setShowInactivityModal(true);
       }
     };
@@ -949,7 +945,8 @@ export function AIChatInterface({
                   <div className="space-y-4 mt-4">
                     <div className="flex items-center justify-between">
                       <h4 className="font-medium text-sm text-neutral-600 dark:text-white">
-                        AI Models for {modes.find((item) => item.key === mode)?.label}
+                        AI Models for{" "}
+                        {modes.find((item) => item.key === mode)?.label}
                       </h4>
                       <Badge
                         variant="secondary"
@@ -1244,9 +1241,9 @@ export function AIChatInterface({
                     Voyager Mode
                   </h4>
                   <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
-                    Leverages Llama 4 Maverick, DeepSeek v3, Grok 4, and many more top LLMs
-                    to create in-depth brand ranking and keyword analysis. 
-                    No native search support.
+                    Leverages Llama 4 Maverick, DeepSeek v3, Grok 4, and many
+                    more top LLMs to create in-depth brand ranking and keyword
+                    analysis. No native search support.
                   </p>
                 </div>
               </div>
@@ -1268,20 +1265,34 @@ export function AIChatInterface({
             )}
 
             <div className="pt-2 border-t border-[#e2e2e2]/50 dark:border-neutral-800">
-              {/* <div className="flex items-start gap-3 mb-3">
-                <Zap className="w-4 h-4 text-purple-500 mt-0.5" />
-                <div>
-                  <h4 className="font-medium text-sm text-neutral-700 dark:text-foreground">
-                    Credit System
+              <div className="flex flex-col items-start gap-3 mb-3">
+                <div className="flex items-center gap-2">
+                  <Zap className="w-4 h-4 text-purple-500" />
+                  <h4 className="text-lg font-bold text-neutral-700 dark:text-foreground">
+                    Not sure what to search and monitor?
                   </h4>
-                  <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
-                    Select specific AI models to optimize your credit usage. You
-                    can choose individual models or use all available models for
-                    comprehensive analysis. Google Search is always included at
-                    no extra cost.
-                  </p>
                 </div>
-              </div> */}
+                <div className="flex">
+                  <p className=" text-neutral-500 dark:text-neutral-400 text-sm mt-2">
+                    Let&apos;s give you{" "}
+                    <span className="font-black text-primary">50 Prompts</span>{" "}
+                    with monthly demand, trends, intent and cpc
+                  </p>
+                  <Button
+                    variant="link"
+                    onClick={() => {
+                      toastSonner.success("Redirecting to keywords...");
+                      setTimeout(() => {
+                        router.push("/dashboard/keywords");
+                      }, 1000);
+                    }}
+                    className="group transition-all duration-300 text-white font-medium text-sm"
+                  >
+                    Let&apos;s Go
+                    <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-all duration-300" />
+                  </Button>
+                </div>
+              </div>
               <p className="text-xs text-muted-foreground/30 dark:text-neutral-500">
                 {isMonitoringMode
                   ? "Monitored queries run automatically with your selected models. View their status and results in the Monitoring tab."
@@ -1291,39 +1302,7 @@ export function AIChatInterface({
           </div>
         </div>
       </div>
-      
-      {/* Inactivity Modal */}
-      <Dialog open={showInactivityModal} onOpenChange={() => {
-        setShowInactivityModal(false);
-        setLastTypingTime(Date.now());
-      }}>
-        <DialogContent className="sm:max-w-xl p-12 bg-gradient-to-b from-background to-blue-600 rounded-2xl outline-2 outline-blue-600">
-          <DialogHeader>
-            <DialogTitle className="text-center text-3xl font-bold">
-              Not sure what to search and monitor?
-            </DialogTitle>
-            <DialogDescription className="text-center text-white text-base mt-2">
-              Let&apos;s give you <span className="font-black text-primary">50 Prompts</span> with monthly demand, trends, intent and cpc
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex justify-center mt-6">
-            <Button 
-              onClick={() => {
-                setShowInactivityModal(false);
-                toastSonner.success("Redirecting to keywords...")
-                setTimeout(() => {
-                  router.push("/dashboard/keywords")
-                }, 1000)
-              }}
-              className="w-full rounded-full sm:w-auto h-14 !px-10 bg-gradient-to-b from-blue-600 to-background/50 hover:bg-blue-600 transition-all duration-300 text-primary-foreground font-bold"
-            >
-              Let&apos;s Go
-              <ChevronRight className="w-4 h-4" />
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-      
+
       <AttachBrandModal
         showBrandModal={openModal}
         setShowBrandModal={setOpenModal}
