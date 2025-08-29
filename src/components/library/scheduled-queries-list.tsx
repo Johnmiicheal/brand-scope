@@ -44,7 +44,7 @@ import { Brand } from "@/contexts/brand-data-context";
 type FilterOptions = {
   frequency: "all" | "daily" | "weekly";
   mode: "all" | "DeepFocus" | "Voyager" | "Explorer";
-  status: "all" | "active" | "paused"; // Add other statuses if needed
+  status: "all" | "active" | "paused" | "archived"; // Add other statuses if needed
 };
 
 export type ScheduledQuery = {
@@ -58,7 +58,7 @@ export type ScheduledQuery = {
   frequency: "daily" | "weekly";
   mode: "DeepFocus" | "Voyager" | "Explorer" | null;
   mode_id: string | null;
-  status: "active" | "paused" | "error"; // Ensure DB has this column
+  status: "active" | "paused" | "error" | "archived"; 
   attached_brand_id: string[];
 };
 
@@ -173,7 +173,7 @@ export function ScheduledQueriesList({
   const handleDeactivate = async (query: ScheduledQuery) => {
     try {
       setLoadingStates(prev => ({ ...prev, [query.id]: true }));
-      const newStatus = query.status === 'active' ? 'paused' : 'active';
+      const newStatus = query.status === 'active' ? 'archived' : 'active';
       const { error } = await supabase
         .from('scheduled_queries')
         .update({ status: newStatus })
@@ -190,7 +190,7 @@ export function ScheduledQueriesList({
         )
       );
       
-      toast.info(newStatus === 'paused' ? "Prompt Deactivated" : "Prompt Activated");
+      toast.info(newStatus === 'archived' ? "Prompt Deactivated" : "Prompt Activated");
     } catch (error) {
       console.error('Error updating prompt status:', error);
       toast.error("Failed to update the prompt status. Please try again.");
@@ -305,6 +305,7 @@ export function ScheduledQueriesList({
               <SelectItem value="all">All Statuses</SelectItem>
               <SelectItem value="active">Active</SelectItem>
               <SelectItem value="paused">Paused</SelectItem>
+              <SelectItem value="archived">Archived</SelectItem>
               {/* Add more statuses if needed */}
             </SelectContent>
           </Select>
@@ -348,7 +349,7 @@ export function ScheduledQueriesList({
                     exit={{ opacity: 0, y: -10, transition: { duration: 0.2 } }}
                     layout
                     className="hover:bg-muted/40 items-center cursor-pointer"
-                    onClick={() => window.location.pathname === "/dashboard/library" ?  handleRowClick(query?.mode_id!) : handleViewOnDashboard(query)}
+                    onClick={() => handleViewOnDashboard(query)}
                   >
                     <TableCell className="font-medium truncate max-w-xs flex items-center gap-2">
                       {query.query} {selectedQuery === query.query && <TbStarFilled className="w-4 h-4 text-yellow-500" />}
