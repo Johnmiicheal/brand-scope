@@ -8,7 +8,7 @@ import { NextResponse } from "next/server";
 import { countries } from "@/lib/countries";
 import { updateCreditUsage } from "@/lib/creditUsage";
 import { calculateCreditsRequired, getAvailableModels, getConstraints } from "@/lib/constraints";
-import { posthogServer } from "@/lib/posthog-server";
+import { sentryServer } from "@/lib/sentry-server";
 
 // --- Supabase and AI Clients ---
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -672,9 +672,21 @@ async function processQuery(
       query.mode || "Default"
     }`
   );
+  sentryServer.logger.info(`Processing query ID: ${query.id}, Text: "${query.query}", Mode: ${query.mode || "Default"}`, { 
+    log_source: 'schedule_query',
+    query_id: query.id,
+    query_text: query.query,
+    mode: query.mode || "Default",
+    user_id: query.user_id
+  });
 
   // Check if user has enough credits before processing
   console.log(`💳 Checking credits for user ${query.user_id}...`);
+  sentryServer.logger.info(`Checking credits for user ${query.user_id}`, { 
+    log_source: 'schedule_query',
+    user_id: query.user_id,
+    query_id: query.id
+  });
   
   // Get user's subscription and current usage
   const { data: subscription, error: subError } = await supabase
@@ -685,6 +697,12 @@ async function processQuery(
 
   if (subError) {
     console.error(`❌ Error fetching subscription for user ${query.user_id}:`, subError);
+    sentryServer.logger.error(`Error fetching subscription for user ${query.user_id}`, { 
+      log_source: 'schedule_query',
+      user_id: query.user_id,
+      query_id: query.id,
+      error: subError.message
+    });
     throw new Error(`Cannot verify user credits: ${subError.message}`);
   }
 
@@ -698,11 +716,29 @@ async function processQuery(
         const { product } = await response.json();
         productName = product?.name || 'Pro';
         console.log(`📦 Retrieved product name: ${productName} for user ${query.user_id}`);
+        sentryServer.logger.info(`Retrieved product name: ${productName} for user ${query.user_id}`, { 
+          log_source: 'schedule_query',
+          user_id: query.user_id,
+          query_id: query.id,
+          product_name: productName
+        });
       } else {
         console.warn(`⚠️ Failed to fetch product info for price_id: ${subscription.price_id}, using default`);
+        sentryServer.logger.warn(`Failed to fetch product info for price_id: ${subscription.price_id}, using default`, { 
+          log_source: 'schedule_query',
+          user_id: query.user_id,
+          query_id: query.id,
+          price_id: subscription.price_id
+        });
       }
     } catch (error) {
       console.warn(`⚠️ Error fetching product details for user ${query.user_id}:`, error);
+      sentryServer.logger.warn(`Error fetching product details for user ${query.user_id}`, { 
+        log_source: 'schedule_query',
+        user_id: query.user_id,
+        query_id: query.id,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
       // Continue with default product name
     }
   }
@@ -716,42 +752,108 @@ async function processQuery(
   console.log(`  - Max credits: ${userConstraints.max_credits}`);
   console.log(`  - Credits required: ${creditsRequired}`);
   console.log(`  - Remaining: ${userConstraints.max_credits - currentUsage}`);
+  sentryServer.logger.info(`Credit check summary for user ${query.user_id}`, { 
+    log_source: 'schedule_query',
+    user_id: query.user_id,
+    query_id: query.id,
+    current_usage: currentUsage,
+    max_credits: userConstraints.max_credits,
+    credits_required: creditsRequired,
+    remaining_credits: userConstraints.max_credits - currentUsage
+  });
 
   // Check if user has enough credits
   if (currentUsage + creditsRequired > userConstraints.max_credits) {
     console.warn(`⚠️ User ${query.user_id} has insufficient credits for query ${query.id}`);
+    sentryServer.logger.warn(`User ${query.user_id} has insufficient credits for query ${query.id}`, { 
+      log_source: 'schedule_query',
+      user_id: query.user_id,
+      query_id: query.id,
+      current_usage: currentUsage,
+      max_credits: userConstraints.max_credits,
+      credits_required: creditsRequired,
+      remaining_credits: userConstraints.max_credits - currentUsage
+    });
+    
+    // Track insufficient credits error
+    sentryServer.captureError(query.user_id, 'Insufficient credits for query processing', {
+      current_usage: currentUsage,
+      max_credits: userConstraints.max_credits,
+      credits_required: creditsRequired,
+      remaining_credits: userConstraints.max_credits - currentUsage,
+      query_id: query.id,
+      failure_point: 'credit_check',
+    });
+    
     throw new Error(`Insufficient credits. You need ${creditsRequired} credits but only have ${userConstraints.max_credits - currentUsage} remaining.`);
   }
 
   // Check if subscription is active
   if (subscription.status !== 'active') {
     console.warn(`⚠️ User ${query.user_id} subscription is not active (${subscription.status}) for query ${query.id}`);
+    sentryServer.logger.warn(`User ${query.user_id} subscription is not active (${subscription.status}) for query ${query.id}`, { 
+      log_source: 'schedule_query',
+      user_id: query.user_id,
+      query_id: query.id,
+      subscription_status: subscription.status
+    });
+    
+    // Track inactive subscription error
+    sentryServer.captureError(query.user_id, 'Inactive subscription blocking query processing', {
+      subscription_status: subscription.status,
+      query_id: query.id,
+      failure_point: 'subscription_check',
+    });
+    
     throw new Error(`Your subscription is not active (status: ${subscription.status}). Please check your billing.`);
   }
 
   console.log(`✅ User ${query.user_id} has sufficient credits. Proceeding with query processing...`);
-
-  // Update credits immediately after passing the check to prevent race conditions
-  try {
-    const creditsUsed = query.credits_per_run || 1;
-    const creditResult = await updateCreditUsage(query.user_id, creditsUsed, 'monitoring');
-    if (!creditResult.success) {
-      console.error(`❌ Error updating credits for query ${query.id}:`, creditResult.error);
-      throw new Error(`Failed to update credits: ${creditResult.error}`);
-    } else {
-      console.log(`💳 Successfully updated ${creditsUsed} credits for user ${query.user_id} before processing`);
-    }
-  } catch (creditError) {
-    console.error(`❌ Exception updating credits for query ${query.id}:`, creditError);
-    throw new Error(`Failed to track credit usage: ${creditError instanceof Error ? creditError.message : 'Unknown error'}`);
-  }
+  sentryServer.logger.info(`User ${query.user_id} has sufficient credits. Proceeding with query processing`, { 
+    log_source: 'schedule_query',
+    user_id: query.user_id,
+    query_id: query.id
+  });
+  
+  // Note: Credits will be deducted AFTER successful processing and database update
 
   // Call the search-google endpoint to get Google search results (only if enabled)
   if (query.include_google_search !== false) {
     console.log("🔍 Calling search-google endpoint...");
+    sentryServer.logger.info("Calling search-google endpoint", { 
+      log_source: 'schedule_query',
+      user_id: query.user_id,
+      query_id: query.id,
+      query_text: query.query,
+      mode_id: query.mode_id
+    });
+    sentryServer.addBreadcrumb(
+      'Starting Google search API call',
+      'external_api',
+      'info',
+      { query: query.query, mode_id: query.mode_id }
+    );
     await callSearchGoogleEndpoint(query.query, query.mode_id, query.user_id, query.location);
+    sentryServer.addBreadcrumb(
+      'Completed Google search API call',
+      'external_api',
+      'info',
+      { query: query.query, mode_id: query.mode_id }
+    );
   } else {
     console.log("⏭️ Skipping search-google endpoint (disabled by user)");
+    sentryServer.logger.info("Skipping search-google endpoint (disabled by user)", { 
+      log_source: 'schedule_query',
+      user_id: query.user_id,
+      query_id: query.id,
+      query_text: query.query
+    });
+    sentryServer.addBreadcrumb(
+      'Skipped Google search (disabled by user)',
+      'external_api',
+      'info',
+      { query: query.query }
+    );
   }
 
   // --- Define All Available Models ---
@@ -766,6 +868,14 @@ async function processQuery(
     : availableModels;
   
   console.log(`📋 Using ${selectedModels.length} selected models for ${analysisMode} mode: ${selectedModels.join(', ')}`);
+  sentryServer.logger.info(`Using ${selectedModels.length} selected models for ${analysisMode} mode: ${selectedModels.join(', ')}`, { 
+    log_source: 'schedule_query',
+    user_id: query.user_id,
+    query_id: query.id,
+    analysis_mode: analysisMode,
+    selected_models: selectedModels,
+    models_count: selectedModels.length
+  });
 
   // Map model keys to actual model configurations
   const allTextModels = [
@@ -883,9 +993,21 @@ async function processQuery(
   
   if (selectedWebhookModels.length > 0) {
     console.log(`🔗 Will call webhook models: ${selectedWebhookModels.join(', ')}`);
+    sentryServer.logger.info(`Will call webhook models: ${selectedWebhookModels.join(', ')}`, { 
+      log_source: 'schedule_query',
+      user_id: query.user_id,
+      query_id: query.id,
+      webhook_models: selectedWebhookModels
+    });
   }
   if (skippedWebhookModels.length > 0) {
     console.log(`⏭️ Skipping webhook models: ${skippedWebhookModels.join(', ')}`);
+    sentryServer.logger.info(`Skipping webhook models: ${skippedWebhookModels.join(', ')}`, { 
+      log_source: 'schedule_query',
+      user_id: query.user_id,
+      query_id: query.id,
+      skipped_webhook_models: skippedWebhookModels
+    });
   }
 
   // --- Fetch Existing Results --- (Moved to the top)
@@ -919,10 +1041,23 @@ async function processQuery(
   console.log(
     `  Starting text generation for ${textModels.length} models...`
   );
+  sentryServer.logger.info(`Starting text generation for ${textModels.length} models`, { 
+    log_source: 'schedule_query',
+    user_id: query.user_id,
+    query_id: query.id,
+    text_models_count: textModels.length
+  });
 
   // Refactored text generation logic
   const textPromises = textModels.map(async ({ modelId, name }) => {
     console.log(`    Generating text for ${name}...`);
+    sentryServer.logger.info(`Generating text for ${name}`, { 
+      log_source: 'schedule_query',
+      user_id: query.user_id,
+      query_id: query.id,
+      model_name: name,
+      model_id: modelId
+    });
     try {
       // Handle Google AI Mode specially
       if (modelId === "google-ai-mode") {
@@ -999,12 +1134,27 @@ async function processQuery(
         })
       }).then(res => res.json());
       console.log(`    ${name} text generated.`);
-      console.log('Response', response)
+      console.log('Response', response);
+      sentryServer.logger.info(`${name} text generated successfully`, { 
+        log_source: 'schedule_query',
+        user_id: query.user_id,
+        query_id: query.id,
+        model_name: name,
+        response_length: response?.choices?.[0]?.message?.content?.length || 0
+      });
       // Handle citations for Perplexity specifically if needed
       const citations = response.choices[0].message.annotations || null;
       return { name, text: response.choices[0].message.content, citations, success: true, error: null };
     } catch (error: any) {
       console.error(`    Error generating text for ${name}:`, error.message);
+      sentryServer.logger.error(`Error generating text for ${name}: ${error.message}`, { 
+        log_source: 'schedule_query',
+        user_id: query.user_id,
+        query_id: query.id,
+        model_name: name,
+        model_id: modelId,
+        error: error.message
+      });
       return {
         name,
         text: null,
@@ -1026,6 +1176,12 @@ async function processQuery(
 
   // --- 2. Extract Structured Data from Generated Text ---
   console.log(`  Starting structure extraction from generated text...`);
+  sentryServer.logger.info(`Starting structure extraction from generated text`, { 
+    log_source: 'schedule_query',
+    user_id: query.user_id,
+    query_id: query.id,
+    text_results_count: textGenerationResults.length
+  });
   const extractionPromises = textGenerationResults.map(
     async ({ name, text, success: textSuccess, error: textGenError }) => {
       if (!textSuccess || !text) {
@@ -1239,6 +1395,14 @@ async function processQuery(
   );
   const finalModelResultsForDB = await Promise.all(extractionPromises);
   console.log(`  Finished extraction attempts.`);
+  sentryServer.logger.info(`Finished extraction attempts`, { 
+    log_source: 'schedule_query',
+    user_id: query.user_id,
+    query_id: query.id,
+    extraction_results_count: finalModelResultsForDB.length,
+    successful_extractions: finalModelResultsForDB.filter(r => r.status === "fulfilled").length,
+    failed_extractions: finalModelResultsForDB.filter(r => r.status === "rejected").length
+  });
 
 
   // --- 3. Keyword Analysis ---
@@ -1347,10 +1511,44 @@ async function processQuery(
       `  Failed to update query ${query.id} in Supabase:`,
       updateError
     );
+    
+    // Track database update failure
+    sentryServer.captureError(query.user_id, updateError, {
+      query_id: query.id,
+      failure_point: 'database_update',
+      operation: 'update_query_results',
+      error_details: updateError.message,
+    });
+    
     throw new Error(
       `Failed to update query results in DB: ${updateError.message}`
     );
   } else {
+    // SUCCESS - Now deduct credits since processing completed successfully
+    try {
+      const creditsUsed = query.credits_per_run || 1;
+      const creditResult = await updateCreditUsage(query.user_id, creditsUsed, 'monitoring');
+      if (!creditResult.success) {
+        console.error(`⚠️ Warning: Analysis succeeded but credit tracking failed for user ${query.user_id}: ${creditResult.error}`);
+        // Don't fail the entire operation for credit tracking issues
+      } else {
+        console.log(`💳 Successfully deducted ${creditsUsed} credits for user ${query.user_id} after successful analysis`);
+        sentryServer.addBreadcrumb(
+          'Successfully deducted credits after analysis',
+          'billing',
+          'info',
+          { 
+            user_id: query.user_id, 
+            credits_used: creditsUsed,
+            query_id: query.id 
+          }
+        );
+      }
+    } catch (creditError) {
+      console.error(`⚠️ Warning: Analysis succeeded but credit update failed for user ${query.user_id}:`, creditError);
+      // Log but don't fail the operation since analysis was successful
+    }
+
     const successfulExtraction = newAnalysisRun.model_results.filter(
       (r) => r.status === "fulfilled"
     ).length;
@@ -1359,6 +1557,19 @@ async function processQuery(
     ).length;
     console.log(
       `  Successfully updated query ${query.id}. Success: ${successfulExtraction}/${objectModels.length}. Failures: ${failedExtraction}.`
+    );
+    
+    // Track successful query processing completion
+    sentryServer.addBreadcrumb(
+      'Query processing completed successfully',
+      'analysis',
+      'info',
+      {
+        query_id: query.id,
+        successful_extractions: successfulExtraction,
+        failed_extractions: failedExtraction,
+        total_models: objectModels.length,
+      }
     );
     
     return {
@@ -1374,13 +1585,24 @@ async function processQuery(
 export async function POST(req: Request) {
   const now = new Date().toISOString();
   console.log(`POST /api/schedule-query received at ${now}`);
-  
-  // Track API endpoint usage
-  await posthogServer.capture('system', 'schedule_query_request', {
+  sentryServer.logger.info(`POST /api/schedule-query received at ${now}`, { 
+    log_source: 'schedule_query',
     endpoint: '/api/schedule-query',
     method: 'POST',
-    timestamp: now,
+    timestamp: now
   });
+  
+  // Track API endpoint usage
+  sentryServer.addBreadcrumb(
+    'Schedule query API request received',
+    'api',
+    'info',
+    {
+      endpoint: '/api/schedule-query',
+      method: 'POST',
+      timestamp: now,
+    }
+  );
 
   try {
     const body = await req.json();
@@ -1426,6 +1648,13 @@ export async function POST(req: Request) {
     const modelsToUse = selected_models.length > 0 ? selected_models.filter(model => availableModels.includes(model)) : availableModels;
     const creditsRequired = calculateCreditsRequired(analysisMode, modelsToUse, include_google_search);
     console.log(`💳 Scheduled query will require ${creditsRequired} credits per run for ${modelsToUse.length} selected models${include_google_search ? ' + Google AI Overview' : ''}`);
+    sentryServer.logger.info(`Scheduled query will require ${creditsRequired} credits per run for ${modelsToUse.length} selected models${include_google_search ? ' + Google AI Overview' : ''}`, { 
+      log_source: 'schedule_query',
+      credits_required: creditsRequired,
+      models_count: modelsToUse.length,
+      include_google_search: include_google_search,
+      selected_models: modelsToUse
+    });
 
     // --- Check for Duplicate Query ---
     const { data: existingQuery, error: checkError } = await supabase
@@ -1451,10 +1680,12 @@ export async function POST(req: Request) {
       );
       
       // Track duplicate query attempt
-      await posthogServer.capture(user_id, 'schedule_query_duplicate_attempt', {
+      sentryServer.captureEvent(user_id, 'schedule_query_duplicate_attempt', {
         query_text: query,
         location: location || 'global',
         existing_query_id: existingQuery.id,
+        endpoint: '/api/schedule-query',
+        method: 'POST',
       });
       
       return NextResponse.json(
@@ -1465,107 +1696,125 @@ export async function POST(req: Request) {
 
     const mode_id = uuidv4(); // Generate UUID for mode_id if needed
 
-    // --- Insert New Query ---
-    console.log(`Inserting new query "${query}" for user ${user_id}`);
-    const { data: newQueryData, error: insertError } = await supabase
-      .from("scheduled_queries")
-      .insert({
-        query,
-        frequency,
-        mode: mode || null,
+    // --- Process Query FIRST Before Database Insert ---
+    console.log(`Running initial analysis for query "${query}" before saving...`);
+    
+    // Track initial analysis start
+    sentryServer.addBreadcrumb(
+      'Starting initial query analysis',
+      'analysis',
+      'info',
+      {
+        query_text: query,
+        mode_id: mode_id,
         user_id: user_id,
-        mode_id: mode_id, // Use the generated UUID
-        next_analysis_at: now, // Schedule immediate analysis
-        last_analysis_at: null,
-        status: "active",
-        location: location,
-        results: [], // Initialize with an empty array in the jsonb column
-        attached_brand_id: finalBrandId,
+      }
+    );
+    
+    try {
+      // Create a temporary query object for processing
+      const tempQueryForProcessing = { 
+        id: mode_id, // Use mode_id as temporary ID
+        query: query, 
+        frequency: frequency, 
+        mode: mode || null, 
+        mode_id: mode_id, 
+        user_id: user_id, 
+        location: location, 
+        attached_brand_name: attached_brand_name, 
+        attached_brand_industry: attached_brand_industry, 
+        attached_brand_logo_url: attached_brand_logo_url, 
+        attached_brand_website: attached_brand_website, 
+        attached_brand_language: attached_brand_language, 
+        attached_brand_location: attached_brand_location,
         selected_models: modelsToUse,
         credits_per_run: creditsRequired,
         include_google_search: include_google_search,
-      })
-      .select("id, query, frequency, mode, selected_models, credits_per_run, include_google_search") // Select necessary fields
-      .single();
-
-    if (insertError) {
-      console.error("Insert error:", insertError);
-      return NextResponse.json(
-        { error: "Failed to create scheduled query" },
-        { status: 500 }
-      );
-    }
-
-    if (!newQueryData) {
-      console.error("Failed to retrieve data after insert for query:", query);
-      return NextResponse.json(
-        { error: "Failed to confirm query creation" },
-        { status: 500 }
-      );
-    }
-
-    // Track successful query creation
-    await posthogServer.capture(user_id, 'schedule_query_created', {
-      query_id: newQueryData.id,
-      query_text: query,
-      frequency: frequency,
-      mode: mode || 'Default',
-      location: location || 'global',
-      selected_models: modelsToUse,
-      credits_per_run: creditsRequired,
-      include_google_search: include_google_search,
-      attached_brand_name: attached_brand_name || null,
-    });
-
-    // --- Process New Query Immediately ---
-    console.log(`Running initial analysis for new query ${newQueryData.id}...`);
-    
-    // Track initial analysis start
-    await posthogServer.capture(user_id, 'schedule_query_initial_analysis_started', {
-      query_id: newQueryData.id,
-      query_text: query,
-    });
-    
-    try {
-      // Pass the essential parts of the new query data
-      const {
-        id,
-        query: queryText,
-        frequency: queryFreq,
-        mode: queryMode,
-        selected_models: querySelectedModels,
-        credits_per_run: queryCreditsPerRun,
-        include_google_search: queryIncludeGoogleSearch,
-      } = newQueryData;
-      const initialAnalysis = await processQuery(
-        { 
-          id, 
-          query: queryText, 
-          frequency: queryFreq, 
-          mode: queryMode, 
-          mode_id: mode_id, 
-          user_id: user_id, 
-          location: location, 
-          attached_brand_name: attached_brand_name, 
-          attached_brand_industry: attached_brand_industry, 
-          attached_brand_logo_url: attached_brand_logo_url, 
-          attached_brand_website: attached_brand_website, 
-          attached_brand_language: attached_brand_language, 
-          attached_brand_location: attached_brand_location,
-          selected_models: querySelectedModels,
-          credits_per_run: queryCreditsPerRun,
-          include_google_search: queryIncludeGoogleSearch,
-        },
-        now,
-      );
-      console.log(`Initial analysis complete for query ${newQueryData.id}`);
+      };
       
-      // Track successful initial analysis
-      await posthogServer.capture(user_id, 'schedule_query_initial_analysis_completed', {
+      // Process the query and get results
+      const initialAnalysis = await processQuery(tempQueryForProcessing, now);
+      console.log(`Initial analysis complete for query "${query}"`);
+      sentryServer.logger.info(`Initial analysis complete for query "${query}"`, { 
+        log_source: 'schedule_query',
+        user_id: user_id,
+        query_text: query,
+        mode_id: mode_id
+      });
+      
+      // --- NOW Insert Query with Results ---
+      console.log(`Inserting query "${query}" with successful results for user ${user_id}`);
+      sentryServer.logger.info(`Inserting query "${query}" with successful results for user ${user_id}`, { 
+        log_source: 'schedule_query',
+        user_id: user_id,
+        query_text: query,
+        mode_id: mode_id
+      });
+      const { data: newQueryData, error: insertError } = await supabase
+        .from("scheduled_queries")
+        .insert({
+          query,
+          frequency,
+          mode: mode || null,
+          user_id: user_id,
+          mode_id: mode_id,
+          next_analysis_at: now,
+          last_analysis_at: now, // Set since we just analyzed it
+          status: "active",
+          location: location,
+          results: [initialAnalysis.newAnalysisRun], // Insert with actual results!
+          attached_brand_id: finalBrandId,
+          selected_models: modelsToUse,
+          credits_per_run: creditsRequired,
+          include_google_search: include_google_search,
+        })
+        .select("id, query, frequency, mode, selected_models, credits_per_run, include_google_search")
+        .single();
+
+      if (insertError) {
+        console.error("Insert error:", insertError);
+        sentryServer.logger.error("Insert error: " + insertError.message, { 
+          log_source: 'schedule_query',
+          user_id: user_id,
+          query_text: query,
+          mode_id: mode_id,
+          error: insertError.message
+        });
+        return NextResponse.json(
+          { error: "Failed to create scheduled query after successful analysis" },
+          { status: 500 }
+        );
+      }
+
+      if (!newQueryData) {
+        console.error("Failed to retrieve data after insert for query:", query);
+        sentryServer.logger.error("Failed to retrieve data after insert for query: " + query, { 
+          log_source: 'schedule_query',
+          user_id: user_id,
+          query_text: query,
+          mode_id: mode_id
+        });
+        return NextResponse.json(
+          { error: "Failed to confirm query creation" },
+          { status: 500 }
+        );
+      }
+
+      // Track successful query creation AND analysis
+      sentryServer.captureEvent(user_id, 'schedule_query_created_with_results', {
         query_id: newQueryData.id,
         query_text: query,
+        frequency: frequency,
+        mode: mode || 'Default',
+        location: location || 'global',
+        selected_models: modelsToUse,
+        credits_per_run: creditsRequired,
+        include_google_search: include_google_search,
+        attached_brand_name: attached_brand_name || null,
         credits_used: creditsRequired,
         models_count: modelsToUse.length,
+        endpoint: '/api/schedule-query',
+        method: 'POST',
       });
 
       // Return success with the initial analysis results
@@ -1573,39 +1822,39 @@ export async function POST(req: Request) {
         {
           message: "Query scheduled and initial analysis performed.",
           query: newQueryData,
-          initialAnalysis: initialAnalysis.newAnalysisRun, // Return the structured run
+          initialAnalysis: initialAnalysis.newAnalysisRun,
         },
         { status: 201 }
-      ); // 201 Created
-    } catch (analysisError: any) {
-      console.error(
-        `Initial analysis failed for query ${newQueryData.id}:`,
-        analysisError
       );
       
+    } catch (analysisError: any) {
+      console.error(`Initial analysis failed for query "${query}":`, analysisError);
+      
       // Track failed initial analysis
-      await posthogServer.captureError(user_id, analysisError, {
-        query_id: newQueryData.id,
+      sentryServer.captureError(user_id, analysisError, {
         query_text: query,
+        mode_id: mode_id,
         failure_point: 'initial_analysis',
-        credits_allocated: creditsRequired,
+        credits_attempted: creditsRequired,
+        endpoint: '/api/schedule-query',
+        method: 'POST',
       });
       
-      // Query was created, but analysis failed. Return a success but with a warning.
+      // Since analysis failed, DON'T insert query into database at all
       return NextResponse.json(
         {
-          message: "Query scheduled, but initial analysis failed.",
-          query: newQueryData,
-          warning: `Initial analysis failed: ${analysisError.message}`,
+          error: "Failed to analyze query",
+          message: analysisError.message,
+          details: "The query could not be processed. Please try again."
         },
-        { status: 207 }
-      ); // 207 Multi-Status might be appropriate
+        { status: 500 }
+      );
     }
   } catch (error: any) {
     console.error("Error processing POST request:", error);
     
     // Track general API errors
-    await posthogServer.captureError('system', error, {
+    sentryServer.captureError('system', error, {
       endpoint: '/api/schedule-query',
       method: 'POST',
       failure_point: 'request_processing',

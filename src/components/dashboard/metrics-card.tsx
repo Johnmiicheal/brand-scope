@@ -332,7 +332,6 @@ export function MetricsHeader({
   };
 
   const maxModels = getMaxActiveModels();
-  console.log(maxModels);
   const maxMentions = Math.max(...brands.map((brand) => brand.total_mentions));
   const getCoverageRatio = (brands: Brand[], type: "ratio" | "count") => {
     const totalMentionsPerModel = brands.reduce((acc, brand) => {

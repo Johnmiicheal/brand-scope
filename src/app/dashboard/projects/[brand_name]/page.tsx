@@ -224,11 +224,17 @@ export default function BrandProjectPage() {
 
   useEffect(() => {
     async function fetchScheduledQueries() {
-      if (!user) return;
+      if (!user || !brand?.id) return;
 
       try {
         setLoading(true);
-          const response = await fetch(`/api/monitoring?brand_id=${brand?.id}`);
+        
+        // ⚡ PERFORMANCE OPTIMIZATION: Direct brand filtering via API
+        const url = `/api/monitoring?brand_id=${brand.id}`;
+        console.log(`🚀 Fetching brand queries: ${url}`);
+        const startTime = Date.now();
+        
+        const response = await fetch(url);
 
         if (!response.ok) {
           setError(
@@ -240,14 +246,12 @@ export default function BrandProjectPage() {
         }
 
         const data = await response.json();
-        console.log("data: ", data);
-        const filteredDataByMyBrand = data.monitoring.filter((item: any) =>
-          item?.attached_brand_id?.includes(brand?.id)
-        );
-        console.log("filteredDataByMyBrand: ", filteredDataByMyBrand);
+        const duration = Date.now() - startTime;
+        console.log(`✅ Brand queries loaded in ${duration}ms, count: ${data?.monitoring?.length || 0}`);
 
         if (data && data.monitoring) {
-          setMonitoredSessions(filteredDataByMyBrand);
+          // ✨ NO MORE CLIENT-SIDE FILTERING - API already filtered by brand_id!
+          setMonitoredSessions(data.monitoring);
         }
       } catch (error) {
         setError(

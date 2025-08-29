@@ -196,7 +196,7 @@ function IndustryRankingsTable({
 }: IndustryRankingsTableProps) {
   const [brandFetch, setBrandFetch] = useState<BrandFetchProps[]>([]);
   const [lastFetchedBrands, setLastFetchedBrands] = useState<string[]>([]);
-  const brand_name = brands.map((brand) => brand.brand_name.split(" ")[0]);
+  const brand_name = brands.map((brand) => brand.brand_name?.split(" ")?.[0] || "Unknown");
 
   if (!brands || !brandFetch) return null;
 
@@ -537,6 +537,7 @@ function DashboardContent() {
   const [selectedQuery, setSelectedQuery] = useState<ScheduledQuery | null>(
     null
   );
+  const [loadingResults, setLoadingResults] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showBrandModal, setShowBrandModal] = useState(false);
 
@@ -722,47 +723,45 @@ function DashboardContent() {
 
       try {
         setLoading(true);
-        const response = await fetch(`/api/monitoring?user_id=${user?.id}`);
+        
+        // ⚡ PERFORMANCE OPTIMIZATION: Server-side brand filtering
+        const url = currentBrand 
+          ? `/api/monitoring?user_id=${user.id}&filter_brand_id=${currentBrand.id}`
+          : `/api/monitoring?user_id=${user.id}`;
+          
+        console.log(`🚀 Fetching queries: ${url}`);
+        const startTime = Date.now();
+        
+        const response = await fetch(url);
 
         if (!response.ok) {
           setError(
             `We could not fetch your scheduled queries. Please try again later.`
           );
+          throw new Error(`API Error: ${response.status}`);
         }
 
-        const data = await response.json();        
+        const data = await response.json();
+        const duration = Date.now() - startTime;
+        console.log(`✅ Queries loaded in ${duration}ms, count: ${data?.monitoring?.length || 0}`);
 
-        if (data && data.monitoring) {
-          const filteredDataByMyBrand = data.monitoring.filter((item: any) =>
-            item?.attached_brand_id?.includes(currentBrand?.id)
-          );
-          if (currentBrand) {
-            setQueries(filteredDataByMyBrand);
-            // If we have a selectedQueryId from URL, find and select that query
-            if (selectedQueryId) {
-              const foundQuery = filteredDataByMyBrand.find(
-                (q) => q.id === selectedQueryId
-              );
-              setSelectedQuery(foundQuery || filteredDataByMyBrand[0]);
-            } else {
-              setSelectedQuery(filteredDataByMyBrand[0]);
-            }
+        if (data && data.monitoring && data.monitoring.length > 0) {
+          // ✨ NO MORE CLIENT-SIDE FILTERING - server does it!
+          const queries = data.monitoring;
+          setQueries(queries);
+          
+          // If we have a selectedQueryId from URL, find and select that query
+          if (selectedQueryId) {
+            const foundQuery = queries.find((q: any) => q.id === selectedQueryId);
+            setSelectedQuery(foundQuery || queries[0] || null);
           } else {
-            setQueries(data.monitoring);
-            // If we have a selectedQueryId from URL, find and select that query
-            if (selectedQueryId) {
-              const foundQuery = data.monitoring.find(
-                (q) => q.id === selectedQueryId
-              );
-              setSelectedQuery(foundQuery || data.monitoring[0]);
-            } else {
-              setSelectedQuery(data.monitoring[0]);
-            }
+            setSelectedQuery(queries[0] || null);
           }
-          console.log("filteredDataByMyBrand: ", filteredDataByMyBrand);
+          
           setIsLoading(false);
         } else {
           setQueries([]);
+          setSelectedQuery(null);
           setIsLoading(false);
         }
       } catch (error) {
@@ -786,11 +785,53 @@ function DashboardContent() {
     fetchScheduledQueries();
   }, [toast, user, currentBrand]);
 
+  // 🔄 Function to load detailed results for a specific query when needed
+  const loadQueryResults = async (queryId: string) => {
+    if (!queryId) return;
+    
+    try {
+      setLoadingResults(true);
+      console.log(`🔍 Loading detailed results for query: ${queryId}`);
+      
+      const response = await fetch(`/api/monitoring?mode_id=${queryId}`);
+      if (!response.ok) throw new Error('Failed to load results');
+      
+      const data = await response.json();
+      
+      if (data && data.monitoring && data.monitoring.length > 0) {
+        // Update the selected query with full results
+        const fullQuery = data.monitoring[0];
+        setSelectedQuery(fullQuery);
+        console.log(`✅ Results loaded for query: ${queryId}`);
+      }
+    } catch (error) {
+      console.error('Failed to load query results:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load detailed results. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingResults(false);
+    }
+  };
+
+  // 🎯 Enhanced query selection with result loading
+  const handleQuerySelection = (query: ScheduledQuery) => {
+    setSelectedQuery(query);
+    
+    // If query doesn't have results, load them
+    if (!query.results || query.results.length === 0) {
+      loadQueryResults(query.mode_id || query.id);
+    }
+  };
+
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const results = selectedQuery?.results;
+  // ⚡ PERFORMANCE: Results are loaded separately to avoid slow initial load
+  const results = useMemo(() => selectedQuery?.results || [], [selectedQuery?.results]);
   // console.log("Results: ", results);
-  const keywords = results?.[0]?.keyword_analysis?.keywords;
+  const keywords = results.length > 0 ? results[0]?.keyword_analysis?.keywords : undefined;
   const [analysis_brands, setAnalysisBrands] = useState<any[]>([]);
   const [selectedBrands, setSelectedBrands] = useState<Set<string>>(
     new Set<string>([])
@@ -2965,7 +3006,10 @@ function DashboardContent() {
   }, [brandMentionsInSummaries, selectedBrands]);
 
   const modelSummary = useMemo(() => {
-    if (!selectedQuery?.results?.[0]?.model_summary) return null;
+    // ⚡ PERFORMANCE: Check if results exist and have data
+    if (!selectedQuery?.results || selectedQuery.results.length === 0 || !selectedQuery.results[0]?.model_summary) {
+      return null;
+    }
 
     const summaries = selectedQuery.results[0].model_summary;
     
@@ -4081,7 +4125,7 @@ function DashboardContent() {
                                 selectedQuery={selectedQuery?.query}
                                 brandContext={setCurrentBrand}
                                 onSelectQuery={(query) => {
-                                  setSelectedQuery(query);
+                                  handleQuerySelection(query);
                                   setIsExpanded(false); // Close the list after selection
                                 }}
                               />
@@ -4264,15 +4308,17 @@ function DashboardContent() {
                     <TabsContent value="response">
                       <div className="flex gap-4 items-center">
                         {/* Date Range Selection */}
-                        {new Date(selectedQuery.results[0]?.analysis_date).toLocaleString(undefined, {
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                          second: '2-digit',
-                          timeZoneName: 'short'
-                        })}
+                        {selectedQuery?.results?.[0]?.analysis_date 
+                          ? new Date(selectedQuery.results[0].analysis_date).toLocaleString(undefined, {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            second: '2-digit',
+                            timeZoneName: 'short'
+                          })
+                          : 'No date available'}
 
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -4281,7 +4327,7 @@ function DashboardContent() {
                                 className="w-full !border !border-accent md:w-fit"
                               >
                                 {selectedModel.size === 0
-                                  ? analysis_models[0]
+                                  ? (analysis_models.length > 0 ? analysis_models[0] : "No models")
                                   : selectedModel.size === 1
                                   ? Array.from(selectedModel)[0]
                                   : `${selectedModel.size} models selected`}
@@ -4312,7 +4358,19 @@ function DashboardContent() {
                           </DropdownMenu>
                       </div>
                       {(() => {
-                        if (!selectedQuery?.results?.[0]?.model_summary) {
+                        // ⚡ PERFORMANCE: Check if results exist and have data
+                        if (loadingResults) {
+                          return (
+                            <div className="flex items-center justify-center p-8">
+                              <div className="flex items-center space-x-2">
+                                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                                <p className="text-muted-foreground">Loading detailed results...</p>
+                              </div>
+                            </div>
+                          );
+                        }
+                        
+                        if (!selectedQuery?.results || selectedQuery.results.length === 0 || !selectedQuery.results[0]?.model_summary) {
                           return (
                             <div className="flex items-center justify-center p-8">
                               <p className="text-muted-foreground">No summary available. Please select a query to view the analysis.</p>
@@ -4350,15 +4408,17 @@ function DashboardContent() {
                     <TabsContent value="citations">
                     <div className="flex gap-4 items-center mb-5">
                         {/* Date Range Selection */}
-                        {new Date(selectedQuery.results[0]?.analysis_date).toLocaleString(undefined, {
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                          second: '2-digit',
-                          timeZoneName: 'short'
-                        })}
+                        {selectedQuery?.results?.[0]?.analysis_date 
+                          ? new Date(selectedQuery.results[0].analysis_date).toLocaleString(undefined, {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            second: '2-digit',
+                            timeZoneName: 'short'
+                          })
+                          : 'No date available'}
 
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
