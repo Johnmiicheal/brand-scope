@@ -691,7 +691,7 @@ async function processQuery(
   // Get user's subscription and current usage
   const { data: subscription, error: subError } = await supabase
     .from('user_subscriptions')
-    .select('query_count, status, price_id')
+    .select('query_count, status, price_id, payg_credits')
     .eq('user_id', query.user_id)
     .single();
 
@@ -763,7 +763,7 @@ async function processQuery(
   });
 
   // Check if user has enough credits
-  if (currentUsage + creditsRequired > userConstraints.max_credits) {
+  if (currentUsage + creditsRequired > userConstraints.max_credits && subscription.payg_credits === 0) {
     console.warn(`⚠️ User ${query.user_id} has insufficient credits for query ${query.id}`);
     sentryServer.logger.warn(`User ${query.user_id} has insufficient credits for query ${query.id}`, { 
       log_source: 'schedule_query',
@@ -789,7 +789,7 @@ async function processQuery(
   }
 
   // Check if subscription is active
-  if (subscription.status !== 'active') {
+  if (subscription.status !== 'active' && subscription.payg_credits === 0) {
     console.warn(`⚠️ User ${query.user_id} subscription is not active (${subscription.status}) for query ${query.id}`);
     sentryServer.logger.warn(`User ${query.user_id} subscription is not active (${subscription.status}) for query ${query.id}`, { 
       log_source: 'schedule_query',

@@ -623,7 +623,7 @@ async function processQueryDirectly(query: any) {
     // Get user's subscription and current usage
     const { data: subscription, error: subError } = await supabase
       .from('user_subscriptions')
-      .select('query_count, status, price_id')
+      .select('query_count, status, price_id, payg_credits')
       .eq('user_id', query.user_id)
       .single();
 
@@ -673,7 +673,7 @@ async function processQueryDirectly(query: any) {
     });
 
     // Check if user has enough credits
-    if (currentUsage + creditsRequired > userConstraints.max_credits) {
+    if (currentUsage + creditsRequired > userConstraints.max_credits && subscription.payg_credits === 0) {
       console.warn(`⚠️ User ${query.user_id} has insufficient credits. Pausing query ${query.id}`);
       
       // Track insufficient credits event
@@ -712,7 +712,7 @@ async function processQueryDirectly(query: any) {
     }
 
     // Check if subscription is active
-    if (subscription.status !== 'active') {
+    if (subscription.status !== 'active' && subscription.payg_credits === 0) {
       console.warn(`⚠️ User ${query.user_id} subscription is not active (${subscription.status}). Pausing query ${query.id}`);
       
       // Track inactive subscription event

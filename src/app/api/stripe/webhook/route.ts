@@ -55,6 +55,58 @@ export async function POST(request: Request) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
 
+  // Function to reactivate paused queries when user gets more credits
+  async function reactivatePausedQueries(userId: string, reason: string) {
+    try {
+      console.log(`🔄 Checking for paused queries to reactivate for user ${userId} (${reason})`);
+      
+      // Find all paused queries for this user
+      const { data: pausedQueries, error: fetchError } = await supabase
+        .from('scheduled_queries')
+        .select('id, query, user_id')
+        .eq('user_id', userId)
+        .eq('status', 'paused');
+
+      if (fetchError) {
+        console.error('❌ Error fetching paused queries:', fetchError);
+        return;
+      }
+
+      if (!pausedQueries || pausedQueries.length === 0) {
+        console.log(`✅ No paused queries found for user ${userId}`);
+        return;
+      }
+
+      console.log(`🔄 Found ${pausedQueries.length} paused queries to reactivate for user ${userId}`);
+
+      // Reactivate all paused queries
+      const { error: reactivateError } = await supabase
+        .from('scheduled_queries')
+        .update({ 
+          status: 'active',
+          next_analysis_at: new Date(Date.now() + 2 * 60 * 1000).toISOString(), // Run in 2 minutes
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', userId)
+        .eq('status', 'paused');
+
+      if (reactivateError) {
+        console.error('❌ Error reactivating paused queries:', reactivateError);
+        return;
+      }
+
+      console.log(`✅ Successfully reactivated ${pausedQueries.length} queries for user ${userId} (${reason})`);
+      
+      // Log each reactivated query for debugging
+      pausedQueries.forEach(query => {
+        console.log(`  📝 Reactivated query: "${query.query}" (ID: ${query.id})`);
+      });
+
+    } catch (error) {
+      console.error('❌ Exception in reactivatePausedQueries:', error);
+    }
+  }
+
   // Handle the event
   switch (event.type) {
     case 'checkout.session.completed': {
@@ -92,6 +144,9 @@ export async function POST(request: Request) {
               if (transactionError) {
                 console.error('Error updating transaction status:', transactionError);
               }
+
+              // Reactivate any paused queries since user now has credits
+              await reactivatePausedQueries(userId, 'PAYG credits added');
             } else {
               console.error('Error adding pay-as-you-go credits:', result.error);
               
@@ -151,6 +206,9 @@ export async function POST(request: Request) {
           }
           
           console.log('Subscription saved to database');
+          
+          // Reactivate any paused queries since user now has active subscription
+          await reactivatePausedQueries(userId, 'New subscription created');
         }
       }
       break;
@@ -183,6 +241,18 @@ export async function POST(request: Request) {
               { status: 500 }
             );
           }
+
+          // Get user_id to reactivate paused queries
+          const { data: userSubscription } = await supabase
+            .from('user_subscriptions')
+            .select('user_id')
+            .eq('stripe_subscription_id', subscriptionId)
+            .single();
+
+          if (userSubscription?.user_id) {
+            // Reactivate any paused queries since subscription payment succeeded
+            await reactivatePausedQueries(userSubscription.user_id, 'Subscription payment succeeded');
+          }
         } catch (error) {
           console.error('Error retrieving subscription:', error);
           return NextResponse.json(
@@ -214,6 +284,18 @@ export async function POST(request: Request) {
           { error: 'Error updating subscription' },
           { status: 500 }
         );
+      }
+
+      // Get user_id to reactivate paused queries if subscription became active
+      const { data: userSubscription } = await supabase
+        .from('user_subscriptions')
+        .select('user_id')
+        .eq('stripe_subscription_id', subscription.id)
+        .single();
+
+      if (userSubscription?.user_id && subscription.status === 'active') {
+        // Reactivate any paused queries since subscription is now active
+        await reactivatePausedQueries(userSubscription.user_id, 'Subscription updated to active');
       }
       break;
     }
