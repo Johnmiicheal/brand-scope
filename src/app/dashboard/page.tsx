@@ -1,42 +1,33 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
-
+/* eslint-disable @typescript-eslint/ban-ts-comment */
 // @ts-nocheck
 
 "use client";
 
-import { useEffect, useState, useRef, useMemo, Suspense } from "react";
+import { useEffect, useState, useMemo, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import {
   Brand,
   BrandDataProvider,
-  useBrandData,
 } from "@/contexts/brand-data-context";
-import { LoadingState } from "@/components/loading-state";
+
 import ShinyText from "@/components/ui/shiny-text";
 import { motion, AnimatePresence } from "framer-motion";
 import { MetricsHeader } from "@/components/dashboard/metrics-card";
-import { KeywordCloud } from "@/components/dashboard/keyword-cloud";
-import { CompetitorNetwork } from "@/components/dashboard/competitor-network";
-import { BrandInsights } from "@/components/dashboard/insights-card";
+
 import { CitationsCard } from "@/components/dashboard/citations-card";
 import Image from "next/image";
-import Link from "next/link";
-import { v4 as uuidv4 } from "uuid";
+
 import {
   Blocks,
-  Check,
-  CheckCircle,
+
   ChevronDown,
   Clock9,
-  CloudUpload,
+
   Info,
-  RefreshCcw,
-  Settings,
-  SquareArrowOutUpRight,
-  Star,
+
   Calendar as CalendarIcon,
   Eye,
   X,
@@ -57,14 +48,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+
+
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -81,7 +66,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { useAuth } from "@/hooks/useAuth";
+
 import {
   ScheduledQueriesList,
   ScheduledQuery,
@@ -89,7 +74,7 @@ import {
 import { useToast } from "@/components/ui/use-toast";
 import { User } from "@supabase/supabase-js";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { CheckoutButton } from "@/components/stripe/checkout-button";
+
 import { CheckoutSuccess } from "@/components/stripe/checkout-success";
 import Stripe from "stripe";
 import {
@@ -195,9 +180,6 @@ function IndustryRankingsTable({
   selectedModel,
 }: IndustryRankingsTableProps) {
   const [brandFetch, setBrandFetch] = useState<BrandFetchProps[]>([]);
-  const [lastFetchedBrands, setLastFetchedBrands] = useState<string[]>([]);
-  const brand_name = brands.map((brand) => brand.brand_name?.split(" ")?.[0] || "Unknown");
-
   if (!brands || !brandFetch) return null;
 
   const maxMentions = Math.max(...brands.map((brand) => brand.total_mentions));
@@ -555,9 +537,7 @@ function DashboardContent() {
     from: undefined,
     to: undefined,
   });
-  const [selectedAnalysisDate, setSelectedAnalysisDate] = useState<
-  string | null
->(null);
+  // Analysis date state removed as it's handled by selectedDateRange
   const [selectedModel, setSelectedModel] = useState<Set<string>>(
     new Set<string>([])
   );
@@ -717,121 +697,250 @@ function DashboardContent() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
+  
+  // Track previous brand to avoid unnecessary refetches
+  const [previousBrandId, setPreviousBrandId] = useState<string | null>(null);
+  
   useEffect(() => {
     async function fetchScheduledQueries() {
       if (!user) return;
+      
+      // Avoid unnecessary refetches if brand hasn't actually changed
+      const currentBrandId = currentBrand?.id || null;
+      if (currentBrandId === previousBrandId && queries.length > 0) {
+        console.log('🔄 Skipping refetch - brand unchanged and queries already loaded');
+        return;
+      }
+      
+      setPreviousBrandId(currentBrandId);
 
       try {
         setLoading(true);
+        setError(null);
         
-        // ⚡ PERFORMANCE OPTIMIZATION: Server-side brand filtering
-        const url = currentBrand 
-          ? `/api/monitoring?user_id=${user.id}&filter_brand_id=${currentBrand.id}`
-          : `/api/monitoring?user_id=${user.id}`;
-          
+        // Build URL with proper brand filtering
+        const params = new URLSearchParams({ user_id: user.id });
+        if (currentBrand?.id) {
+          params.append('filter_brand_id', currentBrand.id);
+        }
+        
+        const url = `/api/monitoring?${params.toString()}`;
         console.log(`🚀 Fetching queries: ${url}`);
         const startTime = Date.now();
         
-        const response = await fetch(url);
+        const response = await fetch(url, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
 
         if (!response.ok) {
-          setError(
-            `We could not fetch your scheduled queries. Please try again later.`
-          );
-          throw new Error(`API Error: ${response.status}`);
+          const errorData = await response.text();
+          console.error('API Error Response:', errorData);
+          throw new Error(`API Error: ${response.status} - ${response.statusText}`);
         }
 
         const data = await response.json();
         const duration = Date.now() - startTime;
         console.log(`✅ Queries loaded in ${duration}ms, count: ${data?.monitoring?.length || 0}`);
 
-        if (data && data.monitoring && data.monitoring.length > 0) {
-          // ✨ NO MORE CLIENT-SIDE FILTERING - server does it!
-          const queries = data.monitoring;
+        // Ensure we have valid data structure
+        if (data && Array.isArray(data.monitoring)) {
+          const queries = data.monitoring.filter(query => query && query.id); // Filter out invalid queries
           setQueries(queries);
           
-          // If we have a selectedQueryId from URL, find and select that query
-          if (selectedQueryId) {
-            const foundQuery = queries.find((q: any) => q.id === selectedQueryId);
-            setSelectedQuery(foundQuery || queries[0] || null);
-          } else {
-            setSelectedQuery(queries[0] || null);
+          // Don't reset selected query if we're just filtering the same queries
+          if (!selectedQuery && queries.length > 0) {
+            const firstQuery = queries[0];
+            console.log('🎯 Setting first query after brand filter:', {
+              queryId: firstQuery.id,
+              mode_id: firstQuery.mode_id,
+              query: firstQuery.query,
+              hasResults: !!firstQuery.results,
+              resultsLength: firstQuery.results?.length || 0,
+              currentBrand: currentBrand?.name || 'All prompts'
+            });
+            setSelectedQuery(firstQuery);
+            // Load full results if missing (common when brand filtering)
+            if (!firstQuery.results || firstQuery.results.length === 0) {
+              console.log('🔄 Loading full results for brand-filtered query:', firstQuery.mode_id);
+              loadQueryResults(firstQuery.mode_id || firstQuery.id);
+            }
+          } else if (selectedQuery) {
+            // Check if selected query still exists in filtered results
+            const stillExists = queries.find(q => q.id === selectedQuery.id || q.mode_id === selectedQuery.mode_id);
+            if (!stillExists && queries.length > 0) {
+              const newQuery = queries[0];
+              setSelectedQuery(newQuery);
+              // Load full results if missing (common when brand filtering)
+              if (!newQuery.results || newQuery.results.length === 0) {
+                console.log('🔄 Loading full results for brand-filtered query:', newQuery.mode_id);
+                loadQueryResults(newQuery.mode_id || newQuery.id);
+              }
+            } else if (selectedQuery && (!selectedQuery.results || selectedQuery.results.length === 0)) {
+              // If selected query exists but lacks results, load them
+              console.log('🔄 Loading missing results for existing query:', selectedQuery.mode_id);
+              loadQueryResults(selectedQuery.mode_id || selectedQuery.id);
+            }
           }
-          
-          setIsLoading(false);
         } else {
+          console.log('📭 No valid monitoring data found');
           setQueries([]);
           setSelectedQuery(null);
-          setIsLoading(false);
         }
       } catch (error) {
-        setError(
-          `We could not fetch your scheduled queries. Please try again later.`
-        );
-        setIsLoading(false);
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+        setError(`Failed to fetch scheduled queries: ${errorMessage}`);
         console.error("Failed to fetch scheduled queries:", error);
+        
         toast({
           title: "Error",
-          description:
-            "Failed to load scheduled queries. Please try again later.",
+          description: "Failed to load scheduled queries. Please try again later.",
           variant: "destructive",
         });
+        
         setQueries([]);
+        setSelectedQuery(null);
       } finally {
         setLoading(false);
+        setIsLoading(false);
       }
     }
 
     fetchScheduledQueries();
-  }, [toast, user, currentBrand]);
+  }, [toast, user, currentBrand]); // Removed selectedQueryId to prevent unnecessary refetches
 
   // 🔄 Function to load detailed results for a specific query when needed
-  const loadQueryResults = async (queryId: string) => {
-    if (!queryId) return;
+  const loadQueryResults = useCallback(async (queryId: string) => {
+    if (!queryId) {
+      console.warn('No queryId provided to loadQueryResults');
+      return;
+    }
     
     try {
       setLoadingResults(true);
       console.log(`🔍 Loading detailed results for query: ${queryId}`);
       
-      const response = await fetch(`/api/monitoring?mode_id=${queryId}`);
-      if (!response.ok) throw new Error('Failed to load results');
+      const response = await fetch(`/api/monitoring?mode_id=${encodeURIComponent(queryId)}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to load results: ${response.status} - ${errorText}`);
+      }
       
       const data = await response.json();
       
-      if (data && data.monitoring && data.monitoring.length > 0) {
+      if (data && data.monitoring && Array.isArray(data.monitoring) && data.monitoring.length > 0) {
         // Update the selected query with full results
         const fullQuery = data.monitoring[0];
-        setSelectedQuery(fullQuery);
-        console.log(`✅ Results loaded for query: ${queryId}`);
+        
+        // Validate the data structure
+        if (fullQuery && fullQuery.mode_id === queryId) {
+          console.log(`✅ Full query loaded:`, {
+            queryId,
+            resultsCount: fullQuery.results?.length || 0,
+            hasModelResults: fullQuery.results?.length > 0 ? !!fullQuery.results[0]?.model_results : false,
+            modelResultsCount: fullQuery.results?.length > 0 ? fullQuery.results[0]?.model_results?.length || 0 : 0,
+            modelNames: fullQuery.results?.length > 0 && fullQuery.results[0]?.model_results ? 
+              fullQuery.results[0].model_results.map((mr: any) => mr.llm_name) : []
+          });
+          setSelectedQuery(fullQuery);
+        } else {
+          console.warn('Received query data does not match requested queryId');
+        }
+      } else {
+        console.warn('No valid monitoring data received for query:', queryId);
+        toast({
+          title: "Warning",
+          description: "No results found for this query.",
+          variant: "default",
+        });
       }
     } catch (error) {
       console.error('Failed to load query results:', error);
       toast({
         title: "Error",
-        description: "Failed to load detailed results. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to load detailed results. Please try again.",
         variant: "destructive",
       });
     } finally {
       setLoadingResults(false);
     }
-  };
+  }, [toast]);
+
+  // Separate effect to handle URL-based query selection without triggering refetches
+  useEffect(() => {
+    if (selectedQueryId && queries.length > 0) {
+      const foundQuery = queries.find((q: any) => q.id === selectedQueryId || q.mode_id === selectedQueryId);
+      if (foundQuery && foundQuery.id !== selectedQuery?.id) {
+        console.log('Selecting query from URL:', selectedQueryId);
+        setSelectedQuery(foundQuery);
+        // Load results if not already loaded
+        if (!foundQuery.results || foundQuery.results.length === 0) {
+          loadQueryResults(foundQuery.mode_id || foundQuery.id);
+        }
+      }
+    }
+  }, [selectedQueryId, queries, selectedQuery, loadQueryResults]);
 
   // 🎯 Enhanced query selection with result loading
-  const handleQuerySelection = (query: ScheduledQuery) => {
+  const handleQuerySelection = useCallback((query: ScheduledQuery) => {
+    if (!query) {
+      console.warn('No query provided to handleQuerySelection');
+      return;
+    }
+    
+    // Avoid reloading if same query is already selected
+    if (selectedQuery?.id === query.id) {
+      console.log('🔄 Query already selected, skipping reload');
+      return;
+    }
+    
+    console.log('Selecting query:', query.id, 'mode_id:', query.mode_id);
+    
+    // Clear previous brand selections when switching queries
+    setSelectedBrands(new Set());
+    
+    // Set the selected query immediately for UI responsiveness
     setSelectedQuery(query);
     
-    // If query doesn't have results, load them
-    if (!query.results || query.results.length === 0) {
-      loadQueryResults(query.mode_id || query.id);
+    // If query doesn't have results or has incomplete results, load them
+    if (!query.results || query.results.length === 0 || 
+        (query.results.length > 0 && !query.results[0]?.model_results)) {
+      const queryId = query.mode_id || query.id;
+      if (queryId) {
+        loadQueryResults(queryId);
+      } else {
+        console.error('No valid query ID found for loading results');
+      }
+    } else {
+      console.log('Query already has results, skipping reload');
     }
-  };
+  }, [selectedQuery, loadQueryResults]);
 
   const [isExpanded, setIsExpanded] = useState(false);
 
   // ⚡ PERFORMANCE: Results are loaded separately to avoid slow initial load
-  const results = useMemo(() => selectedQuery?.results || [], [selectedQuery?.results]);
+  const results = useMemo(() => {
+    const queryResults = selectedQuery?.results || [];
+    console.log('📋 Results processing:', {
+      queryId: selectedQuery?.id,
+      mode_id: selectedQuery?.mode_id,
+      resultsCount: queryResults.length,
+      hasModelResults: queryResults.length > 0 ? !!queryResults[0]?.model_results : false,
+      modelResultsCount: queryResults.length > 0 ? queryResults[0]?.model_results?.length || 0 : 0,
+      currentBrand: currentBrand?.name || 'All prompts'
+    });
+    return queryResults;
+  }, [selectedQuery?.results, currentBrand]);
   // console.log("Results: ", results);
-  const keywords = results.length > 0 ? results[0]?.keyword_analysis?.keywords : undefined;
+  // Keywords extraction removed as unused
   const [analysis_brands, setAnalysisBrands] = useState<any[]>([]);
   const [selectedBrands, setSelectedBrands] = useState<Set<string>>(
     new Set<string>([])
@@ -844,27 +953,37 @@ function DashboardContent() {
 
       if (brandName === "all") {
         if (isChecked) {
+          // Select all brands
           newSelection.clear();
           newSelection.add("all");
         } else {
+          // Unselect all - default to first brand if available
           newSelection.delete("all");
+          if (brandMentionsInSummaries.length > 0) {
+            newSelection.add(brandMentionsInSummaries[0].brand_name);
+          }
         }
       } else {
         // Handle individual brand selection
         if (isChecked) {
           newSelection.add(brandName);
-          // If "all" was selected, unselect it as we are now specific
-          if (newSelection.has("all")) {
-            newSelection.delete("all");
-          }
+          // Remove "all" selection when selecting specific brands
+          newSelection.delete("all");
         } else {
           newSelection.delete(brandName);
         }
 
-        if (newSelection.size === 0 && analysis_brands.length > 0) {
-          newSelection.add("all"); // Default to "all" if empty
+        // If no brands are selected, default to "all" or first brand
+        if (newSelection.size === 0) {
+          if (brandMentionsInSummaries.length > 0) {
+            newSelection.add(brandMentionsInSummaries[0].brand_name);
+          } else {
+            newSelection.add("all");
+          }
         }
       }
+      
+      console.log(`Brand selection changed: ${brandName} -> ${isChecked}, new selection:`, Array.from(newSelection));
       return newSelection;
     });
   };
@@ -1103,7 +1222,7 @@ function DashboardContent() {
           "Google AI Mode Mentions": brand.google_ai_mode_mentions > 0,
           "All Citations (URLs)": citations,
           "Citation Count": citationCount,
-          Query: selectedQuery.query,
+          Query: selectedQuery?.query || 'Unknown Query',
           "Analysis Date": new Date().toLocaleDateString(),
         });
       });
@@ -1187,7 +1306,7 @@ function DashboardContent() {
         "Citation Count":
           exportData.reduce((sum, brand) => sum + brand["Citation Count"], 0) ||
           0,
-        Query: selectedQuery.query,
+        Query: selectedQuery?.query || 'Unknown Query',
         "Analysis Date": `Export Date: ${new Date().toLocaleDateString()}`,
       });
 
@@ -1221,7 +1340,7 @@ function DashboardContent() {
       link.setAttribute("href", url);
       link.setAttribute(
         "download",
-        `industry-rankings-${selectedQuery.query
+        `industry-rankings-${(selectedQuery?.query || 'unknown-query')
           .replace(/[^a-z0-9]/gi, "_")
           .toLowerCase()}-${new Date().toISOString().split("T")[0]}.csv`
       );
@@ -1766,7 +1885,7 @@ function DashboardContent() {
 
       // Executive Summary Content
       summarySheet.addRow(["Brand Analysis Report"]);
-      summarySheet.addRow([`Query: ${selectedQuery.query}`]);
+      summarySheet.addRow([`Query: ${selectedQuery?.query || 'Unknown Query'}`]);
       summarySheet.addRow([
         `Analysis Date: ${new Date().toLocaleDateString()}`,
       ]);
@@ -1847,7 +1966,7 @@ function DashboardContent() {
       link.setAttribute("href", url);
       link.setAttribute(
         "download",
-        `brand-analysis-report-${selectedQuery.query
+        `brand-analysis-report-${(selectedQuery?.query || 'unknown-query')
           .replace(/[^a-z0-9]/gi, "_")
           .toLowerCase()}-${new Date().toISOString().split("T")[0]}.xlsx`
       );
@@ -2475,7 +2594,10 @@ function DashboardContent() {
   // console.log("Analysis Dates: ", analysis_dates)
 
   const analysis_models = useMemo(() => {
-    if (!results || !Array.isArray(results)) return [];
+    if (!results || !Array.isArray(results)) {
+      console.log('🔴 No results available for analysis_models');
+      return [];
+    }
     const allModels = results?.flatMap(
       (result: { model_results: { llm_name: string }[] }) =>
         result.model_results?.map((r: { llm_name: string }) => r.llm_name) || []
@@ -2483,8 +2605,14 @@ function DashboardContent() {
     if(googleSearchResults?.search_results?.length > 0){
       allModels.push("Google AI Overview");
     }
-    return [...new Set(allModels)];
-  }, [results]);
+    const uniqueModels = [...new Set(allModels)];
+    console.log('🤖 Analysis models detected:', {
+      totalResults: results.length,
+      modelsFound: uniqueModels,
+      currentBrand: currentBrand?.name || 'All prompts'
+    });
+    return uniqueModels;
+  }, [results, currentBrand]);
 
   // Helper function to filter results by date range
   const getDateFilteredResults = useMemo(() => {
@@ -2981,29 +3109,38 @@ function DashboardContent() {
     selectedModel,
     allAnalysisBrands,
     filteredAnalysisBrands,
-    analysis_brands,
   ]);
 
   // Effect to set default selected brand to first brand in the array
   useEffect(() => {
     if (brandMentionsInSummaries && brandMentionsInSummaries.length > 0) {
       const firstBrandName = brandMentionsInSummaries[0]?.brand_name;
-      if (selectedBrands.size === 0) {
+      
+      // Only reset if we have no valid selections
+      if (selectedBrands.size === 0 || selectedBrands.has("all")) {
         setSelectedBrands(new Set([firstBrandName]));
-      } else if (selectedBrands.size > 0) {
-        // Get the first selected brand name
-        const firstSelectedBrand = Array.from(selectedBrands)[0];
-        // Check if the selected brand exists in the current brand mentions
-        const brandExists = brandMentionsInSummaries.some(
-          (brand) =>
-            brand.brand_name.toLowerCase() === firstSelectedBrand.toLowerCase()
-        );
-        if (!brandExists) {
-          setSelectedBrands(new Set([firstBrandName]));
-        }
+        return;
       }
+      
+      // Check if any of the currently selected brands still exist
+      const validSelectedBrands = Array.from(selectedBrands).filter(brandName =>
+        brandMentionsInSummaries.some(brand => 
+          brand.brand_name.toLowerCase() === brandName.toLowerCase()
+        )
+      );
+      
+      // If no valid brands remain, reset to first brand
+      if (validSelectedBrands.length === 0) {
+        setSelectedBrands(new Set([firstBrandName]));
+      } else if (validSelectedBrands.length !== selectedBrands.size) {
+        // Remove invalid brands but keep valid ones
+        setSelectedBrands(new Set(validSelectedBrands));
+      }
+    } else if (brandMentionsInSummaries?.length === 0) {
+      // Clear selection if no brands available
+      setSelectedBrands(new Set());
     }
-  }, [brandMentionsInSummaries, selectedBrands]);
+  }, [brandMentionsInSummaries]);
 
   const modelSummary = useMemo(() => {
     // ⚡ PERFORMANCE: Check if results exist and have data
@@ -3220,6 +3357,83 @@ function DashboardContent() {
   if (error && queries.length <= 0) {
     return (
       <div className="flex flex-col items-center mt-20 h-screen gap-2">
+         <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="w-full !border !border-accent md:w-fit rounded-full"
+                >
+                  {currentBrand ? (
+                    <div className="flex items-center gap-2">
+                      {currentBrand.logo_url ? (
+                        <Image
+                          src={currentBrand.logo_url}
+                          alt={currentBrand.name}
+                          width={20}
+                          height={20}
+                          className="rounded-full"
+                        />
+                      ) : (
+                        <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
+                          <span className="text-xs font-medium text-white">
+                            {currentBrand.name.charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                      )}
+                      {currentBrand.name}
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <Filter className="w-4 h-4" />
+                      Select a Brand
+                    </div>
+                  )}
+                  <ChevronDown className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="start"
+                className="pb-2 px-2 space-y-3 rounded-xl w-50"
+              >
+                <DropdownMenuLabel className="text-xs text-white/20 ">
+                  Brand Options
+                </DropdownMenuLabel>
+                <DropdownMenuItem
+                  onClick={() => setCurrentBrand(null)}
+                  className="rounded-md"
+                >
+                  <div className="flex items-center gap-2">
+                    <span>View All Prompts</span>
+                  </div>
+                </DropdownMenuItem>
+                {userBrands.map((brand) => (
+                  <DropdownMenuItem
+                    key={brand?.id}
+                    onClick={() => setCurrentBrand(brand)}
+                    className="rounded-md"
+                  >
+                    <div className="flex items-center gap-2">
+                      {brand.logo_url ? (
+                        <Image
+                          src={brand.logo_url}
+                          alt={brand.name}
+                          width={20}
+                          height={20}
+                          className="rounded-full"
+                        />
+                      ) : (
+                        <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
+                          <span className="text-xs font-medium text-white">
+                            {brand.name.charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                      )}
+                      <span>{brand.name}</span>
+                    </div>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
         <Blocks className="w-6 h-6 text-blue-500" />
         <div className="text-center text-blue-500 mb-2">
           No Monitored Searches

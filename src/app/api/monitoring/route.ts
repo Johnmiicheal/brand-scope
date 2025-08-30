@@ -55,6 +55,7 @@ async function getSearchResultsByModeId(mode_id: string) {
     // Server-side brand filtering if brand_id provided
     if (brand_id) {
       console.log(`🎯 Filtering by brand_id: ${brand_id}`);
+      // attached_brand_id is an array field, use contains operator
       query = query.contains('attached_brand_id', [brand_id]);
     }
 
