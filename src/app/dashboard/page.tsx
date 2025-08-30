@@ -16,19 +16,15 @@ import {
 import ShinyText from "@/components/ui/shiny-text";
 import { motion, AnimatePresence } from "framer-motion";
 import { MetricsHeader } from "@/components/dashboard/metrics-card";
-
 import { CitationsCard } from "@/components/dashboard/citations-card";
 import Image from "next/image";
-
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Blocks,
-
   ChevronDown,
   Clock9,
-
   Info,
-
-  Calendar as CalendarIcon,
+  CalendarIcon,
   Eye,
   X,
   Search,
@@ -578,11 +574,6 @@ function DashboardContent() {
 
       setUserBrands(data || []);
 
-      // Set the first brand as selected if available and not clearing brand
-      if (data && data.length > 0 && !shouldClearBrand) {
-        setCurrentBrand(data[0]);
-      }
-
       setIsLoading(false);
     } catch (error) {
       console.error("Error:", error);
@@ -701,6 +692,8 @@ function DashboardContent() {
   // Track previous brand to avoid unnecessary refetches
   const [previousBrandId, setPreviousBrandId] = useState<string | null>(null);
   
+  const isMobile = useIsMobile();
+  
   useEffect(() => {
     async function fetchScheduledQueries() {
       if (!user) return;
@@ -794,11 +787,7 @@ function DashboardContent() {
         setError(`Failed to fetch scheduled queries: ${errorMessage}`);
         console.error("Failed to fetch scheduled queries:", error);
         
-        toast({
-          title: "Error",
-          description: "Failed to load scheduled queries. Please try again later.",
-          variant: "destructive",
-        });
+        toastSonner.error( "Failed to load scheduled queries. Please try again later.");
         
         setQueries([]);
         setSelectedQuery(null);
@@ -809,7 +798,7 @@ function DashboardContent() {
     }
 
     fetchScheduledQueries();
-  }, [toast, user, currentBrand]); // Removed selectedQueryId to prevent unnecessary refetches
+  }, [user, currentBrand]); // Removed selectedQueryId to prevent unnecessary refetches
 
   // 🔄 Function to load detailed results for a specific query when needed
   const loadQueryResults = useCallback(async (queryId: string) => {
@@ -856,23 +845,15 @@ function DashboardContent() {
         }
       } else {
         console.warn('No valid monitoring data received for query:', queryId);
-        toast({
-          title: "Warning",
-          description: "No results found for this query.",
-          variant: "default",
-        });
+        toastSonner.warning( "No results found for this query.");
       }
     } catch (error) {
       console.error('Failed to load query results:', error);
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to load detailed results. Please try again.",
-        variant: "destructive",
-      });
+      toastSonner.error( error instanceof Error ? error.message : "Failed to load detailed results. Please try again.");
     } finally {
       setLoadingResults(false);
     }
-  }, [toast]);
+  }, []);
 
   // Separate effect to handle URL-based query selection without triggering refetches
   useEffect(() => {
@@ -4516,7 +4497,7 @@ function DashboardContent() {
                         prompt={selectedQuery?.query || ""}
                         country={selectedQuery?.location || ""}
                         brand={currentBrand}
-                        orientation={"horizontal"}
+                        orientation={isMobile ? "vertical" : "horizontal"}
                       />
                     </TabsContent>
                     <TabsContent value="response">
