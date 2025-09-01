@@ -35,7 +35,19 @@ async function getSearchResultsByModeId(mode_id: string) {
     let query = supabase
       .from('scheduled_queries')
       .select(`
-       *
+        id,
+        query,
+        last_analysis_at,
+        next_analysis_at,
+        frequency,
+        mode,
+        mode_id,
+        status,
+        location,
+        attached_brand_id,
+        selected_models,
+        credits_per_run,
+        include_google_search
       `)
       .eq('user_id', user_id)
       .order('last_analysis_at', { ascending: false });
