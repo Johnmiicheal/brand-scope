@@ -1489,9 +1489,6 @@ async function processQuery(
     nextAnalysisDate.setDate(
       nextAnalysisDate.getDate() + (query.frequency === "daily" ? 1 : 7)
     );
-    
-    // Then set to midnight of that next day
-    nextAnalysisDate.setHours(0, 0, 0, 0);
 
   console.log(
     `  Updating Supabase for query ${
@@ -1744,13 +1741,20 @@ export async function POST(req: Request) {
         mode_id: mode_id
       });
       
+      // --- Calculate Next Analysis Date ---
+      const nextAnalysisDate = new Date();
+      nextAnalysisDate.setDate(
+        nextAnalysisDate.getDate() + (frequency === "daily" ? 1 : 7)
+      );
       // --- NOW Insert Query with Results ---
       console.log(`Inserting query "${query}" with successful results for user ${user_id}`);
+      console.log(`Next analysis scheduled for: ${nextAnalysisDate.toISOString()}`);
       sentryServer.logger.info(`Inserting query "${query}" with successful results for user ${user_id}`, { 
         log_source: 'schedule_query',
         user_id: user_id,
         query_text: query,
-        mode_id: mode_id
+        mode_id: mode_id,
+        next_analysis_at: nextAnalysisDate.toISOString()
       });
       const { data: newQueryData, error: insertError } = await supabase
         .from("scheduled_queries")
@@ -1760,8 +1764,8 @@ export async function POST(req: Request) {
           mode: mode || null,
           user_id: user_id,
           mode_id: mode_id,
-          next_analysis_at: now,
-          last_analysis_at: now, // Set since we just analyzed it
+          next_analysis_at: nextAnalysisDate.toISOString(), // ✅ Correctly calculated future date
+          last_analysis_at: now, // ✅ Set since we just analyzed it
           status: "active",
           location: location,
           results: [initialAnalysis.newAnalysisRun], // Insert with actual results!
