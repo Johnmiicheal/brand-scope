@@ -1324,7 +1324,7 @@ async function processQuery(
         );
         const lowerName = name.toLowerCase();
         // Models that should use generateText + JSON parsing
-        const textModelTriggers = ["perplexity", "kimi", "llama", "ernie"];
+        const textModelTriggers = ["perplexity", "kimi", "llama", "ernie", "deepseek-r1"];
         const shouldUseGenerateText = textModelTriggers.some((m) => lowerName.includes(m));
         if (shouldUseGenerateText) {
           console.log(`      Using generateText for ${name}...`);
