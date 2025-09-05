@@ -45,6 +45,7 @@ interface BrandAnalysis {
   total_mentions: number;
   gpt_mentions: number;
   claude_mentions: number;
+  sonnet_mentions: number;
   perplexity_mentions: number;
   gemini_mentions: number;
   gpt_search_mentions: number;
@@ -69,6 +70,7 @@ interface Brand {
   gpt_mentions: number;
   gpt_search_mentions: number;
   claude_mentions: number;
+  sonnet_mentions: number;
   perplexity_mentions: number;
   gemini_mentions: number;
   total_mentions: number;
@@ -130,6 +132,7 @@ export function CompetitorChart({
     
     fullBrandAnalytics.forEach((brand) => {
       if (brand.claude_mentions > 0) modelCounts.add("Claude 4.0 Sonnet");
+      if (brand.sonnet_mentions > 0) modelCounts.add("Claude Sonnet 4");
       if (brand.perplexity_mentions > 0) modelCounts.add("Perplexity Sonar");
       if (brand.gemini_mentions > 0) modelCounts.add("Gemini 2.5 Flash");
       if (brand.gpt_search_mentions > 0) modelCounts.add("GPT 4o Web Search");
@@ -157,6 +160,7 @@ export function CompetitorChart({
   const getCoverageRatio = (brand: BrandAnalysis, type: "ratio" | "count") => {
     const totalMentionsPerModel =
       (brand.claude_mentions > 0 ? 1 : 0) +
+      (brand.sonnet_mentions > 0 ? 1 : 0) +
       (brand.perplexity_mentions > 0 ? 1 : 0) +
       (brand.gemini_mentions > 0 ? 1 : 0) +
       (brand.gpt_search_mentions > 0 ? 1 : 0) +
@@ -179,6 +183,9 @@ export function CompetitorChart({
     
 
     if (selectedModel.has("Claude 4.0 Sonnet") && brand.claude_mentions > 0) {
+      selectedModelTotalMentions++;
+    }
+    if (selectedModel.has("Claude Sonnet 4") && brand.sonnet_mentions > 0) {
       selectedModelTotalMentions++;
     }
     if (selectedModel.has("Perplexity Sonar") && brand.perplexity_mentions > 0) {

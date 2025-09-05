@@ -463,7 +463,10 @@ export function AIChatInterface({
 
     const userConstraint = getConstraints(product?.name || "");
 
-    if (subscription?.query_count >= userConstraint.max_credits && subscription?.payg_credits === 0) {
+    if (
+      subscription?.query_count >= userConstraint.max_credits &&
+      subscription?.payg_credits === 0
+    ) {
       toastSonner.error(
         "You have reached the maximum number of credits for your plan. Please upgrade to continue."
       );
@@ -688,10 +691,13 @@ export function AIChatInterface({
               Analyzing Your Search Query
             </h1>
           </div>
-          <p className="text-muted-foreground mb-10 text-center">
-            We&apos;re gathering data and insights about {value || "your query"}
-            using {selectedModels.length} AI models. This may take a few
-            moments.
+          <p className="text-muted-foreground mb-10 text-center px-4">
+            We&apos;re gathering data and insights about {value || "your query"}{" "}
+            using {selectedModels.length} AI models.{" "}
+            {mode === "Explorer"
+              ? `This may take a few
+            moments.`
+              : `Analysis can take up to 5 minutes. You can leave the page and check back later`}
           </p>
           <LoadingState />
         </div>

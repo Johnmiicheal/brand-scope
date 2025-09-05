@@ -204,6 +204,7 @@ function IndustryRankingsTable({
       if (brand.llama_mentions > 0) modelCounts.add("Llama 4 Maverick");
       // New Voyager models
       if (brand.gemini_pro_mentions > 0) modelCounts.add("Gemini Pro 2.5");
+      if (brand.sonnet_mentions > 0) modelCounts.add("Claude Sonnet 4");
       if (brand.deepseek_r1_mentions > 0) modelCounts.add("DeepSeek R1");
       if (brand.kimi_k2_mentions > 0) modelCounts.add("Kimi K2");
       if (brand.gpt_5_mentions > 0) modelCounts.add("GPT 5");
@@ -227,6 +228,7 @@ function IndustryRankingsTable({
       (brand.google_ai_mode_mentions > 0 ? 1 : 0) +
       // Voyager mode models
       (brand.deepseek_mentions > 0 ? 1 : 0) +
+      (brand.sonnet_mentions > 0 ? 1 : 0) +
       (brand.gpt_4_1_mentions > 0 ? 1 : 0) +
       (brand.grok_mentions > 0 ? 1 : 0) +
       (brand.llama_mentions > 0 ? 1 : 0) +
@@ -274,6 +276,9 @@ function IndustryRankingsTable({
     }
     // Voyager mode models
     if (selectedModel.has("DeepSeek v3") && brand.deepseek_mentions > 0) {
+      selectedModelTotalMentions++;
+    }
+    if (selectedModel.has("Claude Sonnet 4") && brand.sonnet_mentions > 0) {
       selectedModelTotalMentions++;
     }
     if (selectedModel.has("GPT 4.1 Nano") && brand.gpt_4_1_mentions > 0) {
@@ -2791,6 +2796,7 @@ function DashboardContent() {
       analysis_brands.forEach((brand) => {
         const brandName = brand.name;
         const mentions = {
+          sonnet_mentions: 0,
           claude_mentions: 0,
           perplexity_mentions: 0,
           gemini_mentions: 0,
@@ -2844,6 +2850,8 @@ function DashboardContent() {
               // Assign mentions to the appropriate model
               if (modelName.includes("claude")) {
                 mentions.claude_mentions += mentionCount;
+              } else if (modelName.includes("sonnet 4")) {
+                mentions.sonnet_mentions += mentionCount;
               } else if (modelName.includes("perplexity")) {
                 mentions.perplexity_mentions += mentionCount;
               } else if (modelName.includes("gemini")) {
@@ -2946,6 +2954,7 @@ function DashboardContent() {
     analysis_brands.forEach((brand) => {
       const brandName = brand.name;
       const mentions = {
+        sonnet_mentions: 0,
         claude_mentions: 0,
         perplexity_mentions: 0,
         gemini_mentions: 0,
@@ -3000,6 +3009,8 @@ function DashboardContent() {
               // Assign mentions to the appropriate model
               if (modelName.includes("claude")) {
                 mentions.claude_mentions += mentionCount;
+              } else if (modelName.includes("sonnet 4")) {
+                mentions.sonnet_mentions += mentionCount;
               } else if (modelName.includes("perplexity")) {
                 mentions.perplexity_mentions += mentionCount;
               } else if (modelName.includes("gemini pro")) {
@@ -3278,62 +3289,6 @@ function DashboardContent() {
     router.push("/dashboard/search");
   };
 
-  // const handleAnalyze = async () => {
-  //   if (!brand) return;
-
-  //   console.log("Selected Monitoring Frequency:", monitoringFrequency);
-
-  //   setIsAnalyzing(true);
-  //   try {
-  //     const response = await fetch(
-  //       process.env.NEXT_PUBLIC_ANALYZE_BRAND as string,
-  //       {
-  //         method: "POST",
-  //         headers: {
-  //           "Content-Type": "application/json",
-  //           Authorization: `Bearer ${sessionKey}`,
-  //         },
-  //         body: JSON.stringify({ brandId: brand.id }),
-  //       }
-  //     );
-
-  //     if (!response.ok) {
-  //       const errorData = await response.json();
-  //       console.error("Brand analysis failed:", errorData);
-  //       setIsAnalyzing(false);
-  //       return;
-  //     }
-
-  //     // Refetch brand data to get updated metrics
-  //     await refetch();
-  //   } catch (error) {
-  //     console.error("Error analyzing brand:", error);
-  //   } finally {
-  //     setIsAnalyzing(false);
-  //   }
-  // };
-
-  // if (!subsLoading && !subscription && !loading) {
-  //   return (
-  //     <div className="flex flex-col items-center justify-center h-screen gap-2">
-  //       <Blocks className="w-6 h-6 text-blue-500" />
-  //       <div className="text-center text-blue-500 mb-2">
-  //         No Subscriptions Found
-  //       </div>
-  //       <p>
-  //         You have no subscriptions. Please get a subscription to start
-  //         monitoring your keywords and brands.
-  //       </p>
-  //       <Button
-  //         variant="outline"
-  //         className="mt-5"
-  //         onClick={() => window.location.assign("/onboarding")}
-  //       >
-  //         Get Subscription
-  //       </Button>
-  //     </div>
-  //   );
-  // }
 
   if (error && queries.length <= 0) {
     return (
@@ -4252,7 +4207,7 @@ function DashboardContent() {
                               >
                                 All Models
                               </DropdownMenuCheckboxItem>
-                              <ScrollArea className="max-h-[200px]">
+                              <ScrollArea className="h-[200px]">
                                 {analysis_models?.map((model: string) => (
                                   <DropdownMenuCheckboxItem
                                     key={model}
@@ -4536,7 +4491,7 @@ function DashboardContent() {
                                 Filter by Model
                               </DropdownMenuLabel>
                               <DropdownMenuSeparator />
-                              <ScrollArea className="max-h-[200px]">
+                              <ScrollArea className="h-[200px]">
                                 {analysis_models?.map((model: string) => (
                                   <DropdownMenuCheckboxItem
                                     key={model}
@@ -4646,7 +4601,7 @@ function DashboardContent() {
                               >
                                 All Models
                               </DropdownMenuCheckboxItem>
-                              <ScrollArea className="max-h-[200px]">
+                              <ScrollArea className="h-[200px]">
                                 {analysis_models?.map((model: string) => (
                                   <DropdownMenuCheckboxItem
                                     key={model}
