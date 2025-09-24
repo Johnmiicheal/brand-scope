@@ -86,15 +86,15 @@ export async function GET(request: Request) {
       }
       
       // Redirect based on 'next' parameter or default
-      return NextResponse.redirect(`https://airankia.com${next}`)
+      return NextResponse.redirect(`https://usebrandscope.vercel.app${next}`)
     } else {
       console.error("Auth Callback Error:", error.message)
       // Optionally redirect to an error page
-      return NextResponse.redirect(`https://airankia.com/login`)
+      return NextResponse.redirect(`https://usebrandscope.vercel.app/login`)
     }
   }
 
   // return the user to an error page with instructions
   console.error("Auth Callback Error: No code received or exchange failed.")
-  return NextResponse.redirect(`https://airankia.com/login`)
+  return NextResponse.redirect(`https://usebrandscope.vercel.app/login`)
 } 

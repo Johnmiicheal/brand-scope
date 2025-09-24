@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
     // Safely create billing portal session on the server
     const session = await stripe.billingPortal.sessions.create({
       customer: customerId,
-      return_url: returnUrl || 'https://airankia.com/dashboard',
+      return_url: returnUrl || 'https://usebrandscope.vercel.app/dashboard',
     });
 
     return NextResponse.json({ url: session.url });

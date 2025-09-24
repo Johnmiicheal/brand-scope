@@ -736,7 +736,7 @@ export default function OnboardingPage() {
         <div className="flex flex-col items-center justify-center mb-16 w-full">
           <Image
             src="/icons/air-logo-light.png"
-            alt="AI Rankia Logo"
+            alt="BrandScope Logo"
             width={120}
             height={120}
             className="mb-5"

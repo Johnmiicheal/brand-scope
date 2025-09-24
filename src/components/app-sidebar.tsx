@@ -114,7 +114,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   <RankiaIcon className="w-full h-full object-contain text-blue-500/50 group-hover:animate-[spin_4s_linear_infinite]" />
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-bold ">AI Rankia</span>
+                  <span className="truncate font-bold ">BrandScope</span>
                   <span className="truncate text-[10px]">AI-Powered Prompt Analysis</span>
                 </div>
               </a>

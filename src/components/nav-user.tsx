@@ -97,7 +97,7 @@ export function NavUser() {
         },
         body: JSON.stringify({
           customerId: user_subscriptions?.stripe_customer_id,
-          returnUrl: 'https://airankia.com/dashboard',
+          returnUrl: 'https://usebrandscope.vercel.app/dashboard',
         }),
       });
 

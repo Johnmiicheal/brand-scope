@@ -45,7 +45,7 @@ export default function Hero({
         <div className="flex items-center gap-2">
           <Image
             src="/icons/air-landing.svg"
-            alt="AI Rankia Logo"
+            alt="BrandScope Logo"
             width={120}
             height={120}
             className="w-20 h-20 md:w-[120px] md:h-[120px]"

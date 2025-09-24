@@ -99,7 +99,7 @@ export function SignupForm({
                   <div className="flex size-8 items-center justify-center rounded-md">
                     <GalleryVerticalEnd className="size-6" />
                   </div>
-                  <span className="sr-only">AI Rankia</span>
+                  <span className="sr-only">BrandScope</span>
                 </Link>
                 <h1 className="text-xl font-bold">Create your account</h1>
                 <div className="text-center text-sm">

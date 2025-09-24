@@ -190,7 +190,7 @@ export async function POST(req: Request) {
         headers: {
           'Accept': 'application/json',
           'Content-Type': 'application/json',
-          'User-Agent': 'AIRankia-Monitor/1.0',
+          'User-Agent': 'Brandscope-Monitor/1.0',
         },
         body: JSON.stringify(webhookParams),
 

@@ -151,7 +151,7 @@ export default function Home() {
           <footer className="w-full border-t  py-6">
             <div className="container mx-auto flex flex-col md:flex-row justify-between items-center text-sm text-neutral-500">
               <span>
-                &copy; {new Date().getFullYear()} AI Rankia. All rights
+                &copy; {new Date().getFullYear()} BrandScope. All rights
                 reserved.
               </span>
               <div className="flex space-x-4 mt-4 md:mt-0">

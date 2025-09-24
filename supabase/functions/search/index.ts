@@ -291,7 +291,7 @@ serve(async (req) => {
     const headers = new Headers({
       "Content-Type": "application/json",
       "Access-Control-Allow-Origin":
-        req.headers.get("Origin") || "https://airankia.com",
+        req.headers.get("Origin") || "https://usebrandscope.vercel.app",
       "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
       "Access-Control-Allow-Headers":
         "authorization, x-client-info, apikey, content-type",
@@ -477,12 +477,12 @@ async function callSearchGoogleEndpoint(
   brandName?: string,
 ): Promise<void> {
   try {
-    const apiUrl = `https://airankia.com/api/search-google`;
+    const apiUrl = `https://usebrandscope.vercel.app/api/search-google`;
     const internalApiKey = Deno.env.get("INTERNAL_API_KEY");
     
     // Log environment setup
     console.log("Google Search API call setup:");
-    console.log("- Frontend URL:", "https://airankia.com");
+    console.log("- Frontend URL:", "https://usebrandscope.vercel.app");
     console.log("- Internal API key exists:", !!internalApiKey);
     console.log("- Using mode_id as monitoring_id:", mode_id);
     

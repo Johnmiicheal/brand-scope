@@ -104,7 +104,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           <header className="flex h-16 shrink-0 items-center gap-2">
             <div className="flex items-center gap-2 px-4">
               <SidebarTrigger className="-ml-1" />
-              <Image src="/icons/air-logo-light.png" alt="AI Rankia"  width={100} height={100} className="md:hidden flex" />
+              <Image src="/icons/air-logo-light.png" alt="BrandScope"  width={100} height={100} className="md:hidden flex" />
               <Separator
                 orientation="vertical"
                 className="mr-2 data-[orientation=vertical]:h-4"

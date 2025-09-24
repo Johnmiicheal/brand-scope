@@ -32,7 +32,7 @@ export default function SearchPrompts() {
         {
             label: "Brand Perceptions",
             icon: <Shapes className="w-4 h-4" />,
-            description: "AI Rankia helps you understand how AI search engines describe, position and talk about your brand.",
+            description: "BrandScope helps you understand how AI search engines describe, position and talk about your brand.",
             image: "/assets/rankia03.webp"
         }
     ]

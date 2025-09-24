@@ -17,7 +17,7 @@ export function CreditUsageProgress({ className }: CreditUsageProgressProps) {
   if (!user_subscriptions || !product) {
     return (
       <div className="flex flex-col gap-4 outline-[0.75px] hover:outline-blue-600/30 transition-all duration-500 ease-in-out outline-blue-600/20 bg-gradient-to-br from-blue-600/5 from-30% via-blue-600/30 to-80% to-blue-600/5 w-full h-[200px] rounded-md p-3 items-center justify-center text-center">
-        <h3 className="text-md font-semibold">Get the best out of AI Rankia</h3>
+        <h3 className="text-md font-semibold">Get the best out of BrandScope</h3>
         <p className="text-[9px]">Upgrade to a paid plan to unlock all the features and get access to monitor with the top AI search engines</p>
         <Button className="bg-blue-600/50 hover:bg-blue-600/80 hover:rounded-[40px] transition-all duration-400" onClick={() => window.location.assign('/onboarding?step=3')}>Select a Plan</Button>
 

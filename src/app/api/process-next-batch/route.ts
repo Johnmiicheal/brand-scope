@@ -14,7 +14,7 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY!
 );
-export const maxDuration = 300;
+export const maxDuration = 60;
 
 const openRouterApiKey = process.env.OPENROUTER_API_KEY;
 const openrouter = createOpenRouter({ apiKey: openRouterApiKey });
@@ -282,7 +282,7 @@ const StoredResultsSchema = z
     brandName?: string,
   ): Promise<void> {
     try {
-      const apiUrl = `https://airankia.com/api/search-google`;
+      const apiUrl = `https://usebrandscope.vercel.app/api/search-google`;
       const internalApiKey = process.env.INTERNAL_API_KEY;
       
       // Log environment setup
@@ -827,7 +827,7 @@ async function processQueryDirectly(query: any) {
     
     if (subscription.price_id) {
       try {
-        const response = await fetch(`https://airankia.com/api/stripe/subscription-info?priceId=${subscription.price_id}`);
+        const response = await fetch(`https://usebrandscope.vercel.app/api/stripe/subscription-info?priceId=${subscription.price_id}`);
         if (response.ok) {
           const { product } = await response.json();
           productName = product?.name || 'Pro';

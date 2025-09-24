@@ -2517,9 +2517,9 @@ function DashboardContent() {
 
     <div class="footer">
         <div class="footer-content">
-            <img src="https://airankia.com/icons/air-logo-dark.png" alt="AI Rankia Logo" class="footer-logo">
+            <img src="https://usebrandscope.vercel.app/icons/air-logo-dark.png" alt="BrandScope Logo" class="footer-logo">
             <div class="footer-text">
-                Report created on AI Rankia
+                Report created on BrandScope
             </div>
         </div>
     </div>

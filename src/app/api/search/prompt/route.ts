@@ -14,7 +14,7 @@ import { calculateCreditsRequired, getAvailableModels } from "@/lib/constraints"
 import { updateCreditUsage } from "@/lib/creditUsage";
 
 // export const runtime = 'edge';
-export const maxDuration = 200;
+export const maxDuration = 60;
 
 // Types
 interface AIRanking {
@@ -120,12 +120,12 @@ async function callSearchGoogleEndpoint(
   brandName?: string,
 ): Promise<void> {
   try {
-    const apiUrl = `https://airankia.com/api/search-google`;
+    const apiUrl = `https://usebrandscope.vercel.app/api/search-google`;
     const internalApiKey = process.env.INTERNAL_API_KEY;
     
     // Log environment setup
     console.log("Google Search API call setup:");
-    console.log("- Frontend URL:", "https://airankia.com");
+    console.log("- Frontend URL:", "https://usebrandscope.vercel.app");
     console.log("- Internal API key exists:", !!internalApiKey);
     console.log("- Using mode_id as monitoring_id:", mode_id);
     

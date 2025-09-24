@@ -27,7 +27,7 @@ if (
   );
 }
 
-export const maxDuration = 200;
+export const maxDuration = 60;
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 const openrouter = createOpenRouter({ apiKey: openRouterApiKey });
@@ -309,7 +309,7 @@ async function callSearchGoogleEndpoint(
   brandName?: string,
 ): Promise<void> {
   try {
-    const apiUrl = `https://airankia.com/api/search-google`;
+    const apiUrl = `https://usebrandscope.vercel.app/api/search-google`;
     const internalApiKey = process.env.INTERNAL_API_KEY;
     
     // Log environment setup
@@ -711,7 +711,7 @@ async function processQuery(
   
   if (subscription.price_id) {
     try {
-      const response = await fetch(`https://airankia.com/api/stripe/subscription-info?priceId=${subscription.price_id}`);
+      const response = await fetch(`https://usebrandscope.vercel.app/api/stripe/subscription-info?priceId=${subscription.price_id}`);
       if (response.ok) {
         const { product } = await response.json();
         productName = product?.name || 'Pro';

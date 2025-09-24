@@ -16,18 +16,18 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "AI Rankia - AI-Powered Brand Insights & AI Search Engine Analytics",
+  title: "BrandScope - AI-Powered Brand Insights & AI Search Engine Analytics",
   description: "Optimize your brand's visibility in AI search results. Get insights from AI Search Engines like ChatGPT, Perplexity, Gemini, Claude, and xAI, and improve your ranking with data-driven recommendations.",
   openGraph: {
-    title: "AI Rankia - AI-Powered Brand Insights & AI Search Engine Analytics",
+    title: "BrandScope - AI-Powered Brand Insights & AI Search Engine Analytics",
     description: "Optimize your brand's visibility in AI search results. Get insights from AI Search Engines like ChatGPT, Perplexity, Gemini, Claude, and AI Overview, and improve your ranking with data-driven recommendations.",
-    url: "https://airankia.com",
+    url: "https://usebrandscope.vercel.app",
     images: ["/air-seo.png"],
-    siteName: "AI Rankia",
+    siteName: "BrandScope",
   },
   twitter: {
     card: "summary_large_image",
-    title: "AI Rankia - AI-Powered Brand Insights & AI Search Engine Analytics",
+    title: "BrandScope - AI-Powered Brand Insights & AI Search Engine Analytics",
     description: "Optimize your brand's visibility in AI search results. Get insights from AI Search Engines like ChatGPT, Perplexity, Gemini, Claude, and AI Overview, and improve your ranking with data-driven recommendations.",
     images: "/air-seo.png",
   },
@@ -48,18 +48,18 @@ export default function RootLayout({
         <meta charSet="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <meta name="description" content="Optimize your brand's visibility in AI search results. Get insights from AI Search Engines like ChatGPT, Perplexity, Gemini, Claude, and AI Overview, and improve your ranking with data-driven recommendations." />
-        <meta name="keywords" content="AI, Brand Insights, SEO, Analytics, AI Rankia, Brand, AI Search Engine, chatgpt, perplexity, gemini, claude, llama, deepseek, xai, ai overview" />
+        <meta name="keywords" content="AI, Brand Insights, SEO, Analytics, BrandScope, Brand, AI Search Engine, chatgpt, perplexity, gemini, claude, llama, deepseek, xai, ai overview" />
         <meta name="author" content="Johnmicheal Elijah" />
         <link rel="icon" href="/favicon.ico" type="image/x-icon" />
         <link rel="shortcut icon" href="/icons/favicon.png" type="image/png" />
         <link rel="apple-touch-icon" href="/icons/favicon.png" />
-        <meta property="og:title" content="AI Rankia - AI-Powered Brand Insights & AI Search Engine Analytics" />
+        <meta property="og:title" content="BrandScope - AI-Powered Brand Insights & AI Search Engine Analytics" />
         <meta property="og:description" content="Optimize your brand's visibility in AI search results. Get insights from AI Search Engines like ChatGPT, Perplexity, Gemini, Claude, and AI Overview, and improve your ranking with data-driven recommendations." />
-        <meta property="og:url" content="https://airankia.com" />
+        <meta property="og:url" content="https://usebrandscope.vercel.app" />
         <meta property="og:image" content="/air-seo.png" />
-        <meta property="og:site_name" content="AI Rankia" />
+        <meta property="og:site_name" content="BrandScope" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="AI Rankia - AI-Powered Brand Insights & AI Search Engine Analytics" />
+        <meta name="twitter:title" content="BrandScope - AI-Powered Brand Insights & AI Search Engine Analytics" />
         <meta name="twitter:description" content="Optimize your brand's visibility in AI search results. Get insights from AI Search Engines like ChatGPT, Perplexity, Gemini, Claude, and AI Overview, and improve your ranking with data-driven recommendations." />
         <meta name="twitter:image" content="/air-seo.png" />
       </head>

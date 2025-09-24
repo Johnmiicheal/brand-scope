@@ -68,9 +68,9 @@ export function LoginForm({
               <div className="flex size-8 items-center justify-center rounded-md">
                 <GalleryVerticalEnd className="size-6" />
               </div>
-              <span className="sr-only">AI Rankia</span>
+              <span className="sr-only">BrandScope</span>
             </Link>
-            <h1 className="text-xl font-bold">Welcome to AI Rankia</h1>
+            <h1 className="text-xl font-bold">Welcome to BrandScope</h1>
             <div className="text-center text-sm">
               Don&apos;t have an account?{" "}
               <Link href="/signup" className="underline underline-offset-4">

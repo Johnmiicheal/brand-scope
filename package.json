@@ -1,7 +1,6 @@
 {
-  "name": "airankia",
-  "version": "0.1.0",
-  "private": true,
+  "name": "brand-scope",
+  "version": "1.0.0",
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
